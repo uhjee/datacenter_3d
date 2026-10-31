@@ -1,4 +1,4 @@
-// 3D 화면 위에 떠 있는 조작: 왼쪽 아래 층 이동 · 보기 방식, 오른쪽 위 확대 · 축소 · 전체 보기
+// 3D 화면 위에 떠 있는 조작: 왼쪽 위 층 이동 · 보기 방식, 오른쪽 위 확대 · 축소 · 전체 보기
 
 import { FoldVertical, House, Minus, Plus, UnfoldVertical } from 'lucide-react';
 import { FLOORS, type FloorId } from '../data/building';
