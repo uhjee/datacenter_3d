@@ -1,0 +1,36 @@
+# 의존성
+node_modules/
+
+# 빌드 결과
+dist/
+dist-ssr/
+*.tsbuildinfo
+.vite/
+
+# 로그
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 환경 변수 · 비밀 값
+.env
+.env.*
+!.env.example
+
+# 테스트 · 커버리지
+coverage/
+
+# 편집기 · OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+*.suo
+.DS_Store
+Thumbs.db
+
+# Claude Code 개인 설정 (launch.json 같은 공용 설정은 올린다)
+.claude/settings.local.json

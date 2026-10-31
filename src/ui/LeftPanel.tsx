@@ -1,0 +1,211 @@
+import { useMemo, useState, type ReactNode } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { FLOORS, ROOM_BY_ID, ROOMS, SHAFTS } from '../data/building';
+import { LINK_GROUPS } from '../data/connections';
+import { GROUP_CATS, GROUPS } from '../data/groups';
+import { EQUIPMENT } from '../data/equipment';
+import { DOMAIN_META, TYPE_BY_ID, type Domain } from '../data/equipTypes';
+import { activateGroup, focusItem } from '../scene/focus';
+import { RACK_COLOR_META, RAMP_CSS } from '../scene/rackColor';
+import { LAYER_META, useView, type RackColorMode } from '../store/useView';
+import { Switch } from './kit';
+
+const TEMP_CSS = 'linear-gradient(90deg, #4dabf7 0%, #63e6be 25%, #ffd43b 55%, #ff922b 75%, #fa5252 100%)';
+
+const FILTERS: { key: Domain | 'all'; name: string }[] = [
+  { key: 'all', name: '전체' },
+  { key: 'power', name: '전력' },
+  { key: 'cooling', name: '공조' },
+  { key: 'fire', name: '방재' },
+  { key: 'security', name: '보안' },
+];
+
+export function LeftPanel() {
+  const layers = useView((s) => s.layers);
+  const toggleLayer = useView((s) => s.toggleLayer);
+  const focus = useView((s) => s.floorFocus);
+  const selectedId = useView((s) => s.selectedId);
+  const linkFilter = useView((s) => s.linkFilter);
+  const groupId = useView((s) => s.groupId);
+  const rackColor = useView((s) => s.rackColor);
+  const [filter, setFilter] = useState<Domain | 'all'>('all');
+  const [query, setQuery] = useState('');
+
+  const tree = useMemo(() => {
+    const q = query.trim();
+    return [...FLOORS].reverse().map((f) => {
+      const items = EQUIPMENT.filter(
+        (e) =>
+          e.floor === f.id &&
+          (filter === 'all' || TYPE_BY_ID[e.type].domain === filter) &&
+          (!q || e.name.includes(q) || TYPE_BY_ID[e.type].name.includes(q)),
+      );
+      const rooms = ROOMS.filter((r) => r.floor === f.id)
+        .map((r) => ({ room: r, items: items.filter((e) => e.room === r.id) }))
+        .filter((g) => g.items.length > 0);
+      return { floor: f, rooms, count: items.length };
+    });
+  }, [filter, query]);
+
+  return (
+    <aside className="panel left">
+      <LeftSection id="layers" title="레이어" summary={`${LAYER_META.filter((l) => layers[l.key]).length}/${LAYER_META.length} 켬`}>
+        <div className="lp-switches">
+          {LAYER_META.map((l) => (
+            <Switch
+              key={l.key}
+              checked={layers[l.key]}
+              onChange={() => toggleLayer(l.key)}
+              label={l.name}
+              swatch={<span className="dot" style={{ background: l.key in DOMAIN_META ? DOMAIN_META[l.key as Domain].color : '#868e96' }} />}
+            />
+          ))}
+        </div>
+      </LeftSection>
+
+      <LeftSection
+        id="links"
+        title="연결선"
+        summary={layers.links ? `${LINK_GROUPS.filter((g) => linkFilter[g.key]).length}/${LINK_GROUPS.length} 켬` : '레이어 꺼짐'}
+      >
+        <div className={`lp-switches ${layers.links ? '' : 'off'}`}>
+          {LINK_GROUPS.map((g) => (
+            <Switch
+              key={g.key}
+              checked={linkFilter[g.key]}
+              disabled={!layers.links}
+              onChange={() => useView.getState().toggleLink(g.key)}
+              label={g.name}
+              swatch={<span className="line-swatch" style={{ background: g.color }} />}
+            />
+          ))}
+        </div>
+        <p className="hint">층을 넘는 선은 샤프트(EPS-A/B, PS, 냉매 배관 샤프트)를 지납니다. 배관은 공급·환수 두 줄, 점선은 대기 경로입니다.</p>
+      </LeftSection>
+
+      <LeftSection id="rack-color" title="랙 색칠" summary={rackColor === 'none' ? '없음' : RACK_COLOR_META[rackColor].name}>
+        <div className="seg small">
+          {(['none', 'u', 'power', 'temp'] as RackColorMode[]).map((k) => (
+            <button key={k} className={rackColor === k ? 'on' : ''} onClick={() => useView.getState().setRackColor(k)}>
+              {k === 'none' ? '없음' : RACK_COLOR_META[k].short}
+            </button>
+          ))}
+        </div>
+        {rackColor !== 'none' && (
+          <div className="ramp-legend">
+            <i style={{ background: rackColor === 'temp' ? TEMP_CSS : RAMP_CSS }} />
+            <span>
+              {RACK_COLOR_META[rackColor].name} {RACK_COLOR_META[rackColor].low}
+            </span>
+            <span>{RACK_COLOR_META[rackColor].high}</span>
+            <p className="hint">{RACK_COLOR_META[rackColor].desc}</p>
+          </div>
+        )}
+      </LeftSection>
+
+      <LeftSection id="groups" title="계통 묶음" summary={groupId ? GROUPS.find((g) => g.id === groupId)?.short : `${GROUPS.length}개`}>
+        {GROUP_CATS.map((c) => (
+          <div key={c.key} className="group-row">
+            <span className="group-cat">{c.name}</span>
+            <div className="group-btns">
+              {GROUPS.filter((g) => g.cat === c.key).map((g) => (
+                <button key={g.id} className={groupId === g.id ? 'on' : ''} title={g.desc} onClick={() => activateGroup(g.id)}>
+                  {g.short}
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
+        <p className="hint">묶음을 고르면 그 장비와 연결만 남기고 나머지는 흐리게 표시합니다. 흐름도도 그 부분만 보여줍니다.</p>
+      </LeftSection>
+
+      <section className="grow">
+        <h3 className="lp-h">장비 목록</h3>
+        <div className="seg small">
+          {FILTERS.map((f) => (
+            <button key={f.key} className={filter === f.key ? 'on' : ''} onClick={() => setFilter(f.key)}>
+              {f.name}
+            </button>
+          ))}
+        </div>
+        <input className="search" placeholder="장비 이름 검색" value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="tree">
+          {tree.map(({ floor, rooms, count }) =>
+            count === 0 ? null : (
+              <details key={floor.id} open={floor.id === focus || !focus}>
+                <summary>
+                  <b>{floor.id}</b> {floor.name} <span className="count">{count}</span>
+                </summary>
+                {rooms.map(({ room, items }) => (
+                  <div key={room.id} className="room-group">
+                    <div className="room-name">{ROOM_BY_ID[room.id].name}</div>
+                    {items.map((e) => {
+                      const t = TYPE_BY_ID[e.type];
+                      return (
+                        <button
+                          key={e.id}
+                          className={`item ${selectedId === e.id ? 'sel' : ''}`}
+                          onClick={() => focusItem(e.id)}
+                          onMouseEnter={() => useView.getState().hover(e.id)}
+                          onMouseLeave={() => useView.getState().hover(null)}
+                        >
+                          <span className="dot" style={{ background: DOMAIN_META[t.domain].color }} />
+                          {e.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
+              </details>
+            ),
+          )}
+          {filter === 'all' && !query && (
+            <details>
+              <summary>
+                <b>샤프트</b> 수직 통로 <span className="count">{SHAFTS.length}</span>
+              </summary>
+              {SHAFTS.map((s) => (
+                <button key={s.id} className={`item ${selectedId === `shaft:${s.id}` ? 'sel' : ''}`} onClick={() => focusItem(`shaft:${s.id}`)}>
+                  <span className="dot" style={{ background: s.color }} />
+                  {s.name}
+                </button>
+              ))}
+            </details>
+          )}
+        </div>
+      </section>
+    </aside>
+  );
+}
+
+// 접는 섹션: 접힌 제목 옆에 지금 값(예: 랙 색칠 · 없음)을 보여 열지 않아도 상태를 안다. 열림 상태는 브라우저에 기억
+const OPEN_KEY = 'dc3d.left.open';
+function readOpen(): Record<string, boolean> {
+  try {
+    return JSON.parse(localStorage.getItem(OPEN_KEY) ?? '{}');
+  } catch {
+    return {};
+  }
+}
+
+function LeftSection({ id, title, summary, children }: { id: string; title: string; summary?: ReactNode; children: ReactNode }) {
+  const [open, setOpen] = useState(() => readOpen()[id] ?? true);
+  const toggle = () => {
+    setOpen(!open);
+    try {
+      localStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
+    } catch {
+      // 저장이 막힌 환경에서는 이번 화면에서만 유지
+    }
+  };
+  return (
+    <section className={`lp-sect${open ? '' : ' closed'}`}>
+      <button className="lp-sect-h" aria-expanded={open} onClick={toggle}>
+        <span className="lp-h">{title}</span>
+        {summary != null && <span className="lp-sum">{summary}</span>}
+        <ChevronDown className="k-chev" size={14} />
+      </button>
+      {open && <div className="lp-sect-body">{children}</div>}
+    </section>
+  );
+}
