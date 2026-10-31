@@ -11,6 +11,7 @@ import type { ScenarioParams } from '../scenario/outage';
 import { defOf, type ScenarioRun, type ScenarioStart } from '../scenario/registry';
 import type { UpsFailParams } from '../scenario/upsFail';
 import type { CracFailParams } from '../scenario/cracFail';
+import type { LeakParams } from '../scenario/leak';
 
 export type LayerKey = Domain | 'labels' | 'walls' | 'shafts' | 'links';
 export type ViewMode = 'stack' | 'explode';
@@ -103,7 +104,7 @@ interface ViewState {
   setScenT: (t: number) => void;
   setScenPlaying: (v: boolean) => void;
   setScenSpeed: (v: number) => void;
-  setScenParams: (patch: Partial<ScenarioParams> | Partial<UpsFailParams> | Partial<CracFailParams>) => void;
+  setScenParams: (patch: Partial<ScenarioParams> | Partial<UpsFailParams> | Partial<CracFailParams> | Partial<LeakParams>) => void;
 
   // 오른쪽 패널 탭
   rightTab: RightTab;

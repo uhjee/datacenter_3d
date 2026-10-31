@@ -30,6 +30,7 @@ import { focusFloor } from './focus';
 import { Box, Cyl, Selectable, SelectionFrame } from './common';
 import { EquipMesh } from './EquipMesh';
 import { AirRoom } from './Airflow';
+import { LeakMark } from './LeakMark';
 import { RackRows } from './Racks';
 
 export function BuildingFloors() {
@@ -95,6 +96,7 @@ function FloorGroup({ floor }: { floor: Floor }) {
               <RackRows roomId={s.roomId} />
             </group>
             <AirRoom label={s.label} />
+            {s.label === 'B' && <LeakMark />}
           </group>
         );
       })}

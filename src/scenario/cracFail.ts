@@ -48,7 +48,7 @@ export function secondOf(p: CracFailParams) {
 }
 const onAt = (p: CracFailParams) => (p.room === 'A' ? CT.onA : CT.onB);
 
-type UnitState = 'run' | 'standby' | 'starting' | 'fault';
+export type UnitState = 'run' | 'standby' | 'starting' | 'fault';
 function unitStates(t: number, p: CracFailParams): UnitState[] {
   const sb = standbyOf(p);
   const s2 = secondOf(p);
@@ -113,13 +113,18 @@ export interface CracFailSeries {
 }
 
 export function prepare(p: CracFailParams): CracFailSeries {
+  return integrateCooling(p, CT.end, (t) => unitStates(t, p));
+}
+
+// 시각별 유닛 상태로 급기 · 국부 온도 상승을 1초 간격으로 적분 (누수 시나리오도 함께 쓴다)
+export function integrateCooling(p: CracFailParams, end: number, statesAt: (t: number) => UnitState[]): CracFailSeries {
   const out: CracFailSeries = { dS: [], hot: [] };
   let dS = 0;
   const hot = Array(UNITS).fill(0);
-  for (let s = 0; s <= CT.end; s++) {
+  for (let s = 0; s <= end; s++) {
     out.dS.push(+dS.toFixed(2));
     out.hot.push(hot.map((h) => +h.toFixed(2)));
-    const st = unitStates(s, p);
+    const st = statesAt(s);
     const running = st.filter((x) => x === 'run').length;
     const cap = Math.max(1, running) * p.unitKw;
     // 용량이 모자라면 환기가 따뜻해져 코일 용량이 늘어나는 지점까지 급기가 오른다
@@ -139,7 +144,7 @@ const reach = (rx: number, rz: number, ux: number, uz: number) => Math.exp(-(Mat
 
 // 정상 상태 온도에 시나리오 상승분을 더한 서버실 온도
 export function adjustTherm(base: RoomTherm, p: CracFailParams, ser: CracFailSeries, t: number): RoomTherm {
-  const i = Math.max(0, Math.min(CT.end, Math.floor(t)));
+  const i = Math.max(0, Math.min(ser.dS.length - 1, Math.floor(t)));
   const dS = ser.dS[i];
   const hot = ser.hot[i];
   if (dS < 0.05 && hot.every((h) => h < 0.05)) return base;

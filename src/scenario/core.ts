@@ -1,7 +1,7 @@
 // 시나리오 공통: 장비 · 연결 상태 모양, 전원 출처 색, 단계 · 사건 기록 형식
 
 export type Src = 'utility' | 'gen' | 'battery' | 'bypass' | 'none';
-export type NodeStatus = 'on' | 'off' | 'starting' | 'standby' | 'fault';
+export type NodeStatus = 'on' | 'off' | 'starting' | 'standby' | 'fault' | 'alarm';
 export type EdgeState = Src | 'flow' | 'idle';
 
 export interface NodeState {
@@ -34,7 +34,7 @@ export interface Segment {
   color: string;
 }
 
-export type ScenarioId = 'outage' | 'upsFail' | 'cracFail' | 'lineOut';
+export type ScenarioId = 'outage' | 'upsFail' | 'cracFail' | 'lineOut' | 'leak';
 
 // 시나리오 하나의 정의. P = 조건(사용자가 바꾸는 값 포함), S = 미리 계산한 연속값
 export interface ScenarioDef<P, S> {
@@ -66,7 +66,7 @@ export const FAULT_COLOR = '#ff6b6b';
 // 시나리오 중 장비에 둘러 줄 테두리 색. 평소(상용 운전)는 없음
 export function frameColor(st: NodeState | undefined) {
   if (!st) return null;
-  if (st.status === 'fault') return FAULT_COLOR;
+  if (st.status === 'fault' || st.status === 'alarm') return FAULT_COLOR;
   if (st.status === 'starting') return STARTING_COLOR;
   if (st.src === 'battery' || st.src === 'gen' || st.src === 'bypass') return SRC_META[st.src].color;
   return null;

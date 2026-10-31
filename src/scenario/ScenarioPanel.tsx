@@ -14,6 +14,7 @@ import { tl, values, type Values } from './outage';
 import { defOf } from './registry';
 import { UPS_FAIL_COUNTS, UT, values as upsValues, type UpsFailValues } from './upsFail';
 import { CT, standbyOf, unitName, values as cracValues, type CracFailParams, type CracFailValues } from './cracFail';
+import { lt, RESPONSE_NAME, values as leakValues, type LeakParams, type LeakValues } from './leak';
 import { useRoomTherm } from '../ui/useStatus';
 import type { RackColorMode } from '../store/useView';
 
@@ -107,10 +108,29 @@ export function startCracFail(room: RoomLabel = 'B') {
   focusFloor(room === 'A' ? '3F' : '4F');
 }
 
+// 누수: 서버실 B 이중마루를 투시해 마루 아래 물이 보이게 한다 (끝내면 원래대로)
+let xrayBefore: boolean | null = null;
+export function startLeak() {
+  const { s } = beforeStart();
+  const th = s.therm.B;
+  s.startScenario({ id: 'leak', params: { unit: 3, response: 'manual', rate: 20, loadKw: th.loadKw, unitKw: th.unitKw, supply: s.airCfg.B.supply } });
+  xrayBefore = s.airCfg.B.xray;
+  s.setAirCfg('B', { xray: true });
+  rackColorBefore = s.rackColor;
+  s.setRackColor('temp');
+  if (s.diagramMode === 'off') s.setDiagramMode('half');
+  s.setDiagramTab('cooling');
+  s.setRightTab('scenario');
+  focusFloor('4F');
+}
+
 export function stopScenario() {
   const s = useView.getState();
-  if (s.scenario?.id === 'cracFail' && rackColorBefore) s.setRackColor(rackColorBefore);
+  const id = s.scenario?.id;
+  if ((id === 'cracFail' || id === 'leak') && rackColorBefore) s.setRackColor(rackColorBefore);
+  if (id === 'leak' && xrayBefore != null) s.setAirCfg('B', { xray: xrayBefore });
   rackColorBefore = null;
+  xrayBefore = null;
   s.stopScenario();
 }
 
@@ -132,7 +152,7 @@ function ScenarioList() {
     [Server, 'UPS 고장', 'UPS 한 대가 멈춰도 2N이라 랙은 그대로. STS 절체 · 예비 없는 N 상태 · 정비 바이패스', startUpsFail],
     [Fan, '항온항습기 고장', '6대 중 1대 고장 → 대기기 자동 투입(N+1), 그사이 주변 랙 흡기 상승. 한 대 더 멈추면?', () => startCracFail()],
     [Wrench, 'TR 계획 정비', '연계 ACB 투입, 한쪽 TR이 양쪽 공급', null],
-    [Droplets, '누수', '감지선 위치 → 밸브 차단', null],
+    [Droplets, '누수', '서버실 B 마루 아래 냉수 배관 누수 → 감지 → 밸브 차단. 대응 방식에 따라 번지는 물의 양', startLeak],
   ];
   return (
     <div className="rp-card">
@@ -237,7 +257,7 @@ function ScenarioRun() {
         <p className="hint">UPS-B가 고장 나면 STS는 원래 A로 받고 있어 절체가 일어나지 않습니다. 바이패스를 쓰면 예비 없는 시간이 줄지만 그쪽 계통은 UPS 보호를 잃습니다.</p>
       </div>
     );
-  } else {
+  } else if (sc.id === 'cracFail') {
     const p = sc.params;
     const v = cracValues(sc.t, p, sc.series);
     const since = sc.t - CT.fail;
@@ -269,6 +289,41 @@ function ScenarioRun() {
         <Switch checked={p.second} onChange={() => set.setScenParams({ second: !p.second })} label="대기기 투입 뒤 이웃 유닛 한 대 더 고장 (예비 없음)" />
         <p className="hint">
           대기기는 {standbyOf(p)}번입니다. 서버실 B는 봉쇄가 없어 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.
+        </p>
+      </div>
+    );
+  } else {
+    const p = sc.params;
+    const v = leakValues(sc.t, p);
+    const L = lt(p);
+    const since = sc.t - L.start;
+    clockSub = since < 0 ? '누수 직전' : sc.t < L.close ? `누수 ${Math.floor(since)}초째` : `차단 후 ${Math.floor(sc.t - L.close)}초`;
+    board = <LeakBoard v={v} p={p} t={sc.t} />;
+    condSummary = `${p.unit}번 분기 · ${RESPONSE_NAME[p.response]}`;
+    cond = (
+      <div className="rp-cond">
+        <div className="rp-cond-row col">
+          <span>대응 방식</span>
+          <div className="seg small">
+            {(['auto', 'manual', 'spot'] as const).map((k) => (
+              <button key={k} className={p.response === k ? 'on' : ''} onClick={() => set.setScenParams({ response: k })}>
+                {RESPONSE_NAME[k]}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="rp-cond-row">
+          <span>새는 분기</span>
+          <div className="seg small">
+            {[1, 2, 3, 4, 5, 6].map((n) => (
+              <button key={n} className={p.unit === n ? 'on' : ''} onClick={() => set.setScenParams({ unit: n })}>
+                {n}
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="hint">
+          차단까지 걸린 시간 = 바닥에 고인 물입니다. 감지선은 물이 닿은 위치(±1m)를 알려 바로 그 분기를 닫을 수 있고, 점형 감지기는 물이 감지기까지 번져야 울리고 구역만 알려 줍니다.
         </p>
       </div>
     );
@@ -417,6 +472,48 @@ function CracBoard({ v, p, t }: { v: CracFailValues; p: CracFailParams; t: numbe
         <div className="rp-tile-s num">권장 초과 랙 {th.over}대 · 평균 {th.avgInlet}°C</div>
         {tst !== 'ok' && <Status tone={TEMP_TONE[tst]}>{STATUS_META[tst].name}</Status>}
       </div>
+    </div>
+  );
+}
+
+// 누수 상태판 6칸
+function LeakBoard({ v, p, t }: { v: LeakValues; p: LeakParams; t: number }) {
+  const L = lt(p);
+  const th = useRoomTherm('B');
+  const leaking = t >= L.start && t < L.close;
+  const waterColor = '#4dabf7';
+  const sbName = { run: '냉각 중', standby: '대기', starting: '기동 중', fault: '고장' }[v.standby];
+  const detectText = !v.detected ? '미감지' : p.response === 'spot' ? (v.located ? '위치 확인' : '구역 경보 · 찾는 중') : `감지선 ${v.cablePos}m 지점`;
+  const valveText = v.valveClosed ? '닫힘' : t >= L.repair ? '열림 (복구)' : v.detected ? (p.response === 'auto' ? '자동 차단 중' : p.response === 'spot' && !v.located ? '열림 · 위치 찾는 중' : '작업자 이동 중') : '열림';
+  return (
+    <div className="rp-board">
+      <Tile
+        k={`누수 · ${p.unit}번 분기`}
+        v={t < L.start ? '정상' : leaking ? '새는 중' : v.water > 0 ? '멈춤 · 물 제거' : '마름'}
+        c={leaking ? waterColor : t < L.start || v.water === 0 ? SRC_META.utility.color : 'var(--warn)'}
+        s="이중마루 아래 냉수 분기"
+      />
+      <Tile
+        k="바닥의 물"
+        v={`${Math.round(v.water)}L`}
+        c={waterColor}
+        meter={{ v: v.water / Math.max(1, v.maxWater), color: waterColor }}
+        s={`번진 면적 약 ${v.area.toFixed(1)}m² · 분당 ${p.rate}L`}
+      />
+      <Tile k="감지" v={detectText} c={v.detected ? FAULT_COLOR : SRC_META.utility.color} s={p.response === 'spot' ? '점형 감지기 (구역)' : '위치 표시형 감지선 (±1m)'} />
+      <Tile k="분기 차단 밸브" v={valveText} c={v.valveClosed ? 'var(--warn)' : v.detected && t < L.close ? FAULT_COLOR : SRC_META.utility.color} s={p.response === 'auto' ? '전동 밸브 (감지 연동)' : '수동 밸브'} />
+      <Tile
+        k="냉각 · 서버실 B"
+        v={`${v.running} / 6대 운전`}
+        c={v.running < 5 ? FAULT_COLOR : v.standby === 'run' ? 'var(--warn)' : 'var(--ok)'}
+        s={`대기기 ${sbName} · 최고 흡기 ${th.maxInlet}°C`}
+      />
+      <Tile
+        k="물이 닿은 랙"
+        v={`${v.racksWet}대`}
+        c={v.racksWet > 0 ? FAULT_COLOR : 'var(--ok)'}
+        s={v.racksWet > 0 ? '마루 아래 전원 케이블 · 콘센트 점검' : '랙 아래까지는 안 번짐'}
+      />
     </div>
   );
 }

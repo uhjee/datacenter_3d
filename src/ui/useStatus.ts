@@ -12,7 +12,7 @@ import type { Tone } from './kit';
 // 평상시 상태: 정전 시나리오의 0초(정상 운전) 상태를 그대로 쓴다. 발전기 · 연계 차단기는 대기
 const NORMAL = snapshot(0, { upsOut: { A: 0, B: 0 }, facilityKw: 0, baseInlet: { A: 0, B: 0 }, genFail: false });
 
-const STATUS_NAME = { on: '운전', off: '정지', starting: '재기동 중', standby: '대기', fault: '고장' } as const;
+const STATUS_NAME = { on: '운전', off: '정지', starting: '재기동 중', standby: '대기', fault: '고장', alarm: '경보' } as const;
 
 export interface StatusView {
   label: string;
@@ -22,7 +22,7 @@ export interface StatusView {
 }
 
 export function statusView(st: NodeState, scen: boolean): StatusView {
-  const tone: Tone = st.status === 'on' ? 'ok' : st.status === 'starting' ? 'warn' : st.status === 'off' || st.status === 'fault' ? 'crit' : 'muted';
+  const tone: Tone = st.status === 'on' ? 'ok' : st.status === 'starting' ? 'warn' : st.status === 'off' || st.status === 'fault' || st.status === 'alarm' ? 'crit' : 'muted';
   const label = scen && st.src !== 'none' ? `${STATUS_NAME[st.status]} · ${SRC_META[st.src].name}` : STATUS_NAME[st.status];
   return { label, tone, color: scen && st.status === 'on' ? SRC_META[st.src].color : undefined, scen };
 }
@@ -46,8 +46,13 @@ export function useMetrics() {
 // 서버실 온도. 항온항습기 고장 시나리오 중이면 그 시각(초 단위)의 상승분을 더한 값
 export function useRoomTherm(label: RoomLabel): RoomTherm {
   const base = useView((s) => s.therm[label]);
-  const params = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario.params : null));
-  const series = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario.series : null));
-  const sec = useView((s) => (s.scenario?.id === 'cracFail' ? Math.floor(s.scenario.t) : 0));
-  return useMemo(() => (params && series && params.room === label ? adjustTherm(base, params, series, sec) : base), [base, params, series, sec, label]);
+  const crac = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario : null)?.params ?? null);
+  const leak = useView((s) => (s.scenario?.id === 'leak' ? s.scenario : null)?.params ?? null);
+  const series = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario.series : s.scenario?.id === 'leak' ? s.scenario.series.cool : null));
+  const sec = useView((s) => (s.scenario?.id === 'cracFail' || s.scenario?.id === 'leak' ? Math.floor(s.scenario.t) : 0));
+  return useMemo(() => {
+    // 누수는 서버실 B 항온항습기 한 대가 밸브 차단으로 멈추는 것과 같다
+    const p = crac ?? (leak ? { room: 'B' as const, unit: leak.unit, second: false, loadKw: leak.loadKw, unitKw: leak.unitKw, supply: leak.supply } : null);
+    return p && series && p.room === label ? adjustTherm(base, p, series, sec) : base;
+  }, [base, crac, leak, series, sec, label]);
 }
