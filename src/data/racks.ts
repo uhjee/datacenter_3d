@@ -1,6 +1,6 @@
 // 서버실 랙. IT 장비는 추후 상세화하며, 지금은 공간(U)·전력 할당과 rPDU A/B 표시용이다.
 
-import { RACK, RACKS_PER_BLOCK, RACKS_PER_ROW, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, type FloorId } from './building';
+import { RACK, RACKS_PER_BLOCK, RACKS_PER_ROW, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId } from './building';
 
 export type DeviceKind = 'server' | 'storage' | 'gpu' | 'network' | 'patch';
 
@@ -19,7 +19,7 @@ export interface Rack {
   row: number; // 0~5
   index: number; // 0~23 (0~11 서쪽 블록, 12~23 동쪽 블록)
   block: 0 | 1;
-  pod: number; // 냉복도를 공유하는 두 열 묶음 0~2
+  pod: number; // 안쪽 통로를 공유하는 두 열 묶음 0~2
   x: number;
   y: number;
   z: number;
@@ -103,7 +103,7 @@ function build(): Rack[] {
           x: rackX(sr, block, bi),
           y: RAISED_H,
           z: sr.cz + row.dz,
-          facing: row.facing,
+          facing: rowFacing(sr, r),
           devices,
           uUsed: devices.reduce((s, d) => s + d.h, 0),
           designKw: ROW_DESIGN_KW[r],

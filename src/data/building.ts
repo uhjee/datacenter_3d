@@ -71,7 +71,7 @@ export const ROOMS: Room[] = [
   R('2f-ups-b', '2F', 'UPS실 B', [4, 20], [-10, 1], '#3d3126', 'B계통 UPS가 있습니다. 서버실 A·B의 B계통 전원을 모두 담당합니다.'),
   R('2f-bat-b', '2F', '배터리실 B', [4, 20], [1, 12], '#233a35', 'UPS-B용 리튬이온 배터리. A와 다른 방화구획입니다.'),
   // 3F
-  R('3f-sr-a', '3F', '서버실 A (공냉식)', [-20, 14], [-10, 12], '#1d2833', '공냉식 항온항습기로 냉각하는 서버실. 냉복도 봉쇄(CAC) 3개 포드, 랙 144대. 열은 냉매 배관으로 옥상 실외기에 버립니다. 동쪽 빈 바닥은 증설 예정 상면입니다.', 'server'),
+  R('3f-sr-a', '3F', '서버실 A (공냉식)', [-20, 14], [-10, 12], '#1d2833', '공냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도를 막은 열복도 봉쇄(HAC) 3개 포드, 랙 144대. 열은 냉매 배관으로 옥상 실외기에 버립니다. 동쪽 빈 바닥은 증설 예정 상면입니다.', 'server'),
   R('3f-ante', '3F', '전실 · 출입통제', [14, 20], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
   // 4F
   R('4f-ante', '4F', '전실 · 출입통제', [-20, -14], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
@@ -144,8 +144,9 @@ export const SHAFTS: Shaft[] = [
 ];
 
 // ── 서버실 랙 배치 ──
-// 상면 배치 근거: 바닥 타일 0.6m, 냉복도 2장(1.2m) · 랙 깊이 1.2m · 열복도 1.2m의 표준 피치.
-// 냉복도를 마주 보는 두 열이 한 묶음(포드)이고 피치는 4.8m. 서버실마다 포드 3개 = 6열.
+// 상면 배치 근거: 바닥 타일 0.6m, 통로 2장(1.2m) · 랙 깊이 1.2m · 통로 1.2m의 표준 피치.
+// 안쪽 통로를 사이에 둔 두 열이 한 묶음(포드)이고 피치는 4.8m. 서버실마다 포드 3개 = 6열.
+// 서버실 B: 안쪽 통로가 냉복도(두 열이 마주 봄). 서버실 A: 안쪽 통로가 열복도(두 열이 등을 맞댐)이고 그 통로를 봉쇄(HAC)한다.
 // 각 열은 12랙 블록 두 개로 나뉘고, 블록 바깥 끝에 PDU가 선다(가운데는 이동 통로).
 // 항온항습기 반대쪽 빈 바닥은 증설 예정 상면이다.
 export interface ServerRoomLayout {
@@ -154,6 +155,7 @@ export interface ServerRoomLayout {
   cz: number; // 포드 중심 z
   blocks: [number, number]; // 블록 두 개의 서쪽 끝 x
   label: 'A' | 'B';
+  hotInner?: boolean; // 포드 안쪽 통로가 열복도 (랙이 등을 맞댐)
 }
 
 export const RACK = { w: 0.6, d: 1.2, h: 2.2, U: 42 };
@@ -163,23 +165,29 @@ export const RACKS_PER_ROW = RACKS_PER_BLOCK * 2;
 
 export const SERVER_ROOMS: ServerRoomLayout[] = [
   // 서버실 A: 항온항습기가 서쪽 벽, 증설 상면은 동쪽
-  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4], label: 'A' },
+  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4], label: 'A', hotInner: true },
   // 서버실 B: 항온항습기가 동쪽 벽, 증설 상면은 서쪽 (A와 좌우 대칭)
   { roomId: '4f-sr-b', floor: '4F', cz: 1, blocks: [-1.8, 7.8], label: 'B' },
 ];
 
 export const POD_PITCH = 4.8;
 export const AISLE_W = 1.2;
-// 냉복도 중심 (포드 중심 기준)
-export const COLD_AISLE_DZ = [-POD_PITCH, 0, POD_PITCH];
-// 열복도 중심: 포드 사이와 바깥 양쪽
-export const HOT_AISLE_DZ = [-POD_PITCH * 1.5, -POD_PITCH / 2, POD_PITCH / 2, POD_PITCH * 1.5];
-// 열 순서(북→남): 열복도 | 1열→ | 냉복도 | ←2열 | 열복도 | 3열→ | 냉복도 | ←4열 | 열복도 | 5열→ | 냉복도 | ←6열 | 열복도
-// facing = 랙 앞면(흡기)이 향하는 방향(z). 앞면은 냉복도, 뒷면은 열복도 쪽
-export const ROW_OFFSETS: { dz: number; facing: 1 | -1 }[] = COLD_AISLE_DZ.flatMap((c) => [
+// 포드 안쪽 통로 중심 (두 열 사이, 포드 중심 기준)
+export const INNER_AISLE_DZ = [-POD_PITCH, 0, POD_PITCH];
+// 포드 바깥 통로 중심: 포드 사이와 바깥 양쪽
+export const OUTER_AISLE_DZ = [-POD_PITCH * 1.5, -POD_PITCH / 2, POD_PITCH / 2, POD_PITCH * 1.5];
+// 서버실 B 열 순서(북→남): 열복도 | 1열→ | 냉복도 | ←2열 | 열복도 | 3열→ | 냉복도 | ←4열 | 열복도 | 5열→ | 냉복도 | ←6열 | 열복도
+// 서버실 A는 반대: 냉복도 | ←1열 | 열복도(봉쇄) | 2열→ | 냉복도 | ...
+// facing = 랙 앞면(흡기)이 향하는 방향(z). 아래 값은 안쪽 통로가 냉복도일 때이고, 서버실별 방향은 rowFacing으로 구한다
+export const ROW_OFFSETS: { dz: number; facing: 1 | -1 }[] = INNER_AISLE_DZ.flatMap((c) => [
   { dz: c - (AISLE_W / 2 + RACK.d / 2), facing: 1 as const },
   { dz: c + (AISLE_W / 2 + RACK.d / 2), facing: -1 as const },
 ]);
+
+export const rowFacing = (sr: ServerRoomLayout, r: number) => ((sr.hotInner ? -1 : 1) * ROW_OFFSETS[r].facing) as 1 | -1;
+// 서버실별 냉복도 · 열복도 중심 (포드 중심 기준)
+export const coldAisleDZ = (sr: ServerRoomLayout) => (sr.hotInner ? OUTER_AISLE_DZ : INNER_AISLE_DZ);
+export const hotAisleDZ = (sr: ServerRoomLayout) => (sr.hotInner ? INNER_AISLE_DZ : OUTER_AISLE_DZ);
 
 // 블록 b의 i번째(0~11) 랙 중심 x
 export const rackX = (sr: ServerRoomLayout, block: number, i: number) => sr.blocks[block] + RACK.w / 2 + i * RACK.w;

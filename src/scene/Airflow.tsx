@@ -39,9 +39,18 @@ function Panel({ pos, size, color, opacity = 0.18 }: { pos: [number, number, num
   );
 }
 
-// 냉복도 봉쇄: 블록마다 냉복도 위 지붕 + 양 끝 문
+// 통로 z에서 side(±1) 쪽에 랙 열이 있는지 (바깥 통로는 한쪽에만 랙이 있다)
+function useRackSide(label: RoomLabel) {
+  return useMemo(() => {
+    const zs = RACKS.filter((r) => r.serverRoom === label).map((r) => r.z);
+    return (z: number, side: number) => zs.some((rz) => Math.abs(rz - (z + side * 1.2)) < 0.1);
+  }, [label]);
+}
+
+// 냉복도 봉쇄: 블록마다 냉복도 위 지붕 + 양 끝 문 (랙이 없는 쪽은 바닥부터 벽)
 function ColdContainment({ L }: { L: AirLayout }) {
   const h = L.rackTop - F;
+  const hasRack = useRackSide(L.label);
   return (
     <group>
       {L.blocks.flatMap(([bx0, bx1]) =>
@@ -51,6 +60,11 @@ function ColdContainment({ L }: { L: AirLayout }) {
             {[bx0 - 0.02, bx1 + 0.02].map((x) => (
               <Panel key={x} pos={[x, F + h / 2, z]} size={[0.04, h, 1.2]} color={PANEL.cold} />
             ))}
+            {[-1, 1]
+              .filter((s) => !hasRack(z, s))
+              .map((s) => (
+                <Panel key={s} pos={[(bx0 + bx1) / 2, F + h / 2, z + s * 0.6]} size={[bx1 - bx0, h, 0.04]} color={PANEL.cold} />
+              ))}
           </group>
         )),
       )}
@@ -61,15 +75,15 @@ function ColdContainment({ L }: { L: AirLayout }) {
 // 열복도 봉쇄: 블록마다 열복도 양옆을 천장까지 막고(랙이 없는 바깥쪽은 바닥부터) 끝 문, 천장으로 이어지는 굴뚝
 function HotContainment({ L }: { L: AirLayout }) {
   const top = L.ceiling;
+  const hasRack = useRackSide(L.label);
   return (
     <group>
       {L.blocks.flatMap(([bx0, bx1]) =>
-        L.hotZ.map((z, i) => {
-          const outerSide = i === 0 ? -1 : i === L.hotZ.length - 1 ? 1 : 0;
+        L.hotZ.map((z) => {
           return (
             <group key={`${bx0}|${z}`}>
               {[-1, 1].map((s) => {
-                const full = s === outerSide;
+                const full = !hasRack(z, s);
                 const y0 = full ? F : L.rackTop;
                 return <Panel key={s} pos={[(bx0 + bx1) / 2, (y0 + top) / 2, z + s * 0.6]} size={[bx1 - bx0, top - y0, 0.04]} color={PANEL.hot} />;
               })}
@@ -159,7 +173,9 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     return finish(pts, temps);
   }
 
-  const side = rnd() < 0.5 ? -1 : 1;
+  // 바깥 냉복도는 한쪽에만 랙이 있다: 랙이 있는 쪽으로 들어간다
+  const sides = [-1, 1].filter((s) => racks.some((r) => Math.abs(r.z - (cz + s * 1.2)) < 0.1));
+  const side = sides.length === 1 ? sides[0] : rnd() < 0.5 ? -1 : 1;
   const frontZ = cz + side * 0.6;
   const backZ = frontZ + side * 1.2;
   const hotZ = backZ + side * 0.6;

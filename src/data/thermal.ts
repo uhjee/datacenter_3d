@@ -3,7 +3,7 @@
 //   흡기 온도 = 급기 온도 + 재순환 비율 r × 배기 온도 상승분 / (1 − r)
 //   재순환 r: 봉쇄 없음일 때 크고, 랙 위쪽 · 열 끝에서 더 크다(계수는 경향을 보이기 위한 값). 블랭킹 패널이 없으면 랙 내부 역류가 더해진다.
 
-import { BLOCK_LEN, COLD_AISLE_DZ, HOT_AISLE_DZ, RACK, RAISED_H, SERVER_ROOMS, type FloorId } from './building';
+import { BLOCK_LEN, coldAisleDZ, hotAisleDZ, RACK, RAISED_H, SERVER_ROOMS, type FloorId } from './building';
 import { EQUIPMENT } from './equipment';
 import { RACKS, type Rack } from './racks';
 
@@ -19,9 +19,9 @@ export interface AirCfg {
 }
 
 export const DEFAULT_AIR: AirCfg = { containment: 'CAC', blanking: true, supply: 20, xray: false, plenum: false };
-// 서버실 A(3F)는 냉복도 봉쇄, 서버실 B(4F)는 봉쇄 없는 일반 냉복도 · 열복도 배치.
+// 서버실 A(3F)는 랙이 등을 맞댄 안쪽 통로를 막은 열복도 봉쇄(천장 리턴으로 배출), 서버실 B(4F)는 봉쇄 없는 일반 냉복도 · 열복도 배치.
 // 봉쇄가 없으면 섞이는 열기만큼 급기를 낮춰 운전하는 것이 보통이라 B는 18°C
-export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = { A: DEFAULT_AIR, B: { ...DEFAULT_AIR, containment: 'none', supply: 18 } };
+export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = { A: { ...DEFAULT_AIR, containment: 'HAC' }, B: { ...DEFAULT_AIR, containment: 'none', supply: 18 } };
 
 export type TempStatus = 'cold' | 'ok' | 'warn' | 'hot';
 
@@ -123,8 +123,8 @@ export function airLayout(label: RoomLabel): AirLayout {
     x1,
     rcx: (x0 + x1) / 2,
     cz: sr.cz,
-    coldZ: COLD_AISLE_DZ.map((dz) => sr.cz + dz),
-    hotZ: HOT_AISLE_DZ.map((dz) => sr.cz + dz),
+    coldZ: coldAisleDZ(sr).map((dz) => sr.cz + dz),
+    hotZ: hotAisleDZ(sr).map((dz) => sr.cz + dz),
     rackTop: RAISED_H + RACK.h,
     ceiling: 3.8,
     units: EQUIPMENT.filter((e) => e.type === type).map((e) => ({ id: e.id, x: e.pos[0], z: e.pos[2], dir: label === 'A' ? 1 : -1 })),

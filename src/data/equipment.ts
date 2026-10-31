@@ -2,7 +2,7 @@
 // pos는 해당 층 바닥면 기준 로컬 좌표, 장비 바닥 중심.
 // size = [폭, 높이, 깊이]는 장비 자체 기준(전면 = +z)이며 rotY로 회전한다.
 
-import { COLD_AISLE_DZ, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, type FloorId, type ServerRoomLayout } from './building';
+import { RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
 import type { TypeId } from './equipTypes';
 import { RACKS } from './racks';
 
@@ -31,7 +31,7 @@ const SR_B = SERVER_ROOMS[1];
 // 항온항습기 · 실외기 6대 (N+1: 5대 운전 + 1대 예비)의 z 위치
 const COOL_Z = [-7, -3.6, -0.2, 3.2, 6.6, 10];
 
-// 센서 위치: (열 0~5, 랙 번호 0~23). 냉복도마다 두 곳, 서쪽 · 동쪽 블록에 하나씩
+// 센서 위치: (열 0~5, 랙 번호 0~23). 포드마다 두 곳, 서쪽 · 동쪽 블록에 하나씩
 const SENSOR_SLOTS: [number, number][] = [
   [0, 4],
   [1, 18],
@@ -44,7 +44,8 @@ const SENSOR_SLOTS: [number, number][] = [
 function sensors(room: ServerRoomLayout): Equip[] {
   return SENSOR_SLOTS.map(([r, i], n) => {
     const row = ROW_OFFSETS[r];
-    const z = room.cz + row.dz + row.facing * (RACK.d / 2 + 0.04);
+    // 센서는 랙 앞면(흡기, 냉복도 쪽)에 붙는다
+    const z = room.cz + row.dz + rowFacing(room, r) * (RACK.d / 2 + 0.04);
     const block = i < RACKS_PER_BLOCK ? 0 : 1;
     return E({
       id: `sensor-${room.label.toLowerCase()}-${n + 1}`,
@@ -64,7 +65,7 @@ function sensors(room: ServerRoomLayout): Equip[] {
   });
 }
 
-// PDU: 포드(냉복도를 마주 보는 두 열) × 블록마다 A · B 한 대씩 = 서버실당 PDU-A 6대 + PDU-B 6대.
+// PDU: 포드(안쪽 통로를 공유하는 두 열) × 블록마다 A · B 한 대씩 = 서버실당 PDU-A 6대 + PDU-B 6대.
 // PDU 한 대 = 랙 22~24대. 랙 수는 차단기 극수가 아니라 전력이 정한다: 225kVA × 80%(연속 부하) × 역률 0.9 ≈ 162kW 안에
 // 담당 랙의 설계 전력 합이 들어가야 하고(GPU 열 포드는 180kW라 300kVA), 42극 분전반 2면(84극) 중 24회로만 써서 증설 여유를 둔다.
 // A는 앞열(1·3·5열) 끝, B는 뒷열(2·4·6열) 끝에 선다.
@@ -822,7 +823,3 @@ export const EQUIPMENT: Equip[] = [
 
 export const EQUIP_BY_ID: Record<string, Equip> = Object.fromEntries(EQUIPMENT.map((e) => [e.id, e]));
 
-// 냉복도 위치 (이중마루 타공판 표시용)
-export function coldAisleZ(cz: number) {
-  return COLD_AISLE_DZ.map((dz) => cz + dz);
-}

@@ -7,7 +7,7 @@ import { CanvasTexture, Group, RepeatWrapping, SRGBColorSpace } from 'three';
 import {
   AISLE_W,
   BLOCK_LEN,
-  COLD_AISLE_DZ,
+  coldAisleDZ,
   FLOORS,
   FOOTPRINT,
   RAISED_H,
@@ -379,8 +379,8 @@ function RaisedFloor({ room, sr }: { room: Room; sr: ServerRoomLayout }) {
         <planeGeometry args={[w - 0.2, d - 0.2]} />
         <meshStandardMaterial map={solidTex} roughness={0.85} transparent={xray} opacity={xray ? 0.18 : 1} depthWrite={!xray} />
       </mesh>
-      {/* 냉복도 타공판: 냉복도 × 블록마다 */}
-      {COLD_AISLE_DZ.flatMap((dz) =>
+      {/* 냉복도 타공판: 냉복도 × 블록마다 (서버실 A는 포드 사이 · 바깥 통로가 냉복도) */}
+      {coldAisleDZ(sr).flatMap((dz) =>
         sr.blocks.map((bx) => (
           <mesh key={`${dz}|${bx}`} position={[bx + BLOCK_LEN / 2, RAISED_H + 0.006, sr.cz + dz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
             <planeGeometry args={[BLOCK_LEN, AISLE_W]} />
