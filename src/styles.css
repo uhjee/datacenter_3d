@@ -2635,3 +2635,33 @@ button.primary:hover {
   padding: 2px 9px;
   box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.3), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
+
+/* 기류 패널: 컨테인먼트 아래 세부 설정 접기 */
+.air-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 7px 9px;
+  border-radius: var(--r);
+  background: var(--s2);
+  text-align: left;
+  font-size: var(--fs-sm);
+}
+.air-more-t {
+  font-weight: 700;
+  color: var(--ink-2);
+}
+.air-more-sum {
+  flex: 1;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.air-more:not(.open) .k-chev {
+  transform: rotate(-90deg);
+}
+.air-more:hover .air-more-t {
+  color: var(--ink);
+}
