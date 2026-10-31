@@ -18,7 +18,7 @@ export interface AirCfg {
   plenum: boolean; // 천장 리턴 플레넘
 }
 
-export const DEFAULT_AIR: AirCfg = { containment: 'CAC', blanking: true, supply: 20, xray: false, plenum: false };
+export const DEFAULT_AIR: AirCfg = { containment: 'CAC', blanking: true, supply: 20, xray: true, plenum: false }; // 이중마루 아래 냉기 흐름이 보이도록 투시를 켜 둔다
 // 두 서버실 모두 랙이 등을 맞댄 안쪽 통로가 열복도, 포드 사이 · 바깥 통로가 냉복도. 서버실 A(3F)는 열복도를 봉쇄(천장 리턴으로 배출), 서버실 B(4F)는 봉쇄 없음.
 // 봉쇄가 없으면 섞이는 열기만큼 급기를 낮춰 운전하는 것이 보통이라 B는 18°C
 export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = { A: { ...DEFAULT_AIR, containment: 'HAC' }, B: { ...DEFAULT_AIR, containment: 'none', supply: 18 } };
