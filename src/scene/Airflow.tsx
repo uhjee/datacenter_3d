@@ -3,7 +3,7 @@
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { BufferAttribute, BufferGeometry, CanvasTexture, Points, PointsMaterial, Vector3 } from 'three';
+import { BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, EdgesGeometry, Points, PointsMaterial, Vector3 } from 'three';
 import { RAISED_H } from '../data/building';
 import { RACKS, type Rack } from '../data/racks';
 import { AIR_LAYOUT, tempRGB, type AirCfg, type AirLayout, type RoomLabel, type RoomTherm } from '../data/thermal';
@@ -26,6 +26,22 @@ export function AirRoom({ label }: { label: RoomLabel }) {
       {cfg.containment === 'HAC' && <HotContainment L={L} />}
       {plenum && <Ceiling L={L} />}
       {airOn && active && <Particles label={label} />}
+    </group>
+  );
+}
+
+// 더운 공기 통로 상자: 반투명 면 + 진한 테두리 (실내 공기와 섞이지 않는 경계)
+function HotBox({ pos, size, opacity }: { pos: [number, number, number]; size: [number, number, number]; opacity: number }) {
+  const edges = useMemo(() => new EdgesGeometry(new BoxGeometry(...size)), [size[0], size[1], size[2]]);
+  return (
+    <group position={pos}>
+      <mesh raycast={() => null} renderOrder={3}>
+        <boxGeometry args={size} />
+        <meshBasicMaterial color={PANEL.hot} transparent opacity={opacity} depthWrite={false} />
+      </mesh>
+      <lineSegments geometry={edges} raycast={() => null}>
+        <lineBasicMaterial color={PANEL.hot} transparent opacity={0.75} />
+      </lineSegments>
     </group>
   );
 }
@@ -85,7 +101,7 @@ function HotContainment({ L }: { L: AirLayout }) {
               {[-1, 1].map((s) => {
                 const full = !hasRack(z, s);
                 const y0 = full ? F : L.rackTop;
-                return <Panel key={s} pos={[(bx0 + bx1) / 2, (y0 + top) / 2, z + s * 0.6]} size={[bx1 - bx0, top - y0, 0.04]} color={PANEL.hot} />;
+                return <Panel key={s} pos={[(bx0 + bx1) / 2, (y0 + top) / 2, z + s * 0.6]} size={[bx1 - bx0, top - y0, 0.04]} color={PANEL.hot} opacity={0.24} />;
               })}
               {[bx0 - 0.02, bx1 + 0.02].map((x) => (
                 <Panel key={x} pos={[x, (F + top) / 2, z]} size={[0.04, top - F, 1.2]} color={PANEL.hot} />
@@ -98,15 +114,23 @@ function HotContainment({ L }: { L: AirLayout }) {
   );
 }
 
-// 천장 리턴 플레넘: 반투명 천장 + 열복도 위 리턴 그릴
+// 천장 리턴 플레넘: 반투명 천장 + 그 위 더운 공기 층 + 열복도 위 리턴 그릴 + 항온항습기로 내려가는 환기 덕트
+const PLENUM_H = 0.75;
 function Ceiling({ L }: { L: AirLayout }) {
   const sx = L.label === 'A' ? [-19.8, 13.8] : [-13.8, 19.8];
+  const ductH = L.ceiling - (F + 2.0);
   return (
     <group>
       <mesh position={[(sx[0] + sx[1]) / 2, L.ceiling, 1]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null} renderOrder={3}>
         <planeGeometry args={[sx[1] - sx[0], 21.8]} />
-        <meshStandardMaterial color="#adb5bd" transparent opacity={0.08} depthWrite={false} side={2} />
+        <meshStandardMaterial color="#adb5bd" transparent opacity={0.2} depthWrite={false} side={2} />
       </mesh>
+      {/* 천장 위 플레넘: 더운 공기만 지나는 층. 테두리로 실내와 경계를 드러낸다 */}
+      <HotBox pos={[(sx[0] + sx[1]) / 2, L.ceiling + PLENUM_H / 2, 1]} size={[sx[1] - sx[0], PLENUM_H, 21.8]} opacity={0.07} />
+      {/* 환기 덕트: 천장에서 항온항습기 윗면(흡입구)까지 막힌 통로 */}
+      {L.units.map((u) => (
+        <HotBox key={`duct-${u.id}`} pos={[u.x, F + 2.0 + ductH / 2, u.z]} size={[0.95, ductH, 1.7]} opacity={0.26} />
+      ))}
       {L.hotZ.map((z) => (
         <mesh key={z} position={[L.rcx, L.ceiling - 0.01, z]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
           <planeGeometry args={[L.x1 - L.x0, 1.0]} />
@@ -151,8 +175,16 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
   const u = L.units[Math.floor(rnd() * L.units.length)];
   const ret = (fromX: number, fromZ: number, t: number) => {
     P(fromX, yRet, fromZ, t); // ⑧
-    P(u.x + u.dir * 0.9, yRet, u.z + (rnd() - 0.5) * 0.6, th.returnT);
-    P(u.x, F + 2.05, u.z, th.returnT); // ⑨
+    if (plenum) {
+      // 천장 리턴 플레넘: 천장 위로 항온항습기 바로 위까지 간 뒤 환기 덕트를 따라 곧게 내려간다 (실내 공기와 섞이지 않음)
+      const dx = (rnd() - 0.5) * 0.5;
+      const dz = (rnd() - 0.5) * 1.2;
+      P(u.x + dx, yRet, u.z + dz, th.returnT);
+      P(u.x + dx, F + 2.05, u.z + dz, th.returnT); // ⑨
+    } else {
+      P(u.x + u.dir * 0.9, yRet, u.z + (rnd() - 0.5) * 0.6, th.returnT);
+      P(u.x, F + 2.05, u.z, th.returnT); // ⑨
+    }
     P(u.x, F + 1.0, u.z, (th.returnT + Ts) / 2); // ⑩
     P(u.x, F + 0.2, u.z, Ts);
   };
