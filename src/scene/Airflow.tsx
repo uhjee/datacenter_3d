@@ -206,14 +206,19 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     P(u.x, F + 0.2, u.z, Ts);
   };
 
-  P(u.x + u.dir * 0.7, 0.28, u.z + (rnd() - 0.5) * 0.6, Ts); // ①
   const cz = L.coldZ[Math.floor(rnd() * L.coldZ.length)];
   const block = rnd() < 0.5 ? 0 : 1;
   const [bx0, bx1] = L.blocks[block];
   const ax = bx0 + 0.15 + rnd() * (bx1 - bx0 - 0.3);
   const az = cz + (rnd() - 0.5) * 0.9;
-  P(ax, 0.28, az, Ts + 0.2); // ②
-  P(ax, F + 0.05, az, Ts + 0.3); // ③
+  // ① 항온항습기 하부 토출 → ② 이중마루 아래: 벽을 따라 그 냉복도 줄까지 간 뒤 냉복도(타공판) 바로 밑을 따라간다.
+  // 랙 밑을 대각선으로 가로지르면 타공판이 없는 곳에서 맴도는 것처럼 보이므로 통로를 따라가게 한다
+  const yUnder = 0.25 + rnd() * 0.12;
+  const wallX = u.x + u.dir * (1.4 + rnd() * 0.4);
+  P(u.x + u.dir * 0.7, yUnder, u.z + (rnd() - 0.5) * 0.6, Ts); // ①
+  P(wallX, yUnder, az, Ts + 0.1);
+  P(ax, yUnder, az, Ts + 0.2); // ②
+  P(ax, F + 0.05, az, Ts + 0.3); // ③ 타공판으로 올라옴
 
   // 바이패스: 랙에 들어가지 않고 위로 빠져 바로 돌아감
   if (cfg.containment === 'none' && rnd() < th.bypass) {

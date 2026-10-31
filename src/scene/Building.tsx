@@ -373,7 +373,8 @@ function RaisedFloor({ room, sr }: { room: Room; sr: ServerRoomLayout }) {
       {/* 마루 아래 공간 표시 (측면). 투시 중에는 냉기 통로임을 강조 */}
       <mesh position={[mx, RAISED_H / 2, mz]} raycast={() => null}>
         <boxGeometry args={[w - 0.2, RAISED_H, d - 0.2]} />
-        <meshStandardMaterial color={xray ? '#1c4f78' : '#0e2233'} transparent opacity={xray ? 0.25 : 0.35} depthWrite={false} />
+        {/* 투시가 꺼져 있으면 옆면을 막아 마루 아래 기류가 비쳐 보이지 않게 한다 */}
+        <meshStandardMaterial color={xray ? '#1c4f78' : '#0e2233'} transparent={xray} opacity={xray ? 0.25 : 1} depthWrite={!xray} />
       </mesh>
       <mesh position={[mx, RAISED_H + 0.002, mz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
         <planeGeometry args={[w - 0.2, d - 0.2]} />
