@@ -29,7 +29,6 @@ export function FloorBar() {
           </button>
         ))}
       </div>
-      {focus && <span className="vc-note">{focus} 위층은 숨겨져 있습니다</span>}
     </div>
   );
 }
