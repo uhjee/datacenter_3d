@@ -114,33 +114,40 @@ function HotContainment({ L }: { L: AirLayout }) {
   );
 }
 
-// 천장 리턴 플레넘: 반투명 천장 + 그 위 더운 공기 층 + 열복도 위 리턴 그릴 + 항온항습기로 내려가는 환기 덕트
-const PLENUM_H = 0.75;
+// 천장 리턴 덕트망 치수: 덕트 중심 높이 y, 헤더 덕트 x(항온항습기 바로 위), 열복도 덕트가 시작하는 먼 끝 x
+const DUCT_H = 0.6;
+function ductOf(L: AirLayout) {
+  const hx = L.units[0].x;
+  const far = L.units[0].dir === 1 ? L.x1 : L.x0;
+  const zs = [...L.hotZ, ...L.units.map((u) => u.z)];
+  return { y: L.ceiling + DUCT_H / 2, hx, far, z0: Math.min(...zs) - 0.6, z1: Math.max(...zs) + 0.6 };
+}
+
+// 천장 리턴: 반투명 천장 + 열복도 위 리턴 그릴 + 덕트망(열복도 덕트 → 헤더 → 항온항습기 하강 덕트)
 function Ceiling({ L }: { L: AirLayout }) {
   const sx = L.label === 'A' ? [-19.8, 13.8] : [-13.8, 19.8];
-  const ductH = L.ceiling - (F + 2.0);
+  const d = ductOf(L);
+  const dropH = d.y + DUCT_H / 2 - (F + 2.0);
   return (
     <group>
       <mesh position={[(sx[0] + sx[1]) / 2, L.ceiling, 1]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null} renderOrder={3}>
         <planeGeometry args={[sx[1] - sx[0], 21.8]} />
-        <meshStandardMaterial color="#adb5bd" transparent opacity={0.2} depthWrite={false} side={2} />
+        <meshStandardMaterial color="#adb5bd" transparent opacity={0.12} depthWrite={false} side={2} />
       </mesh>
-      {/* 천장 위 플레넘: 더운 공기만 지나는 층. 테두리로 실내와 경계를 드러낸다 */}
-      <HotBox pos={[(sx[0] + sx[1]) / 2, L.ceiling + PLENUM_H / 2, 1]} size={[sx[1] - sx[0], PLENUM_H, 21.8]} opacity={0.07} />
-      {/* 환기 덕트: 천장에서 항온항습기 윗면(흡입구)까지 막힌 통로 */}
+      {/* 열복도마다 봉쇄 꼭대기에서 항온항습기 쪽 벽까지 가는 덕트 */}
+      {L.hotZ.map((z) => (
+        <HotBox key={`aisle-${z}`} pos={[(d.far + d.hx) / 2, d.y, z]} size={[Math.abs(d.far - d.hx) + 0.5, DUCT_H, 1.2]} opacity={0.22} />
+      ))}
+      {/* 항온항습기 위 벽을 따라 가는 헤더 덕트 */}
+      <HotBox pos={[d.hx, d.y, (d.z0 + d.z1) / 2]} size={[1.0, DUCT_H, d.z1 - d.z0]} opacity={0.22} />
+      {/* 헤더에서 항온항습기 윗면(흡입구)으로 내려가는 덕트 */}
       {L.units.map((u) => (
-        <HotBox key={`duct-${u.id}`} pos={[u.x, F + 2.0 + ductH / 2, u.z]} size={[0.95, ductH, 1.7]} opacity={0.26} />
+        <HotBox key={`drop-${u.id}`} pos={[u.x, F + 2.0 + dropH / 2, u.z]} size={[0.95, dropH, 1.7]} opacity={0.26} />
       ))}
       {L.hotZ.map((z) => (
         <mesh key={z} position={[L.rcx, L.ceiling - 0.01, z]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
           <planeGeometry args={[L.x1 - L.x0, 1.0]} />
           <meshBasicMaterial color="#ff8787" transparent opacity={0.22} depthWrite={false} side={2} />
-        </mesh>
-      ))}
-      {L.units.map((u) => (
-        <mesh key={u.id} position={[u.x, L.ceiling - 0.01, u.z]} rotation={[Math.PI / 2, 0, 0]} raycast={() => null}>
-          <planeGeometry args={[1.0, 2.0]} />
-          <meshBasicMaterial color="#ff8787" transparent opacity={0.3} depthWrite={false} side={2} />
         </mesh>
       ))}
     </group>
@@ -171,20 +178,30 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
   };
   const Ts = cfg.supply;
   const plenum = cfg.plenum || cfg.containment === 'HAC';
-  const yRet = plenum ? L.ceiling + 0.35 : 3.4;
+  const yRet = 3.4;
   const u = L.units[Math.floor(rnd() * L.units.length)];
   const ret = (fromX: number, fromZ: number, t: number) => {
-    P(fromX, yRet, fromZ, t); // ⑧
     if (plenum) {
-      // 천장 리턴 플레넘: 천장 위로 항온항습기 바로 위까지 간 뒤 환기 덕트를 따라 곧게 내려간다 (실내 공기와 섞이지 않음)
-      const dx = (rnd() - 0.5) * 0.5;
-      const dz = (rnd() - 0.5) * 1.2;
-      P(u.x + dx, yRet, u.z + dz, th.returnT);
-      P(u.x + dx, F + 2.05, u.z + dz, th.returnT); // ⑨
-    } else {
-      P(u.x + u.dir * 0.9, yRet, u.z + (rnd() - 0.5) * 0.6, th.returnT);
-      P(u.x, F + 2.05, u.z, th.returnT); // ⑨
+      // 천장 리턴 덕트: 열복도 위 덕트 → 항온항습기 쪽 벽의 헤더 덕트 → 항온항습기마다 내려가는 덕트.
+      // 모든 구간이 덕트 안이라 실내 공기와 섞이지 않는다
+      const d = ductOf(L);
+      const hz = L.hotZ.reduce((a, b) => (Math.abs(b - fromZ) < Math.abs(a - fromZ) ? b : a));
+      const j = (k: number) => (rnd() - 0.5) * k;
+      const lane = j(0.6);
+      if (Math.abs(hz - fromZ) > 0.1) P(fromX, L.ceiling - 0.2, hz + lane, t); // 봉쇄가 없으면 열복도 위 그릴로 빨려 올라감
+      P(fromX, d.y + j(0.3), hz + lane, t); // ⑧
+      P(d.hx + j(0.4), d.y + j(0.3), hz + lane, t);
+      const uz = u.z + j(1.0);
+      P(d.hx + j(0.4), d.y + j(0.3), uz, th.returnT);
+      P(u.x + j(0.4), F + 2.05, uz, th.returnT); // ⑨
+      P(u.x, F + 1.0, u.z, (th.returnT + Ts) / 2); // ⑩
+      P(u.x, F + 0.2, u.z, Ts);
+      return;
     }
+    // 천장 리턴이 없으면 실내 위쪽을 지나 항온항습기 윗면으로 돌아간다
+    P(fromX, yRet, fromZ, t); // ⑧
+    P(u.x + u.dir * 0.9, yRet, u.z + (rnd() - 0.5) * 0.6, th.returnT);
+    P(u.x, F + 2.05, u.z, th.returnT); // ⑨
     P(u.x, F + 1.0, u.z, (th.returnT + Ts) / 2); // ⑩
     P(u.x, F + 0.2, u.z, Ts);
   };
