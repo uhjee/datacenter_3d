@@ -1,4 +1,4 @@
-// 3D 화면 위에 떠 있는 조작: 왼쪽 위 층 이동 · 보기 방식, 오른쪽 위 확대 · 축소 · 전체 보기
+// 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 확대 · 축소 · 전체 보기
 
 import { FoldVertical, House, Minus, Plus, UnfoldVertical } from 'lucide-react';
 import { FLOORS, type FloorId } from '../data/building';
@@ -17,10 +17,10 @@ export function FloorBar() {
   };
   return (
     <div className="vc-floors">
-      <div className="vc-bar">
+      <div className="vc-bar col">
         <IconButton icon={UnfoldVertical} label="층 벌려 보기" active={viewMode === 'explode'} onClick={() => changeMode('explode')} />
         <IconButton icon={FoldVertical} label="겹쳐 보기" active={viewMode === 'stack'} onClick={() => changeMode('stack')} />
-        <span className="vc-sep" />
+        <span className="vc-sep h" />
         <button className={`vc-floor${!focus ? ' on' : ''}`} onClick={goOverview}>
           전체
         </button>

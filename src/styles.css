@@ -821,10 +821,10 @@ button.on {
 /* 기류 · 온도 패널 */
 .air-panel {
   position: absolute;
-  top: 56px; /* 위쪽 층 이동 막대 아래 */
-  left: 10px;
+  top: 10px;
+  left: 60px; /* 왼쪽 세로 층 이동 막대 옆 */
   width: 340px;
-  max-height: calc(100% - 66px);
+  max-height: calc(100% - 20px);
   overflow-y: auto;
   background: rgba(21, 27, 35, 0.94);
   border: 1px solid var(--line);
@@ -2443,7 +2443,7 @@ button.primary:hover {
   gap: 8px;
 }
 .vc-floor {
-  min-width: 34px;
+  width: 36px;
   height: 28px;
   padding: 0 7px;
   border: 0;
