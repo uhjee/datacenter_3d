@@ -139,9 +139,9 @@ export const useView = create<ViewState>((set, get) => ({
     fire: true,
     security: true,
     links: true,
-    shafts: true,
-    walls: true,
-    labels: true,
+    shafts: false, // 처음에는 장비 위주로 보이게 샤프트 · 벽체 · 실 이름은 꺼 둔다
+    walls: false,
+    labels: false,
   },
   toggleLayer: (k) => set((s) => ({ layers: { ...s.layers, [k]: !s.layers[k] } })),
 
