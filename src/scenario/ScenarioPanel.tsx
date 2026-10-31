@@ -1,7 +1,7 @@
 // 시나리오 탭: 시계 · 재생 조작 · 상태판 · 진행 단계(사건 기록 포함), 그리고 재생 시계
 
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
-import { Droplets, Fan, Pause, Play, PlugZap, RotateCcw, Server, Wrench, Zap, type LucideIcon } from 'lucide-react';
+import { Droplets, Fan, Flame, Pause, Play, PlugZap, RotateCcw, Server, Zap, type LucideIcon } from 'lucide-react';
 import { RACKS } from '../data/racks';
 import { computeMetrics } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
@@ -15,6 +15,8 @@ import { defOf } from './registry';
 import { UPS_FAIL_COUNTS, UT, values as upsValues, type UpsFailValues } from './upsFail';
 import { CT, standbyOf, unitName, values as cracValues, type CracFailParams, type CracFailValues } from './cracFail';
 import { lt, RESPONSE_NAME, values as leakValues, type LeakParams, type LeakValues } from './leak';
+import { bt, values as batValues, type BatFireParams, type BatFireValues } from './batFire';
+import { fireRack, st, values as srValues, type SrFireParams, type SrFireValues } from './srFire';
 import { useRoomTherm } from '../ui/useStatus';
 import type { RackColorMode } from '../store/useView';
 
@@ -124,6 +126,23 @@ export function startLeak() {
   focusFloor('4F');
 }
 
+// 배터리실 화재: 2층으로. 서버실 화재: 그 서버실 층으로
+export function startBatFire() {
+  const { s } = beforeStart();
+  s.startScenario({ id: 'batFire', params: { offgas: false, separated: true } });
+  if (s.diagramMode === 'off') s.setDiagramMode('half');
+  s.setDiagramTab('power');
+  s.setRightTab('scenario');
+  focusFloor('2F');
+}
+
+export function startSrFire() {
+  const { s } = beforeStart();
+  s.startScenario({ id: 'srFire', params: { room: 'A', early: false } });
+  s.setRightTab('scenario');
+  focusFloor('3F');
+}
+
 export function stopScenario() {
   const s = useView.getState();
   const id = s.scenario?.id;
@@ -151,7 +170,8 @@ function ScenarioList() {
     [PlugZap, '한전 1회선 정전', '본선만 끊김 → ALTS가 예비선으로 절체. 몇 초의 순간 정전에도 공조는 다시 켜야 한다', startLineOut],
     [Server, 'UPS 고장', 'UPS 한 대가 멈춰도 2N이라 랙은 그대로. STS 절체 · 예비 없는 N 상태 · 정비 바이패스', startUpsFail],
     [Fan, '항온항습기 고장', '6대 중 1대 고장 → 대기기 자동 투입(N+1), 그사이 주변 랙 흡기 상승. 한 대 더 멈추면?', () => startCracFail()],
-    [Wrench, 'TR 계획 정비', '연계 ACB 투입, 한쪽 TR이 양쪽 공급', null],
+    [Flame, '배터리실 화재', '리튬이온 열폭주 → 가스 소화 → 재발화 → 전원 차단. 오프가스 감지 · 방화구획 분리가 피해 범위를 가른다', startBatFire],
+    [Flame, '서버실 화재', '랙 전원부 과열 → VESDA 단계 경보 → 조기 대응 또는 가스 소화. 다른 랙은 계속 동작', startSrFire],
     [Droplets, '누수', '서버실 B 마루 아래 냉수 배관 누수 → 감지 → 밸브 차단. 대응 방식에 따라 번지는 물의 양', startLeak],
   ];
   return (
@@ -292,7 +312,7 @@ function ScenarioRun() {
         </p>
       </div>
     );
-  } else {
+  } else if (sc.id === 'leak') {
     const p = sc.params;
     const v = leakValues(sc.t, p);
     const L = lt(p);
@@ -325,6 +345,50 @@ function ScenarioRun() {
         <p className="hint">
           차단까지 걸린 시간 = 바닥에 고인 물입니다. 감지선은 물이 닿은 위치(±1m)를 알려 바로 그 분기를 닫을 수 있고, 점형 감지기는 물이 감지기까지 번져야 울리고 구역만 알려 줍니다.
         </p>
+      </div>
+    );
+  } else if (sc.id === 'batFire') {
+    const p = sc.params;
+    const v = batValues(sc.t, p);
+    const B = bt(p);
+    clockSub = sc.t < B.pre ? '전조 직전' : sc.t < B.runaway ? `전조 ${Math.floor(sc.t - B.pre)}초째` : sc.t < B.out ? `발화 후 ${Math.floor(sc.t - B.runaway)}초` : '진화 완료';
+    board = <BatFireBoard v={v} p={p} />;
+    condSummary = `오프가스 ${p.offgas ? '있음' : '없음'} · ${p.separated ? '방화구획 분리' : '한 공간'}`;
+    cond = (
+      <div className="rp-cond">
+        <Switch checked={p.offgas} onChange={() => set.setScenParams({ offgas: !p.offgas })} label="오프가스 감지기 (연기 전 조기 경보 · 배터리 자동 분리)" />
+        <Switch checked={p.separated} onChange={() => set.setScenParams({ separated: !p.separated })} label="배터리실 · UPS실 · 전력선 방화구획 분리 (이 건물의 설계)" />
+        <p className="hint">분리를 끄면 판교 화재처럼 배터리 · UPS · 전력선이 한 공간에 있다고 보고, 소방대가 전기실 전체를 끊어 2N인데도 랙이 모두 꺼집니다.</p>
+      </div>
+    );
+  } else {
+    const p = sc.params;
+    const v = srValues(sc.t, p);
+    const S = st(p);
+    clockSub = sc.t < S.pre ? '과열 직전' : sc.t < S.clear ? `연기 발생 후 ${Math.floor(sc.t - S.pre)}초` : '정리 완료';
+    board = <SrFireBoard v={v} p={p} />;
+    condSummary = `서버실 ${p.room} · ${p.early ? '조기 대응' : '대응 늦음'}`;
+    cond = (
+      <div className="rp-cond">
+        <div className="rp-cond-row">
+          <span>서버실</span>
+          <div className="seg small">
+            {(['A', 'B'] as const).map((k) => (
+              <button
+                key={k}
+                className={p.room === k ? 'on' : ''}
+                onClick={() => {
+                  set.setScenParams({ room: k });
+                  focusFloor(k === 'A' ? '3F' : '4F');
+                }}
+              >
+                서버실 {k}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Switch checked={p.early} onChange={() => set.setScenParams({ early: !p.early })} label="VESDA 경보 단계에서 랙 전원 차단 (조기 대응)" />
+        <p className="hint">조기 대응을 끄면 불로 번져 가스 소화약제를 방출합니다. 가스 약제는 장비를 적시지 않아 불이 난 랙 말고는 계속 동작합니다.</p>
       </div>
     );
   }
@@ -472,6 +536,50 @@ function CracBoard({ v, p, t }: { v: CracFailValues; p: CracFailParams; t: numbe
         <div className="rp-tile-s num">권장 초과 랙 {th.over}대 · 평균 {th.avgInlet}°C</div>
         {tst !== 'ok' && <Status tone={TEMP_TONE[tst]}>{STATUS_META[tst].name}</Status>}
       </div>
+    </div>
+  );
+}
+
+// 배터리실 화재 상태판 6칸
+function BatFireBoard({ v, p }: { v: BatFireValues; p: BatFireParams }) {
+  const stageName = { normal: '정상', pre: '정상 (전조 감지 안 됨)', offgas: '오프가스 경보', fire: '열폭주 · 화재', suppressed: '불꽃 잦아듦', reignite: '재발화', cooling: '물 냉각 중', out: '진화 완료' }[v.stage];
+  const stageColor = v.stage === 'normal' || v.stage === 'pre' || v.stage === 'out' ? SRC_META.utility.color : v.stage === 'offgas' ? STARTING_COLOR : v.stage === 'cooling' ? '#4dabf7' : FAULT_COLOR;
+  const cellColor = v.cell > 150 ? FAULT_COLOR : v.cell > 60 ? STARTING_COLOR : 'var(--ok)';
+  const racks = useView((s) => s.scenSnap);
+  const on = racks ? RACK_IDS.filter((id) => racks.nodes[id]?.status === 'on').length : RACK_IDS.length;
+  return (
+    <div className="rp-board">
+      <Tile k="배터리실 A" v={stageName} c={stageColor} s={p.separated ? '방화구획 분리' : '배터리 · UPS · 전력선 한 공간'} />
+      <Tile k="가장 뜨거운 셀" v={`${v.cell}°C`} c={cellColor} meter={{ v: Math.min(1, v.cell / 700), color: cellColor }} s="리튬인산철, 근사 곡선" />
+      <Tile k="배터리 연결" v={v.isolated ? '분리됨' : '연결'} c={v.isolated ? STARTING_COLOR : SRC_META.utility.color} s={v.isolated ? 'UPS-A 배터리 백업 없음' : 'UPS-A 직류 링크'} />
+      <Tile
+        k="가스 소화"
+        v={v.gas === 'standby' ? '대기' : v.gas === 'delay' ? `방출 지연 ${v.delayLeft}초` : '방출 완료'}
+        c={v.gas === 'standby' ? SRC_META.utility.color : v.gas === 'delay' ? STARTING_COLOR : '#e9ecef'}
+        s={v.gas === 'done' ? (v.stage === 'out' ? '약제 배기 · 재진입' : '불꽃만 잡고 셀 반응은 남음') : '교차회로 → 30초 지연'}
+      />
+      <Tile k="UPS-A" v={v.cut ? (p.separated ? '비상 정지 (EPO)' : '정지 (전체 차단)') : '운전'} c={v.cut ? FAULT_COLOR : 'var(--ok)'} s={v.cut ? '소방 진입 전 전원 차단' : undefined} />
+      <Tile k="랙" v={`${on} / ${RACK_IDS.length}대 동작`} c={on === RACK_IDS.length ? 'var(--ok)' : FAULT_COLOR} s={on === RACK_IDS.length ? (v.cut ? 'B계통으로 유지 (2N → N)' : '영향 없음') : '서비스 중단'} />
+    </div>
+  );
+}
+
+// 서버실 화재 상태판 6칸
+function SrFireBoard({ v, p }: { v: SrFireValues; p: SrFireParams }) {
+  const lvColor = v.level === '정상' ? SRC_META.utility.color : v.level === 'Fire' ? FAULT_COLOR : STARTING_COLOR;
+  return (
+    <div className="rp-board">
+      <Tile k="원인 랙" v={`랙 ${fireRack(p)}`} c={v.rackState === 'run' ? STARTING_COLOR : v.rackState === 'cut' ? 'var(--warn)' : FAULT_COLOR} s={v.rackState === 'run' ? '서버 전원부 과열' : v.rackState === 'cut' ? 'rPDU 차단 · 정지' : '소손 · 차단기 트립'} />
+      <Tile k="VESDA (공기흡입형)" v={v.level} c={lvColor} s="Alert → Action → Fire" />
+      <Tile k="연기감지기 교차회로" v={`A ${v.detA ? '●' : '○'} · B ${v.detB ? '●' : '○'}`} c={v.detA && v.detB ? FAULT_COLOR : v.detA ? STARTING_COLOR : SRC_META.utility.color} s="A · B 모두 울려야 방출" />
+      <Tile
+        k="가스 소화"
+        v={v.gas === 'standby' ? '대기' : v.gas === 'delay' ? `방출 지연 ${v.delayLeft}초` : '방출 · 진화'}
+        c={v.gas === 'standby' ? SRC_META.utility.color : v.gas === 'delay' ? STARTING_COLOR : '#e9ecef'}
+        s={v.gas === 'delay' ? '경보 방송 · 대피' : v.gas === 'done' ? '장비를 적시지 않음' : undefined}
+      />
+      <Tile k={`서버실 ${p.room} 랙`} v={`${v.racksOn} / ${v.racksTotal}대 동작`} c={v.racksOn === v.racksTotal ? 'var(--ok)' : 'var(--warn)'} s={v.racksOn === v.racksTotal ? '영향 없음' : '원인 랙만 정지'} />
+      <Tile k="공조" v="운전 (실내 순환)" c="var(--ok)" s="외기 댐퍼 닫힘 · 설계에 따라 다름" />
     </div>
   );
 }

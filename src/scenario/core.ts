@@ -34,7 +34,7 @@ export interface Segment {
   color: string;
 }
 
-export type ScenarioId = 'outage' | 'upsFail' | 'cracFail' | 'lineOut' | 'leak';
+export type ScenarioId = 'outage' | 'upsFail' | 'cracFail' | 'lineOut' | 'leak' | 'batFire' | 'srFire';
 
 // 시나리오 하나의 정의. P = 조건(사용자가 바꾸는 값 포함), S = 미리 계산한 연속값
 export interface ScenarioDef<P, S> {

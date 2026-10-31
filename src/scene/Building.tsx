@@ -31,6 +31,7 @@ import { Box, Cyl, Selectable, SelectionFrame } from './common';
 import { EquipMesh } from './EquipMesh';
 import { AirRoom } from './Airflow';
 import { LeakMark } from './LeakMark';
+import { FireMark } from './FireMark';
 import { RackRows } from './Racks';
 
 export function BuildingFloors() {
@@ -84,6 +85,7 @@ function FloorGroup({ floor }: { floor: Floor }) {
           <RoomLabel key={r.id} room={r} floor={floor} hidden={!visible || !layers.labels || focus !== floor.id} />
         ))}
       <FloorTag floor={floor} hidden={!visible} />
+      <FireMark floor={floor.id} />
       {shafts.map((s) => (
         <ShaftSegment key={s.id} shaft={s} floor={floor} shown={layers.shafts} labelHidden={!visible || !layers.shafts} />
       ))}

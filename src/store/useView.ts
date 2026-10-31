@@ -12,6 +12,8 @@ import { defOf, type ScenarioRun, type ScenarioStart } from '../scenario/registr
 import type { UpsFailParams } from '../scenario/upsFail';
 import type { CracFailParams } from '../scenario/cracFail';
 import type { LeakParams } from '../scenario/leak';
+import type { BatFireParams } from '../scenario/batFire';
+import type { SrFireParams } from '../scenario/srFire';
 
 export type LayerKey = Domain | 'labels' | 'walls' | 'shafts' | 'links';
 export type ViewMode = 'stack' | 'explode';
@@ -104,7 +106,7 @@ interface ViewState {
   setScenT: (t: number) => void;
   setScenPlaying: (v: boolean) => void;
   setScenSpeed: (v: number) => void;
-  setScenParams: (patch: Partial<ScenarioParams> | Partial<UpsFailParams> | Partial<CracFailParams> | Partial<LeakParams>) => void;
+  setScenParams: (patch: Partial<ScenarioParams> | Partial<UpsFailParams> | Partial<CracFailParams> | Partial<LeakParams> | Partial<BatFireParams> | Partial<SrFireParams>) => void;
 
   // 오른쪽 패널 탭
   rightTab: RightTab;
