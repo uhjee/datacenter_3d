@@ -3,12 +3,13 @@
 
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { BufferAttribute, BufferGeometry, CanvasTexture, Points } from 'three';
+import { BufferAttribute, BufferGeometry, CanvasTexture, Points, PointsMaterial, Vector3 } from 'three';
 import { RAISED_H } from '../data/building';
 import { RACKS, type Rack } from '../data/racks';
 import { AIR_LAYOUT, tempRGB, type AirCfg, type AirLayout, type RoomLabel, type RoomTherm } from '../data/thermal';
 import { useView } from '../store/useView';
 import { useRoomTherm } from '../ui/useStatus';
+import { floorAnimY } from './floorAnim';
 
 const F = RAISED_H;
 const PANEL = { cold: '#4dabf7', hot: '#ff8787' };
@@ -229,6 +230,8 @@ function Particles({ label }: { label: RoomLabel }) {
   const racks = useMemo(() => RACKS.filter((r) => r.serverRoom === label), [label]);
   const tex = useMemo(dotTexture, []);
   const ref = useRef<Points>(null);
+  const mat = useRef<PointsMaterial>(null);
+  const center = useMemo(() => new Vector3(), []);
 
   const geo = useMemo(() => {
     const g = new BufferGeometry();
@@ -251,7 +254,9 @@ function Particles({ label }: { label: RoomLabel }) {
     return { paths, s, seg };
   }, [L, cfg, th, racks]);
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
+    // 입자 크기는 기류 시점(약 15m) 기준. 줌을 빼거나 층 전체를 볼 때도 점이 보이도록 거리에 비례해 키운다
+    if (mat.current) mat.current.size = Math.max(0.32, camera.position.distanceTo(center.set(L.rcx, floorAnimY[L.floor] + 1.5, L.cz)) * 0.016);
     const pos = geo.attributes.position as BufferAttribute;
     const col = geo.attributes.color as BufferAttribute;
     const step = Math.min(dt, 0.05) * SPEED;
@@ -283,7 +288,7 @@ function Particles({ label }: { label: RoomLabel }) {
 
   return (
     <points ref={ref} geometry={geo} raycast={() => null} frustumCulled={false} renderOrder={6}>
-      <pointsMaterial size={0.32} map={tex} vertexColors transparent alphaTest={0.05} depthWrite={false} sizeAttenuation toneMapped={false} />
+      <pointsMaterial ref={mat} size={0.32} map={tex} vertexColors transparent alphaTest={0.05} depthWrite={false} sizeAttenuation toneMapped={false} />
     </points>
   );
 }

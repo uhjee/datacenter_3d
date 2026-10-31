@@ -184,6 +184,30 @@ export function enterAir(room: RoomLabel) {
   s.flyTo([cx, y + 9, L.cz + 11], [L.rcx + (fromEast ? -3 : 3), y + 1.2, L.cz]);
 }
 
+// 층 이동 버튼: 기류 보기 중이면 서버실 층은 그 서버실의 기류 시점으로, 다른 층은 기류 보기를 끄고 이동한다.
+// (일반 층 시점은 멀어서 기류 입자가 거의 안 보이고, 기류 패널만 떠 있게 된다)
+export function goFloor(id: FloorId) {
+  const s = useView.getState();
+  if (s.airOn) {
+    const room = (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === id);
+    if (room) return enterAir(room);
+    exitAir(false);
+    // 흐름도 패널이 돌아와 3D 영역 크기가 바뀐 뒤 계산
+    requestAnimationFrame(() => focusFloor(id));
+    return;
+  }
+  focusFloor(id);
+}
+
+export function goOverview() {
+  if (useView.getState().airOn) {
+    exitAir(false);
+    requestAnimationFrame(() => focusOverview());
+    return;
+  }
+  focusOverview();
+}
+
 // fly = false: 다음 동작이 곧바로 카메라를 옮길 때 (가이드 투어)
 export function exitAir(fly = true) {
   const s = useView.getState();

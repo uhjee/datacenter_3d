@@ -6,7 +6,7 @@ import { DOMAIN_META, EQUIP_TYPES, TYPE_BY_ID, type Domain } from '../data/equip
 import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
 import { RACK } from '../data/building';
 import { HUB_BY_ID, type Hub } from '../data/connections';
-import { focusFloor, focusItem } from '../scene/focus';
+import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
 import { ConnSection, GroupsSection, ShaftLinks } from './ConnPanel';
 import { GroupCard } from './GroupCard';
@@ -465,7 +465,7 @@ function Overview() {
       <Section id="ov-floors" title="층" count={FLOORS.length}>
         <div className="rp-floors">
           {[...FLOORS].reverse().map((f) => (
-            <button key={f.id} onClick={() => focusFloor(f.id)}>
+            <button key={f.id} onClick={() => goFloor(f.id)}>
               <b>{f.id}</b>
               <span>{f.summary}</span>
             </button>
