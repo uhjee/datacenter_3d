@@ -3526,3 +3526,25 @@ button.co-tr:hover {
 .heat-opts label {
   white-space: nowrap;
 }
+.air-sum {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  border: 0;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.air-sum:hover {
+  background: var(--s2);
+}
+/* 기류 카드는 위에서 아래로 펼쳐지므로 화살표 방향이 히트맵 카드(아래에서 위)와 반대 */
+.air-panel .heat-fold:not(.open) svg {
+  transform: none;
+}
+.air-panel .heat-fold.open svg {
+  transform: rotate(180deg);
+}
