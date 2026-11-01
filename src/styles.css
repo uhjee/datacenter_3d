@@ -3670,3 +3670,71 @@ button.co-tr:hover {
   align-items: center;
   gap: 2px;
 }
+
+/* ── 켜기 · 끄기 태그 (왼쪽 패널 레이어 · 연결선) ── */
+.lp-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.lp-tags.off {
+  opacity: 0.5;
+}
+.k-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px dashed var(--line-2);
+  background: transparent;
+  color: var(--ink-3);
+  font: inherit;
+  font-size: var(--fs-sm);
+  line-height: 1.3;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+.k-tag i {
+  flex: none;
+  background: var(--c);
+  opacity: 0.35;
+  filter: saturate(0.4);
+}
+.k-tag i.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.k-tag i.line {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+.k-tag:hover:not(:disabled) {
+  color: var(--ink-2);
+  border-color: var(--line-3);
+}
+.k-tag.on {
+  border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+  background: color-mix(in srgb, var(--c) 16%, var(--s2));
+  color: var(--ink);
+  font-weight: 600;
+}
+.k-tag.on i {
+  opacity: 1;
+  filter: none;
+}
+.k-tag.on:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--c) 24%, var(--s2));
+  border-color: color-mix(in srgb, var(--c) 75%, transparent);
+  color: var(--ink);
+}
+.k-tag:disabled {
+  cursor: default;
+}
+.k-tag:focus-visible {
+  outline: 2px solid var(--info);
+  outline-offset: 2px;
+}

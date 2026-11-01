@@ -8,7 +8,7 @@ import { DOMAIN_META, TYPE_BY_ID, type Domain } from "../data/equipTypes";
 import { activateGroup, focusItem } from "../scene/focus";
 import { RACK_COLOR_META, RAMP_CSS } from "../scene/rackColor";
 import { LAYER_META, useView, type RackColorMode } from "../store/useView";
-import { InfoTip, keyToggle, Switch, TipTable } from "./kit";
+import { InfoTip, keyToggle, TipTable, ToggleTag } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 
@@ -58,23 +58,17 @@ export function LeftPanel() {
         info="3D에 보일 장비 분야와 보조 표시를 켜고 끕니다. 끈 분야의 장비는 화면과 클릭 대상에서 빠집니다."
         summary={`${LAYER_META.filter((l) => layers[l.key]).length}/${LAYER_META.length} 켬`}
       >
-        <div className="lp-switches">
+        <div className="lp-tags">
           {LAYER_META.map((l) => (
-            <Switch
+            <ToggleTag
               key={l.key}
-              checked={layers[l.key]}
-              onChange={() => toggleLayer(l.key)}
+              on={layers[l.key]}
+              onToggle={() => toggleLayer(l.key)}
               label={l.name}
-              swatch={
-                <span
-                  className="dot"
-                  style={{
-                    background:
-                      l.key in DOMAIN_META
-                        ? DOMAIN_META[l.key as Domain].color
-                        : "#868e96",
-                  }}
-                />
+              color={
+                l.key in DOMAIN_META
+                  ? DOMAIN_META[l.key as Domain].color
+                  : "#868e96"
               }
             />
           ))}
@@ -101,17 +95,16 @@ export function LeftPanel() {
             : "레이어 꺼짐"
         }
       >
-        <div className={`lp-switches ${layers.links ? "" : "off"}`}>
+        <div className={`lp-tags ${layers.links ? "" : "off"}`}>
           {LINK_GROUPS.map((g) => (
-            <Switch
+            <ToggleTag
               key={g.key}
-              checked={linkFilter[g.key]}
+              on={linkFilter[g.key]}
               disabled={!layers.links}
-              onChange={() => useView.getState().toggleLink(g.key)}
+              onToggle={() => useView.getState().toggleLink(g.key)}
               label={g.name}
-              swatch={
-                <span className="line-swatch" style={{ background: g.color }} />
-              }
+              color={g.color}
+              line
             />
           ))}
         </div>

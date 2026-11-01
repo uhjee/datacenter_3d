@@ -301,6 +301,24 @@ export const TipSwatch = ({ color, line }: { color: string; line?: boolean }) =>
 );
 export const Help = InfoTip;
 
+// 켜기 · 끄기 태그: 켜면 항목 색이 은은하게 깔린 선명한 버튼, 끄면 점선 테두리 · 흐린 글자 · 흐린 색 점.
+// color는 항목 색 (견본 · 켜짐 배경에 쓴다). line이면 견본을 선 모양으로
+export function ToggleTag(p: { on: boolean; onToggle: () => void; label: ReactNode; color: string; line?: boolean; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      className={`k-tag${p.on ? ' on' : ''}`}
+      aria-pressed={p.on}
+      disabled={p.disabled}
+      onClick={p.onToggle}
+      style={{ '--c': p.color } as CSSProperties}
+    >
+      <i className={p.line ? 'line' : 'dot'} />
+      <span>{p.label}</span>
+    </button>
+  );
+}
+
 // 켜기 · 끄기 스위치 (체크박스 대신). 왼쪽에 색 점이나 선 견본을 붙일 수 있다
 export function Switch(p: { checked: boolean; onChange: () => void; label: ReactNode; swatch?: ReactNode; disabled?: boolean }) {
   return (
