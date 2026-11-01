@@ -200,7 +200,7 @@ export function viewRoom(room: RoomLabel) {
   s.flyTo([cx, y + 9, L.cz + 11], [L.rcx + (fromEast ? -3 : 3), y + 1.2, L.cz]);
 }
 
-// 기류 · 온도 패널의 서버실 버튼: 켜 둔 보기(기류 · 히트맵)를 그대로 두고 서버실만 바꾼다
+// 기류 패널 · 층 이동의 서버실 전환: 켜 둔 보기(기류 · 히트맵)를 그대로 두고 서버실만 바꾼다
 export function switchRoom(room: RoomLabel, force = false) {
   const s = useView.getState();
   if (s.heatOn && !s.airOn) return force || s.airRoom !== room ? heatView(room) : undefined;

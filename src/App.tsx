@@ -50,7 +50,7 @@ export function App() {
         <span className="stage">v0.9</span>
         <div className="spacer" />
         <div className="tb-group" role="group" aria-label="보조 화면">
-          <button className={airOn ? 'on' : ''} onClick={() => (airOn ? exitAir() : enterAir(useView.getState().airRoom))} title="서버실 기류 · 온도">
+          <button className={airOn ? 'on' : ''} onClick={() => (airOn ? exitAir() : enterAir(useView.getState().airRoom))} title="서버실 기류 (냉복도 → 랙 → 열복도 공기 흐름)">
             <Wind size={15} /> 기류
           </button>
           <button className={heatOn ? 'on' : ''} onClick={() => (heatOn ? exitHeat() : enterHeat(heatRoom()))} title="서버실 온도 분포 (3D 바닥 + 하단 2D 상면도)">

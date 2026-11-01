@@ -1,9 +1,9 @@
-// 기류 · 온도 조작 패널 (3D 위 왼쪽 위). 봉쇄 · 블랭킹 · 급기 온도를 바꾸면 기류와 랙 흡기 온도가 바로 바뀐다.
+// 기류 패널 (3D 위 왼쪽 위, 상단 [기류]를 켰을 때만). 봉쇄 · 블랭킹 · 급기 온도를 바꾸면 기류와 랙 흡기 온도가 바로 바뀐다.
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { RECOMMENDED, STATUS_META, tempColor, tempGradient, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
-import { exitThermal, switchRoom } from '../scene/focus';
+import { exitAir, switchRoom } from '../scene/focus';
 import { useView } from '../store/useView';
 import { useRoomTherm } from './useStatus';
 
@@ -23,7 +23,7 @@ let detailOpen = false;
 const STAGES = ['급기(하부)', '이중마루 하부', '타공판', '냉복도', '랙 흡기', '랙 배기', '열복도', '천장 · 리턴', '항온항습기 흡입', '코일에서 열 전달'];
 
 export function AirPanel() {
-  const on = useView((s) => s.airOn || s.heatOn);
+  const on = useView((s) => s.airOn);
   const room = useView((s) => s.airRoom);
   const cfg = useView((s) => s.airCfg[room]);
   const th = useRoomTherm(room);
@@ -41,7 +41,7 @@ export function AirPanel() {
   return (
     <div className="air-panel">
       <header>
-        <b>기류 · 온도</b>
+        <b>기류</b>
         <div className="seg small">
           {(['A', 'B'] as RoomLabel[]).map((r) => (
             <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)}>
@@ -49,7 +49,7 @@ export function AirPanel() {
             </button>
           ))}
         </div>
-        <button className="icon" onClick={() => exitThermal()} title="기류 · 히트맵 끄기">
+        <button className="icon" onClick={() => exitAir()} title="기류 끄기">
           ✕
         </button>
       </header>

@@ -877,7 +877,7 @@ button.on {
   padding: 2px 7px;
 }
 
-/* 기류 · 온도 패널 */
+/* 기류 패널 */
 .air-panel {
   position: absolute;
   top: 10px;
