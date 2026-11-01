@@ -11,7 +11,7 @@ import { useView, type HeatHeight } from '../store/useView';
 import { useHeatField, useRoomTherm } from './useStatus';
 
 const LO = 15;
-const HI = 45;
+const HI = 40;
 const pos = (t: number) => `${((Math.min(HI, Math.max(LO, t)) - LO) / (HI - LO)) * 100}%`;
 
 // 구간 띠에 쓰는 짧은 이름
@@ -104,7 +104,7 @@ export function HeatPanel() {
             <i style={{ left: pos(st.min), width: `calc(${pos(st.max)} - ${pos(st.min)})` }} />
           </div>
           <div className="heat-ticks num">
-            {[15, 18, 27, 32, 45].map((t) => (
+            {[15, 18, 27, 32, 40].map((t) => (
               <span key={t} style={{ left: pos(t) }}>
                 {t}
               </span>

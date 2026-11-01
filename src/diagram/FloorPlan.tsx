@@ -447,7 +447,7 @@ function AirArrows({ label, px }: { label: RoomLabel; px: (v: number) => number 
 // 범례: 연속 온도 색 + ASHRAE 경계 눈금 (ΔT 보기면 랙 칸 색 막대도)
 function PlanLegend({ value }: { value: HeatValue }) {
   const lo = 15;
-  const hi = 45;
+  const hi = 40;
   const pos = (t: number) => `${((t - lo) / (hi - lo)) * 100}%`;
   const grad = `linear-gradient(90deg, ${Array.from({ length: 13 }, (_, i) => tempColor(lo + ((hi - lo) * i) / 12)).join(', ')})`;
   return (
@@ -458,7 +458,7 @@ function PlanLegend({ value }: { value: HeatValue }) {
         ))}
       </div>
       <div className="plan-legend-t num">
-        {[15, 18, 27, 32, 45].map((t) => (
+        {[15, 18, 27, 32, 40].map((t) => (
           <span key={t} style={{ left: pos(t) }}>
             {t}
           </span>
