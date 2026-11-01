@@ -7,7 +7,7 @@ import { computeMetrics, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
 import { exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
-import { Meter, Pill, Section, Status, Switch } from '../ui/kit';
+import { InfoTip, Meter, Pill, Section, Status, Switch } from '../ui/kit';
 import { TEMP_TONE } from '../ui/ThermInfo';
 import { fmtT, scenEnd, SRC_META, STARTING_COLOR, FAULT_COLOR, type Src } from './core';
 import { tl, values, type Values } from './outage';
@@ -177,7 +177,10 @@ function ScenarioList() {
   return (
     <div className="rp-card">
       <div className="rp-body rp-pad-top">
-        <p className="role">사고가 났을 때 전기와 냉각이 어떻게 버티는지 시간을 따라 재생합니다. 3D와 흐름도가 각 장비가 어떤 전원으로 살아 있는지 함께 보여줍니다.</p>
+        <h4 className="rp-list-h">
+          사고 시나리오
+          <InfoTip text="사고가 났을 때 전기와 냉각이 어떻게 버티는지 시간을 따라 재생합니다. 3D와 흐름도가 각 장비가 어떤 전원으로 살아 있는지 함께 보여줍니다." />
+        </h4>
         <div className="rp-scen-list">
           {items.map(([Icon, t, d, start]) => (
             <div key={t} className={`rp-scen-item${start ? '' : ' off'}`}>
@@ -221,6 +224,7 @@ function ScenarioRun() {
   let clockSub: string;
   let board: ReactNode;
   let cond: ReactNode;
+  let condNote: ReactNode = null; // 조건 설명 (조건 바꾸기 제목 옆 info)
   let condSummary: string;
   if (sc.id === 'outage' || sc.id === 'lineOut') {
     const p = sc.params;
@@ -234,6 +238,7 @@ function ScenarioRun() {
     const genSwitch = <Switch checked={p.genFail} onChange={() => set.setScenParams({ genFail: !p.genFail })} label="발전기-2 기동 실패 (N+1: 1대로도 감당하는지)" />;
     if (single) {
       condSummary = `ALTS ${p.alts}초${p.genFail ? ' · 발전기-2 실패' : ''}`;
+      condNote = <>발전기는 정격까지 약 10초, ATS는 그 뒤에 넘어갑니다(정전 후 13초). ALTS가 그보다 빠르면 ATS는 상용 쪽에 그대로 있고, 느리면 완전 정전처럼 발전기로 갔다가 돌아옵니다.</>;
       cond = (
         <div className="rp-cond">
           <div className="rp-cond-row">
@@ -247,7 +252,6 @@ function ScenarioRun() {
             </div>
           </div>
           {genSwitch}
-          <p className="hint">발전기는 정격까지 약 10초, ATS는 그 뒤에 넘어갑니다(정전 후 13초). ALTS가 그보다 빠르면 ATS는 상용 쪽에 그대로 있고, 느리면 완전 정전처럼 발전기로 갔다가 돌아옵니다.</p>
         </div>
       );
     } else {
@@ -261,6 +265,7 @@ function ScenarioRun() {
     clockSub = since < 0 ? '고장 직전' : v.mode === 'restored' ? '2N 회복' : `고장 후 ${Math.floor(since)}초`;
     board = <UpsBoard v={v} side={p.side} />;
     condSummary = `UPS-${p.side} 고장 · 바이패스 ${p.bypass ? '사용' : '안 씀'}`;
+    condNote = <>UPS-B가 고장 나면 STS는 원래 A로 받고 있어 절체가 일어나지 않습니다. 바이패스를 쓰면 예비 없는 시간이 줄지만 그쪽 계통은 UPS 보호를 잃습니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row">
@@ -274,7 +279,6 @@ function ScenarioRun() {
           </div>
         </div>
         <Switch checked={p.bypass} onChange={() => set.setScenParams({ bypass: !p.bypass })} label="정비 바이패스로 고장 쪽 계통 임시 복구" />
-        <p className="hint">UPS-B가 고장 나면 STS는 원래 A로 받고 있어 절체가 일어나지 않습니다. 바이패스를 쓰면 예비 없는 시간이 줄지만 그쪽 계통은 UPS 보호를 잃습니다.</p>
       </div>
     );
   } else if (sc.id === 'cracFail') {
@@ -284,6 +288,7 @@ function ScenarioRun() {
     clockSub = since < 0 ? '고장 직전' : `고장 후 ${Math.floor(since)}초`;
     board = <CracBoard v={v} p={p} t={sc.t} />;
     condSummary = `서버실 ${p.room} · ${p.unit}번 고장${p.second ? ' · 한 대 더' : ''}`;
+    condNote = <>대기기는 {standbyOf(p)}번입니다. 서버실 B는 봉쇄가 없어 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row">
@@ -307,9 +312,6 @@ function ScenarioRun() {
           </div>
         </div>
         <Switch checked={p.second} onChange={() => set.setScenParams({ second: !p.second })} label="대기기 투입 뒤 이웃 유닛 한 대 더 고장 (예비 없음)" />
-        <p className="hint">
-          대기기는 {standbyOf(p)}번입니다. 서버실 B는 봉쇄가 없어 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.
-        </p>
       </div>
     );
   } else if (sc.id === 'leak') {
@@ -320,6 +322,7 @@ function ScenarioRun() {
     clockSub = since < 0 ? '누수 직전' : sc.t < L.close ? `누수 ${Math.floor(since)}초째` : `차단 후 ${Math.floor(sc.t - L.close)}초`;
     board = <LeakBoard v={v} p={p} t={sc.t} />;
     condSummary = `${p.unit}번 분기 · ${RESPONSE_NAME[p.response]}`;
+    condNote = <>차단까지 걸린 시간 = 바닥에 고인 물입니다. 감지선은 물이 닿은 위치(±1m)를 알려 바로 그 분기를 닫을 수 있고, 점형 감지기는 물이 감지기까지 번져야 울리고 구역만 알려 줍니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row col">
@@ -342,9 +345,6 @@ function ScenarioRun() {
             ))}
           </div>
         </div>
-        <p className="hint">
-          차단까지 걸린 시간 = 바닥에 고인 물입니다. 감지선은 물이 닿은 위치(±1m)를 알려 바로 그 분기를 닫을 수 있고, 점형 감지기는 물이 감지기까지 번져야 울리고 구역만 알려 줍니다.
-        </p>
       </div>
     );
   } else if (sc.id === 'batFire') {
@@ -354,11 +354,11 @@ function ScenarioRun() {
     clockSub = sc.t < B.pre ? '전조 직전' : sc.t < B.runaway ? `전조 ${Math.floor(sc.t - B.pre)}초째` : sc.t < B.out ? `발화 후 ${Math.floor(sc.t - B.runaway)}초` : '진화 완료';
     board = <BatFireBoard v={v} p={p} />;
     condSummary = `오프가스 ${p.offgas ? '있음' : '없음'} · ${p.separated ? '방화구획 분리' : '한 공간'}`;
+    condNote = <>분리를 끄면 판교 화재처럼 배터리 · UPS · 전력선이 한 공간에 있다고 보고, 소방대가 전기실 전체를 끊어 2N인데도 랙이 모두 꺼집니다.</>;
     cond = (
       <div className="rp-cond">
         <Switch checked={p.offgas} onChange={() => set.setScenParams({ offgas: !p.offgas })} label="오프가스 감지기 (연기 전 조기 경보 · 배터리 자동 분리)" />
         <Switch checked={p.separated} onChange={() => set.setScenParams({ separated: !p.separated })} label="배터리실 · UPS실 · 전력선 방화구획 분리 (이 건물의 설계)" />
-        <p className="hint">분리를 끄면 판교 화재처럼 배터리 · UPS · 전력선이 한 공간에 있다고 보고, 소방대가 전기실 전체를 끊어 2N인데도 랙이 모두 꺼집니다.</p>
       </div>
     );
   } else {
@@ -368,6 +368,7 @@ function ScenarioRun() {
     clockSub = sc.t < S.pre ? '과열 직전' : sc.t < S.clear ? `연기 발생 후 ${Math.floor(sc.t - S.pre)}초` : '정리 완료';
     board = <SrFireBoard v={v} p={p} />;
     condSummary = `서버실 ${p.room} · ${p.early ? '조기 대응' : '대응 늦음'}`;
+    condNote = <>조기 대응을 끄면 불로 번져 가스 소화약제를 방출합니다. 가스 약제는 장비를 적시지 않아 불이 난 랙 말고는 계속 동작합니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row">
@@ -388,7 +389,6 @@ function ScenarioRun() {
           </div>
         </div>
         <Switch checked={p.early} onChange={() => set.setScenParams({ early: !p.early })} label="VESDA 경보 단계에서 랙 전원 차단 (조기 대응)" />
-        <p className="hint">조기 대응을 끄면 불로 번져 가스 소화약제를 방출합니다. 가스 약제는 장비를 적시지 않아 불이 난 랙 말고는 계속 동작합니다.</p>
       </div>
     );
   }
@@ -398,6 +398,7 @@ function ScenarioRun() {
       <div className="rp-body rp-pad-top">
         <div className="rp-scen-top">
           <Pill tone="crit">{def.name}</Pill>
+          <InfoTip text={def.note} label="모델 설명" />
           <button className="small" onClick={stopScenario}>
             끝내기
           </button>
@@ -493,10 +494,9 @@ function ScenarioRun() {
           </ol>
         </Section>
 
-        <Section id={`scen-cond-${sc.id}`} title="조건 바꾸기" count={condSummary} defaultOpen={sc.id !== 'outage'}>
+        <Section id={`scen-cond-${sc.id}`} title="조건 바꾸기" info={condNote} count={condSummary} defaultOpen={sc.id !== 'outage'}>
           {cond}
         </Section>
-        <p className="note">{def.note}</p>
       </div>
     </div>
   );

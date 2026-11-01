@@ -36,6 +36,7 @@ export function GroupCard({ id }: { id: string }) {
           glyph={<Glyph icon={Layers} color="var(--info)" />}
           crumb={[GROUP_CATS.find((c) => c.key === g.cat)!.name, '계통 묶음']}
           title={g.name}
+          info="장비를 누르면 그 장비 카드로 이동합니다. 묶음 강조는 오른쪽 위 ✕(묶음 해제)를 누를 때까지 유지됩니다."
           pills={<Pill tone="info">3D · 흐름도에서 강조 중</Pill>}
           actions={<IconButton icon={X} label="묶음 해제" onClick={() => activateGroup(null)} />}
         />
@@ -82,7 +83,6 @@ export function GroupCard({ id }: { id: string }) {
           <Props items={Object.entries(kinds).map(([k, n]) => ({ k, v: `${n}개` }))} />
         </Section>
       )}
-      <p className="note">장비를 누르면 그 장비 카드로 이동합니다. 묶음 강조는 오른쪽 위 ✕(묶음 해제)를 누를 때까지 유지됩니다.</p>
     </Card>
   );
 }

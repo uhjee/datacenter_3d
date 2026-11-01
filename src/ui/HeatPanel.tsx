@@ -8,6 +8,7 @@ import { RACKS } from '../data/racks';
 import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, TEMP_BANDS, tempColor, tempGradient } from '../data/thermal';
 import { exitHeat, focusItem } from '../scene/focus';
 import { useView, type HeatHeight } from '../store/useView';
+import { InfoTip } from './kit';
 import { useHeatField, useRoomTherm } from './useStatus';
 
 const LO = 15;
@@ -55,7 +56,24 @@ export function HeatPanel() {
   return (
     <div className="heat-panel">
       <header>
-        <b>히트맵</b>
+        <b>
+          히트맵
+          <InfoTip
+            text={
+              <>
+                <p>고른 높이 단면의 공기 온도 분포입니다. 판정은 랙 흡기 기준이며, 열복도의 35°C 넘는 값은 정상 배기입니다.</p>
+                <ul>
+                  {[...TEMP_BANDS].reverse().map((b) => (
+                    <li key={b.name}>
+                      {b.lo === -Infinity ? `${b.hi}°C 미만` : b.hi === Infinity ? `${b.lo}°C 초과` : `${b.lo}~${b.hi}°C`} · {b.name}
+                    </li>
+                  ))}
+                </ul>
+                <p>바닥 통로를 가리키면 그 지점 온도가 나옵니다. 막대 아래 회색 선은 이 단면의 최저 ~ 최고 범위입니다.</p>
+              </>
+            }
+          />
+        </b>
         <span className="heat-where">
           서버실 {room} · {L.floor}
         </span>
@@ -115,7 +133,11 @@ export function HeatPanel() {
         {open && (
           <>
 
-            <div className="heat-stats num" title={`최저 · 평균 · 최고는 열복도 배기를 포함한 공기 온도, 핫스팟은 이 높이 흡기가 ${RECOMMENDED[1]}°C를 넘는 랙`}>
+            <h5 className="heat-h5">
+              이 단면
+              <InfoTip text={`최저 · 평균 · 최고는 열복도 배기를 포함한 공기 온도이고, 핫스팟은 이 높이 흡기가 ${RECOMMENDED[1]}°C를 넘는 랙입니다.`} />
+            </h5>
+            <div className="heat-stats num">
               <div>
                 <small>최저</small>
                 <b style={{ color: tempColor(st.min) }}>{st.min.toFixed(1)}°</b>
@@ -151,16 +173,12 @@ export function HeatPanel() {
           </>
         )}
 
-        <div className="heat-probe num">
-          {probe ? (
-            <>
-              커서 위치 <b style={{ color: tempColor(probe.t) }}>{probe.t.toFixed(1)}°C</b>
-              <span style={{ color: STATUS_META[statusOf(probe.t)].color }}> · {STATUS_META[statusOf(probe.t)].name}</span>
-            </>
-          ) : (
-            <span className="hint">바닥 통로를 가리키면 그 지점 온도가 나옵니다.</span>
-          )}
-        </div>
+        {probe && (
+          <div className="heat-probe num">
+            커서 위치 <b style={{ color: tempColor(probe.t) }}>{probe.t.toFixed(1)}°C</b>
+            <span style={{ color: STATUS_META[statusOf(probe.t)].color }}> · {STATUS_META[statusOf(probe.t)].name}</span>
+          </div>
+        )}
       </div>
     </div>
   );

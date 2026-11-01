@@ -5,6 +5,7 @@ import { ChevronDown } from 'lucide-react';
 import { RECOMMENDED, STATUS_META, tempColor, tempGradient, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
 import { exitAir, switchRoom } from '../scene/focus';
 import { useView } from '../store/useView';
+import { InfoTip } from './kit';
 import { useRoomTherm } from './useStatus';
 
 const CONTAINMENT: { key: Containment; name: string; desc: string }[] = [
@@ -47,7 +48,23 @@ export function AirPanel() {
   return (
     <div className="air-panel">
       <header>
-        <b>기류</b>
+        <b>
+          기류
+          <InfoTip
+            text={
+              <>
+                <p>입자는 찬 공기(파랑)가 랙을 지나며 데워져(빨강) 항온항습기로 돌아가는 길입니다.</p>
+                <p className="stages">
+                  {STAGES.map((s, i) => (
+                    <span key={s}>
+                      {'①②③④⑤⑥⑦⑧⑨⑩'[i]} {s}{' '}
+                    </span>
+                  ))}
+                </p>
+              </>
+            }
+          />
+        </b>
         <div className="seg small">
           {(['A', 'B'] as RoomLabel[]).map((r) => (
             <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)}>
@@ -72,7 +89,20 @@ export function AirPanel() {
 
       {card && (
         <div className="air-body">
-          <h5>컨테인먼트</h5>
+          <h5>
+            컨테인먼트
+            <InfoTip
+              text={
+                <ul>
+                  {CONTAINMENT.map((c) => (
+                    <li key={c.key}>
+                      <b>{c.name}</b> — {c.desc}
+                    </li>
+                  ))}
+                </ul>
+              }
+            />
+          </h5>
           <div className="seg small">
             {CONTAINMENT.map((c) => (
               <button key={c.key} className={cfg.containment === c.key ? 'on' : ''} onClick={() => set({ containment: c.key })}>
@@ -80,7 +110,6 @@ export function AirPanel() {
               </button>
             ))}
           </div>
-          <p className="hint">{CONTAINMENT.find((c) => c.key === cfg.containment)!.desc}</p>
 
           <button className={`air-more${open ? ' open' : ''}`} aria-expanded={open} onClick={toggle}>
             <span className="air-more-t">세부 설정 · 수치</span>
@@ -121,6 +150,10 @@ export function AirPanel() {
               </h5>
               <input className="range" type="range" min={16} max={26} step={0.5} value={cfg.supply} onChange={(e) => set({ supply: +e.target.value })} />
 
+              <h5>
+                수치
+                <InfoTip text="급기와 환기의 온도 차가 클수록 같은 바람으로 더 많은 열을 옮기므로 항온항습기 효율이 좋아집니다. 바이패스가 크면 찬 공기가 그냥 돌아와 이 차이가 줄어듭니다. 재순환은 랙 배기가 다시 흡기로 돌아오는 비율입니다." />
+              </h5>
               <div className="air-metrics">
                 <Metric name="평균 흡기" value={`${th.avgInlet}°C`} color={tempColor(th.avgInlet)} />
                 <Metric name="최고 흡기" value={`${th.maxInlet}°C`} color={tempColor(th.maxInlet)} />
@@ -141,17 +174,6 @@ export function AirPanel() {
                   <span>35°C</span>
                 </div>
               </div>
-              <p className="hint stages">
-                {STAGES.map((s, i) => (
-                  <span key={s}>
-                    {'①②③④⑤⑥⑦⑧⑨⑩'[i]} {s}
-                  </span>
-                ))}
-              </p>
-              <p className="hint">
-                급기와 환기의 온도 차가 클수록 같은 바람으로 더 많은 열을 옮기므로 항온항습기 효율이 좋아집니다. 바이패스가 크면 찬 공기가 그냥 돌아와 이 차이가
-                줄어듭니다.
-              </p>
             </>
           )}
         </div>

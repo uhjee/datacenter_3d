@@ -29,6 +29,7 @@ export function CustomerCard({ id }: { id: CustomerId }) {
           glyph={<Glyph icon={Handshake} color={c.color} />}
           crumb={[c.floor, ROOM_BY_ID[c.room]?.name ?? c.room, '증설 블록', '고객사']}
           title={c.name}
+          info="추이 · 계약 조건은 학습용 예시 값입니다. 유효 전력은 지표 탭의 IT 부하율을 따라 바뀝니다."
           pills={
             <>
               <Pill tone={s.tone}>계약 전력 {TONE_TEXT[s.tone]}</Pill>
@@ -69,19 +70,28 @@ export function CustomerCard({ id }: { id: CustomerId }) {
         <ContractBar c={c} s={s} />
       </Section>
 
-      <Section id="co-trend" title="30일 전력 추이" count={s.overDays > 0 ? `${TREND_DAYS}일 중 ${s.overDays}일 초과` : '초과한 날 없음'}>
+      <Section
+        id="co-trend"
+        title="30일 전력 추이"
+        info="일별 최대 전력입니다. 선에 마우스를 올리면 그날 값이 나오고, 빨간 점은 계약을 넘은 날입니다. 초과 청구는 보통 이 월 최대 수요로 판정합니다."
+        count={s.overDays > 0 ? `${TREND_DAYS}일 중 ${s.overDays}일 초과` : '초과한 날 없음'}>
         <TrendChart c={c} s={s} />
       </Section>
 
       <Section
         id="co-racks"
         title="랙별 전력 · 회로 여유"
+        info={`회로 ${CIRCUIT[c.contract.circuit].name} · 연속 한도 ${CIRCUIT[c.contract.circuit].cont}kW(정격의 80%). '한쪽 회로 단독'은 A · B 중 한쪽이 끊겨 남은 회로가 랙 전체를 받을 때 한도 대비 비율이며, 100%를 넘으면 한쪽 회로 고장 때 차단기가 떨어질 수 있습니다. 행을 누르면 그 랙으로 이동합니다.`}
         count={`${s.racks.length}대${s.circuitOver ? ` · 회로 부족 ${s.circuitOver}` : ''}`}
       >
         <RackTable c={c} s={s} />
       </Section>
 
-      <Section id="co-sla" title="환경 SLA (랙 흡기 온도)" count={s.inletOver ? `권장 상한 넘음 ${s.inletOver}대` : '권장 범위 안'}>
+      <Section
+        id="co-sla"
+        title="환경 SLA (랙 흡기 온도)"
+        info={`밝은 띠는 ASHRAE 권장 범위(18~27°C)입니다. 랙 ${RACK.U}U의 하 · 중 · 상 흡기 중 가장 높은 값을 씁니다.`}
+        count={s.inletOver ? `권장 상한 넘음 ${s.inletOver}대` : '권장 범위 안'}>
         <TempBand s={s} />
       </Section>
 
@@ -126,7 +136,6 @@ export function CustomerCard({ id }: { id: CustomerId }) {
         </p>
         <p>흡기 온도는 사업자가 고객에게 보장하는 환경 SLA입니다. 보통 ASHRAE 권장 범위(18~27°C)를 기준으로 합니다.</p>
       </LearnBox>
-      <p className="note">추이 · 계약 조건은 학습용 예시 값입니다. 유효 전력은 공조 패널의 IT 부하율을 따라 바뀝니다.</p>
     </Card>
   );
 }
@@ -240,9 +249,7 @@ function TrendChart({ c, s }: { c: Customer; s: ColoStats }) {
             <b>{hover === n - 1 ? '오늘 (지금)' : `${n - 1 - hover}일 전 최대`}</b> {kw1(hv)}kW · 계약의 {pct(hv / k)}
             {hv > k && <Status tone="crit">초과</Status>}
           </>
-        ) : (
-          <span className="hint">선에 마우스를 올리면 그날 최대 전력이 나옵니다. 빨간 점은 계약을 넘은 날입니다.</span>
-        )}
+        ) : null}
       </div>
     </div>
   );
@@ -282,10 +289,6 @@ function RackTable({ c, s }: { c: Customer; s: ColoStats }) {
           </button>
         );
       })}
-      <p className="hint">
-        회로 {CIRCUIT[c.contract.circuit].name} · 연속 한도 {cont}kW(정격의 80%). 100%를 넘으면 한쪽 회로 고장 때 차단기가 떨어질 수 있습니다. 행을 누르면 그
-        랙으로 이동합니다.
-      </p>
     </div>
   );
 }
@@ -315,7 +318,6 @@ function TempBand({ s }: { s: ColoStats }) {
         </span>
         <Status tone={ok ? 'ok' : 'warn'}>{ok ? 'SLA 준수' : 'SLA 위반 우려'}</Status>
       </div>
-      <p className="hint">밝은 띠는 ASHRAE 권장 범위(18~27°C)입니다. 랙 {RACK.U}U의 하 · 중 · 상 흡기 중 가장 높은 값을 씁니다.</p>
     </div>
   );
 }

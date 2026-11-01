@@ -1,12 +1,12 @@
 // 패널 공통 부품 (docs/ui-proposal.html 시안의 부품). 클래스 이름은 기존 규칙과 겹치지 않게 k- 로 시작한다
 
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BookOpen,
   Check,
   ChevronDown,
   CircleAlert,
-  CircleHelp,
   Flame,
   Info,
   Minus,
@@ -57,7 +57,7 @@ export function IconButton({ icon: Icon, label, onClick, active }: { icon: Lucid
 }
 
 // 머리 영역: 아이콘 · 위치 경로 · 이름 · 상태 알약 · 아이콘 버튼
-export function PanelHead(p: { glyph?: ReactNode; crumb?: string[]; title: ReactNode; pills?: ReactNode; actions?: ReactNode }) {
+export function PanelHead(p: { glyph?: ReactNode; crumb?: string[]; title: ReactNode; info?: ReactNode; pills?: ReactNode; actions?: ReactNode }) {
   return (
     <div className={`k-head${p.glyph ? '' : ' no-glyph'}`}>
       {p.glyph}
@@ -72,7 +72,10 @@ export function PanelHead(p: { glyph?: ReactNode; crumb?: string[]; title: React
             ))}
           </div>
         )}
-        <h2 className="k-title">{p.title}</h2>
+        <h2 className="k-title">
+          {p.title}
+          {p.info && <InfoTip text={p.info} />}
+        </h2>
         {p.pills && <div className="k-pills">{p.pills}</div>}
       </div>
       {p.actions && <div className="k-actions">{p.actions}</div>}
@@ -130,10 +133,19 @@ export function KpiRow({ children, cols = 3 }: { children: ReactNode; cols?: 2 |
   return <div className={`k-kpis c${cols}`}>{children}</div>;
 }
 
+// Enter · Space로 접기 (role=button 요소용)
+export const keyToggle = (fn: () => void) => (e: KeyboardEvent) => {
+  if (e.target !== e.currentTarget) return;
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    fn();
+  }
+};
+
 // 접는 섹션. 열림 상태는 제목별로 기억해서 다른 장비를 골라도 유지한다
 const openMemo = new Map<string, boolean>();
 
-export function Section(p: { id?: string; title: ReactNode; count?: ReactNode; aside?: ReactNode; defaultOpen?: boolean; children: ReactNode }) {
+export function Section(p: { id?: string; title: ReactNode; info?: ReactNode; count?: ReactNode; aside?: ReactNode; defaultOpen?: boolean; children: ReactNode }) {
   const key = p.id ?? String(p.title);
   const [open, setOpen] = useState(() => openMemo.get(key) ?? p.defaultOpen ?? true);
   const toggle = () => {
@@ -143,12 +155,14 @@ export function Section(p: { id?: string; title: ReactNode; count?: ReactNode; a
   return (
     <div className={`k-sect${open ? '' : ' closed'}`}>
       <div className="k-sect-h">
-        <button className="k-sect-toggle" aria-expanded={open} onClick={toggle}>
+        {/* 제목 줄 전체가 접기 단추. 안에 info 단추가 들어가므로 button 대신 role=button */}
+        <div className="k-sect-toggle" role="button" tabIndex={0} aria-expanded={open} onClick={toggle} onKeyDown={keyToggle(toggle)}>
           <span className="k-sect-title">{p.title}</span>
+          {p.info && <InfoTip text={p.info} />}
           {p.count != null && <span className="k-sect-count num">{p.count}</span>}
           <span className="grow" />
           <ChevronDown className="k-chev" size={14} />
-        </button>
+        </div>
         {p.aside && <span className="k-sect-aside">{p.aside}</span>}
       </div>
       {open && <div className="k-sect-body">{p.children}</div>}
@@ -192,33 +206,54 @@ export function LearnBox({ title, children, long }: { title: string; children: R
   );
 }
 
-// 제목 옆 ? 아이콘: 마우스를 올리거나 초점을 주면 설명. 패널 스크롤에 잘리지 않게 화면 기준(fixed)으로 띄운다
-export function Help({ text }: { text: ReactNode }) {
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+// 제목 옆 ⓘ 단추: 마우스를 올리거나 초점을 주면(누르면 고정) 설명. 화면에 늘 깔아 두지 않을 사용법 · 기준 · 범례 설명을 여기에 둔다.
+// 패널 스크롤에 잘리지 않게 화면 기준(fixed)으로 띄우고, 아래 공간이 모자라면 위로 띄운다
+export function InfoTip({ text, label = '설명' }: { text: ReactNode; label?: string }) {
+  const [pos, setPos] = useState<{ x: number; y: number; up: boolean } | null>(null);
+  const [pinned, setPinned] = useState(false);
   const show = (el: HTMLElement) => {
     const r = el.getBoundingClientRect();
-    const w = 260;
-    setPos({ x: Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)), y: r.bottom + 6 });
+    const w = 280;
+    const up = r.bottom > window.innerHeight * 0.62;
+    setPos({ x: Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)), y: up ? r.top - 6 : r.bottom + 6, up });
+  };
+  const hide = () => {
+    if (!pinned) setPos(null);
   };
   return (
     <span
-      className="k-help"
+      className={`k-help${pos ? ' on' : ''}`}
+      role="button"
       tabIndex={0}
-      aria-label="설명"
+      aria-label={label}
       onMouseEnter={(e) => show(e.currentTarget)}
-      onMouseLeave={() => setPos(null)}
+      onMouseLeave={hide}
       onFocus={(e) => show(e.currentTarget)}
-      onBlur={() => setPos(null)}
+      onBlur={() => {
+        setPinned(false);
+        setPos(null);
+      }}
+      // 섹션 제목 줄 안에 있어도 접히지 않게
+      onClick={(e) => {
+        e.stopPropagation();
+        setPinned(!pinned);
+        show(e.currentTarget);
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
     >
-      <CircleHelp size={13} />
-      {pos && (
-        <span className="k-tip" role="tooltip" style={{ left: pos.x, top: pos.y }}>
-          {text}
-        </span>
-      )}
+      <Info size={13} />
+      {/* 카드가 만드는 쌓임 순서에 갇히지 않게 body에 띄운다 */}
+      {pos &&
+        createPortal(
+          <span className={`k-tip${pos.up ? ' up' : ''}`} role="tooltip" style={{ left: pos.x, top: pos.y }}>
+            {text}
+          </span>,
+          document.body,
+        )}
     </span>
   );
 }
+export const Help = InfoTip;
 
 // 켜기 · 끄기 스위치 (체크박스 대신). 왼쪽에 색 점이나 선 견본을 붙일 수 있다
 export function Switch(p: { checked: boolean; onChange: () => void; label: ReactNode; swatch?: ReactNode; disabled?: boolean }) {

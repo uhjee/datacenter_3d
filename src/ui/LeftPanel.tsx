@@ -8,7 +8,7 @@ import { DOMAIN_META, TYPE_BY_ID, type Domain } from "../data/equipTypes";
 import { activateGroup, focusItem } from "../scene/focus";
 import { RACK_COLOR_META, RAMP_CSS } from "../scene/rackColor";
 import { LAYER_META, useView, type RackColorMode } from "../store/useView";
-import { Switch } from "./kit";
+import { InfoTip, keyToggle, Switch } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 
@@ -55,6 +55,7 @@ export function LeftPanel() {
       <LeftSection
         id="layers"
         title="레이어"
+        info="3D에 보일 장비 분야와 보조 표시를 켜고 끕니다. 끈 분야의 장비는 화면과 클릭 대상에서 빠집니다."
         summary={`${LAYER_META.filter((l) => layers[l.key]).length}/${LAYER_META.length} 켬`}
       >
         <div className="lp-switches">
@@ -83,6 +84,7 @@ export function LeftPanel() {
       <LeftSection
         id="links"
         title="연결선"
+        info="층을 넘는 선은 샤프트(EPS-A/B, PS, 냉매 배관 샤프트)를 지납니다. 배관은 공급 · 환수 두 줄, 점선은 대기 경로입니다."
         summary={
           layers.links
             ? `${LINK_GROUPS.filter((g) => linkFilter[g.key]).length}/${LINK_GROUPS.length} 켬`
@@ -103,15 +105,20 @@ export function LeftPanel() {
             />
           ))}
         </div>
-        <p className="hint">
-          층을 넘는 선은 샤프트(EPS-A/B, PS, 냉매 배관 샤프트)를 지납니다.
-          배관은 공급·환수 두 줄, 점선은 대기 경로입니다.
-        </p>
       </LeftSection>
 
       <LeftSection
         id="rack-color"
         title="랙 색칠"
+        info={
+          <ul>
+            {(["u", "power", "temp"] as const).map((k) => (
+              <li key={k}>
+                <b>{RACK_COLOR_META[k].short}</b> — {RACK_COLOR_META[k].desc}
+              </li>
+            ))}
+          </ul>
+        }
         summary={
           rackColor === "none" ? "없음" : RACK_COLOR_META[rackColor].name
         }
@@ -136,7 +143,6 @@ export function LeftPanel() {
               {RACK_COLOR_META[rackColor].name} {RACK_COLOR_META[rackColor].low}
             </span>
             <span>{RACK_COLOR_META[rackColor].high}</span>
-            <p className="hint">{RACK_COLOR_META[rackColor].desc}</p>
           </div>
         )}
       </LeftSection>
@@ -144,6 +150,7 @@ export function LeftPanel() {
       <LeftSection
         id="groups"
         title="계통 묶음"
+        info="묶음을 고르면 그 장비와 연결만 남기고 나머지는 흐리게 표시합니다. 흐름도도 그 부분만 보여줍니다. 버튼에 마우스를 올리면 묶음 설명이 나옵니다."
         summary={
           groupId
             ? GROUPS.find((g) => g.id === groupId)?.short
@@ -167,15 +174,14 @@ export function LeftPanel() {
             </div>
           </div>
         ))}
-        <p className="hint">
-          묶음을 고르면 그 장비와 연결만 남기고 나머지는 흐리게 표시합니다.
-          흐름도도 그 부분만 보여줍니다.
-        </p>
       </LeftSection>
 
       <section className="grow">
         <div className="lp-tree-head">
-          <h3 className="lp-h">장비 목록</h3>
+          <h3 className="lp-h">
+            장비 목록
+            <InfoTip text="[설비]는 전력 · 공조 · 방재 · 보안 장비를 층 > 실 > 장비로, [랙]은 층 > 고객사 > 랙(고객사가 없는 랙은 열별)으로 묶습니다. 항목을 누르면 3D에서 그 장비로 이동합니다." />
+          </h3>
           {/* 설비 = 전력 · 공조 · 방재 · 보안 장비, 랙 = 층 > 고객사 · 열 > 랙 */}
           <div className="seg small" role="tablist">
             {(
@@ -299,11 +305,13 @@ function readOpen(): Record<string, boolean> {
 function LeftSection({
   id,
   title,
+  info,
   summary,
   children,
 }: {
   id: string;
   title: string;
+  info?: ReactNode;
   summary?: ReactNode;
   children: ReactNode;
 }) {
@@ -321,11 +329,22 @@ function LeftSection({
   };
   return (
     <section className={`lp-sect${open ? "" : " closed"}`}>
-      <button className="lp-sect-h" aria-expanded={open} onClick={toggle}>
-        <span className="lp-h">{title}</span>
+      {/* 제목 줄 전체가 접기 단추. 안에 info 단추가 들어가므로 button 대신 role=button */}
+      <div
+        className="lp-sect-h"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onClick={toggle}
+        onKeyDown={keyToggle(toggle)}
+      >
+        <span className="lp-h">
+          {title}
+          {info && <InfoTip text={info} />}
+        </span>
         {summary != null && <span className="lp-sum">{summary}</span>}
         <ChevronDown className="k-chev" size={14} />
-      </button>
+      </div>
       {open && <div className="lp-sect-body">{children}</div>}
     </section>
   );

@@ -143,7 +143,13 @@ export function ConnSection({ id, defaultOpen = true }: { id: string; defaultOpe
   const outColor = outs[0] ? connColor(outs[0]) : 'var(--line-2)';
 
   return (
-    <Section id="conn" title="연결" count={`받는 곳 ${ins.length} · 보내는 곳 ${outs.length}`} defaultOpen={defaultOpen}>
+    <Section
+      id="conn"
+      title="연결"
+      info="받는 곳 · 보내는 곳을 누르면 그 장비로 이동합니다. 상류 · 하류 추적을 켜면 3D와 흐름도에서 그 경로만 강조합니다. 점선 테두리는 평상시 쓰지 않는 대기 경로(발전기, 예비선, 연계, 프리쿨링)입니다."
+      count={`받는 곳 ${ins.length} · 보내는 곳 ${outs.length}`}
+      defaultOpen={defaultOpen}
+    >
       <div className="rp-flow">
         {ins.length > 0 ? <FlowSide conns={ins} side="in" /> : <p className="rp-flow-end">이 장비가 시작점입니다</p>}
         <span className="rp-flow-link" style={{ '--c': inColor } as CSSProperties} />
@@ -195,7 +201,6 @@ function TraceSummary() {
     <div className="trace-sum">
       {t.dir !== 'down' && <TraceList title="상류" ids={t.up} color={TRACE_COLOR.up} />}
       {t.dir !== 'up' && <TraceList title="하류" ids={t.down} color={TRACE_COLOR.down} />}
-      <p className="hint">점선 테두리는 평상시 쓰지 않는 대기 경로(발전기, 예비선, 연계, 프리쿨링)입니다.</p>
     </div>
   );
 }

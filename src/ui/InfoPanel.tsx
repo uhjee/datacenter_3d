@@ -239,7 +239,16 @@ function FireFlow({ current }: { current: string }) {
   ];
   const isDetector = current.startsWith('fd-');
   return (
-    <Section id="fire-flow" title="방재 연동 순서" count={steps.length}>
+    <Section
+      id="fire-flow"
+      title="방재 연동 순서"
+      count={steps.length}
+      info={
+        current.startsWith('leak')
+          ? '누수 감지기는 소화와 별개로 통합관제실에 경보만 보냅니다. 아래는 화재 때 감지 → 판단 → 방출 순서입니다.'
+          : '화재 때 감지 → 판단 → 방출 순서입니다. 이름을 누르면 그 장비로 이동합니다.'
+      }
+    >
       <ol className="fire-flow">
         {steps.map((s) => {
           const on = s.id === current || (isDetector && s.id === 'fd-sr-a');
@@ -253,7 +262,6 @@ function FireFlow({ current }: { current: string }) {
           );
         })}
       </ol>
-      {current.startsWith('leak') && <p className="hint">누수 감지기는 소화와 별개로 통합관제실에 경보만 보냅니다.</p>}
     </Section>
   );
 }
@@ -337,7 +345,12 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
         )}
       </KpiRow>
       <p className="role">{TYPE_BY_ID.rack.role}</p>
-      <Section id="rack-elev" title="탑재 장비" count={`${rack.devices.length}대 · ${RACK.U}U 입면`}>
+      <Section
+        id="rack-elev"
+        title="탑재 장비"
+        count={`${rack.devices.length}대 · ${RACK.U}U 입면`}
+        info="칸에 마우스를 올리면 장비와 U 위치가 나옵니다. 위가 42U, 아래가 1U입니다. IT 장비 상세는 추후 단계에서 다룹니다."
+      >
         <RackElevation rack={rack} />
       </Section>
       <Section id="rack-feed" title="급전 (랙 후면 rPDU)">
@@ -367,7 +380,6 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
       <RackTempSection rackId={rack.id} />
       <ConnSection id={`rack:${rack.id}`} defaultOpen={false} />
       <GroupsSection id={`rack:${rack.id}`} />
-      <p className="note">IT 장비 상세는 추후 단계에서 다룹니다.</p>
     </Card>
   );
 }
@@ -420,9 +432,7 @@ function RackElevation({ rack }: { rack: Rack }) {
           <span className="grow">빈 칸</span>
           <b className="num">{RACK.U - rack.uUsed}U</b>
         </div>
-        {hoverU == null ? (
-          <p className="hint">칸에 마우스를 올리면 장비와 U 위치가 나옵니다. 위가 42U, 아래가 1U입니다.</p>
-        ) : (
+        {hoverU != null && (
           <p className="rp-elev-read">
             {hit ? (
               <>
@@ -511,9 +521,8 @@ function Overview() {
   const byDomain = (d: Domain) => EQUIP_TYPES.filter((t) => t.domain === d);
   return (
     <Card
-      head={<PanelHead glyph={<Glyph icon={Building2} color="var(--ink-2)" />} crumb={['지하 1층 ~ 옥상 · 6개 층']} title="건물 개요" pills={<Pill ghost color="var(--ink-2)">랙 {RACKS.length}대</Pill>} />}
+      head={<PanelHead glyph={<Glyph icon={Building2} color="var(--ink-2)" />} crumb={['지하 1층 ~ 옥상 · 6개 층']} title="건물 개요" info="층을 누르면 그 층으로 이동하고, 3D에서 장비를 클릭하면 이 자리에 정보가 나옵니다." pills={<Pill ghost color="var(--ink-2)">랙 {RACKS.length}대</Pill>} />}
     >
-      <p className="role">층을 누르면 그 층으로 이동하고, 3D에서 장비를 클릭하면 이 자리에 정보가 나옵니다.</p>
       <Section id="ov-floors" title="층" count={FLOORS.length}>
         <div className="rp-floors">
           {[...FLOORS].reverse().map((f) => (

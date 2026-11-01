@@ -13,6 +13,7 @@ import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, tempColor, tempRGB, typ
 import { rampColor } from '../scene/rackColor';
 import { focusItem } from '../scene/focus';
 import { useView, type HeatValue } from '../store/useView';
+import { InfoTip } from '../ui/kit';
 import { useHeatField, useNodeStatus, useRoomTherm } from '../ui/useStatus';
 
 interface ViewT {
@@ -465,9 +466,15 @@ function PlanLegend({ value }: { value: HeatValue }) {
         ))}
       </div>
       <div className="plan-legend-n">
-        <span>권장 18~27°C</span>
-        <span>허용 상한 32°C</span>
-        <span>열복도 35°C 넘음은 정상 배기</span>
+        <span>공기 온도 °C</span>
+        <InfoTip
+          text={
+            <>
+              <p>권장 18~27°C · 허용 상한 32°C (ASHRAE A1). 판정은 랙 흡기 기준이고, 열복도의 35°C 넘는 값은 정상 배기입니다.</p>
+              <p>랙 칸은 고른 값(흡기 · 배기 · ΔT)으로 칠하고, 랙 앞면(흡기) 쪽에 어두운 선을 그었습니다. 흰 점은 온습도 센서, 오른쪽 · 왼쪽 숫자 칸은 항온항습기입니다.</p>
+            </>
+          }
+        />
       </div>
       {value === 'dT' && (
         <div className="plan-legend-dt">

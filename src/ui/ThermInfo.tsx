@@ -4,7 +4,8 @@ import { RACK_BY_ID } from '../data/racks';
 import { sensorRack, STATUS_META, statusOf, tempColor, tempGradient, type RoomLabel, type TempStatus } from '../data/thermal';
 import { enterAir } from '../scene/focus';
 import { useView } from '../store/useView';
-import { Kpi, KpiRow, Section, Status, type Tone } from './kit';
+import type { ReactNode } from 'react';
+import { InfoTip, Kpi, KpiRow, Section, Status, type Tone } from './kit';
 import { useRoomTherm } from './useStatus';
 
 export const TEMP_TONE: Record<TempStatus, Tone> = { cold: 'info', ok: 'ok', warn: 'warn', hot: 'crit' };
@@ -22,22 +23,33 @@ function Temp({ t }: { t: number }) {
   );
 }
 
-function CfgLine({ room }: { room: RoomLabel }) {
+// 온도 계산 조건 (info 설명용)
+function useCfgText(room: RoomLabel) {
   const cfg = useView((s) => s.airCfg[room]);
   const name = { none: '봉쇄 없음', CAC: '냉복도 봉쇄', HAC: '열복도 봉쇄' }[cfg.containment];
+  return `급기 ${cfg.supply}°C · ${name} · 블랭킹 패널 ${cfg.blanking ? '있음' : '없음'} 조건의 근사값입니다.`;
+}
+
+// 기류 화면으로 가는 짧은 링크 (설명은 제목 옆 info에)
+function AirLink({ room, info }: { room: RoomLabel; info?: ReactNode }) {
   return (
-    <p className="hint">
-      급기 {cfg.supply}°C · {name} · 블랭킹 패널 {cfg.blanking ? '있음' : '없음'} 조건의 근사값입니다.{' '}
+    <div className="rp-airlink">
+      {info && (
+        <span className="hint">
+          측정 기준 <InfoTip text={info} />
+        </span>
+      )}
       <button className="link" onClick={() => enterAir(room)}>
-        기류 보기
+        기류 보기 →
       </button>
-    </p>
+    </div>
   );
 }
 
 export function RackTempSection({ rackId }: { rackId: string }) {
   const r = RACK_BY_ID[rackId];
   const t = useRoomTherm(r.serverRoom).racks[rackId];
+  const cfgText = useCfgText(r.serverRoom);
   if (!t) return null;
   if (t.kw === 0) {
     return (
@@ -49,7 +61,20 @@ export function RackTempSection({ rackId }: { rackId: string }) {
   const maxIn = Math.max(...t.inlet);
   const maxEx = Math.max(...t.exhaust);
   return (
-    <Section id="rack-temp" title="온도" count={`흡기 ${maxIn}°C · 배기 ${maxEx}°C`} aside={<Status tone={TEMP_TONE[t.status]}>{STATUS_META[t.status].name}</Status>}>
+    <Section
+      id="rack-temp"
+      title="온도"
+      info={
+        <>
+          <p>
+            발열 약 {t.kw}kW · 랙을 지나며 {t.dT.toFixed(1)}°C 오릅니다. 막대의 눈금은 상 · 중 · 하단 흡기 온도입니다.
+          </p>
+          <p>{cfgText}</p>
+        </>
+      }
+      count={`흡기 ${maxIn}°C · 배기 ${maxEx}°C`}
+      aside={<Status tone={TEMP_TONE[t.status]}>{STATUS_META[t.status].name}</Status>}
+    >
       <div className="rp-temps">
         {(['상단', '중단', '하단'] as const).map((n, i) => {
           const k = 2 - i;
@@ -75,10 +100,7 @@ export function RackTempSection({ rackId }: { rackId: string }) {
         <span style={{ left: tPos(27) }}>권장 27°C</span>
         <span>{T_MAX}°C</span>
       </div>
-      <p className="hint">
-        발열 약 {t.kw}kW · 랙을 지나며 {t.dT.toFixed(1)}°C 오릅니다. 눈금은 상 · 중 · 하단 흡기 온도입니다.
-      </p>
-      <CfgLine room={r.serverRoom} />
+      <AirLink room={r.serverRoom} />
     </Section>
   );
 }
@@ -87,6 +109,7 @@ export function SensorTemps({ sensorId }: { sensorId: string }) {
   const r = sensorRack(sensorId);
   const room = useRoomTherm(r?.serverRoom ?? 'A');
   const t = r ? room.racks[r.id] : null;
+  const cfgText = useCfgText(r?.serverRoom ?? 'A');
   if (!r || !t) return null;
   return (
     <>
@@ -97,8 +120,15 @@ export function SensorTemps({ sensorId }: { sensorId: string }) {
           return <Kpi key={n} label={`${n} 흡기`} value={v} unit="°C" tone={st === 'ok' ? undefined : TEMP_TONE[st]} sub={STATUS_META[st].name} />;
         })}
       </KpiRow>
-      <p className="hint">{r.name} 전면(흡기)에서 잰 값입니다.</p>
-      <CfgLine room={r.serverRoom} />
+      <AirLink
+        room={r.serverRoom}
+        info={
+          <>
+            <p>{r.name} 전면(흡기)에서 잰 값입니다.</p>
+            <p>{cfgText}</p>
+          </>
+        }
+      />
     </>
   );
 }
@@ -106,6 +136,7 @@ export function SensorTemps({ sensorId }: { sensorId: string }) {
 export function UnitTemps({ room }: { room: RoomLabel }) {
   const cfg = useView((s) => s.airCfg[room]);
   const th = useRoomTherm(room);
+  const cfgText = useCfgText(room);
   const load = th.loadKw / th.capKw;
   return (
     <>
@@ -120,7 +151,7 @@ export function UnitTemps({ room }: { room: RoomLabel }) {
           sub={`N+1 용량 ${th.capKw}kW`}
         />
       </KpiRow>
-      <CfgLine room={room} />
+      <AirLink room={room} info={cfgText} />
     </>
   );
 }
