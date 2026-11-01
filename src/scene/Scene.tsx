@@ -43,9 +43,19 @@ export function Scene() {
         <Connections />
         <OrbitPing />
         {!ready && <FirstFrames onReady={() => setReady(true)} />}
+        {import.meta.env.DEV && <DevHandle />}
       </Canvas>
     </>
   );
+}
+
+// 개발 중 브라우저 콘솔에서 렌더러 통계(그리기 호출 · 삼각형 · 텍스처)를 볼 수 있게
+function DevHandle() {
+  const state = useThree();
+  useEffect(() => {
+    Object.assign(window, { __three: state });
+  }, [state]);
+  return null;
 }
 
 // 장면이 실제로 몇 프레임 그려진 뒤 준비 완료로 본다 (셰이더 컴파일이 첫 프레임에 몰림)

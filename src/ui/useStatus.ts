@@ -44,6 +44,8 @@ export function useMetrics() {
   return useMemo(() => computeMetrics(itLoad, outdoor, cfg, therm), [itLoad, outdoor, cfg, therm]);
 }
 
+const thermCache = new Map<RoomLabel, { base: RoomTherm; p: unknown; series: unknown; sec: number; th: RoomTherm }>();
+
 // 서버실 온도. 항온항습기 고장 시나리오 중이면 그 시각(초 단위)의 상승분을 더한 값
 export function useRoomTherm(label: RoomLabel): RoomTherm {
   const base = useView((s) => s.therm[label]);
@@ -54,7 +56,13 @@ export function useRoomTherm(label: RoomLabel): RoomTherm {
   return useMemo(() => {
     // 누수는 서버실 B 항온항습기 한 대가 밸브 차단으로 멈추는 것과 같다
     const p = crac ?? (leak ? { room: 'B' as const, unit: leak.unit, second: false, loadKw: leak.loadKw, unitKw: leak.unitKw, supply: leak.supply } : null);
-    return p && series && p.room === label ? adjustTherm(base, p, series, sec) : base;
+    if (!(p && series && p.room === label)) return base;
+    // 같은 조건이면 모든 화면이 같은 결과(같은 객체)를 쓴다 → 히트맵 분포 캐시가 맞아 한 번만 계산
+    const c = thermCache.get(label);
+    if (c && c.base === base && c.p === (crac ?? leak) && c.series === series && c.sec === sec) return c.th;
+    const th = adjustTherm(base, p, series, sec);
+    thermCache.set(label, { base, p: crac ?? leak, series, sec, th });
+    return th;
   }, [base, crac, leak, series, sec, label]);
 }
 

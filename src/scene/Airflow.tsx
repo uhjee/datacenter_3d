@@ -2,7 +2,7 @@
 // 모두 층 그룹 안(층 바닥 기준 좌표)에 그린다.
 
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, EdgesGeometry, Points, PointsMaterial, Vector3 } from 'three';
 import { AISLE_W, RACK, RAISED_H } from '../data/building';
 import { RACKS, type Rack } from '../data/racks';
@@ -279,7 +279,10 @@ const rnd = () => {
   return seed / 2147483647;
 };
 
+// 입자 점 모양: 한 번만 만들어 계속 같이 쓴다 (켜고 끌 때마다 새로 만들면 GPU 텍스처가 쌓인다)
+let dotTex: CanvasTexture | null = null;
 function dotTexture() {
+  if (dotTex) return dotTex;
   const c = document.createElement('canvas');
   c.width = c.height = 32;
   const g = c.getContext('2d')!;
@@ -289,7 +292,8 @@ function dotTexture() {
   grd.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = grd;
   g.fillRect(0, 0, 32, 32);
-  return new CanvasTexture(c);
+  dotTex = new CanvasTexture(c);
+  return dotTex;
 }
 
 function Particles({ label }: { label: RoomLabel }) {
@@ -308,6 +312,8 @@ function Particles({ label }: { label: RoomLabel }) {
     g.setAttribute('color', new BufferAttribute(new Float32Array(N * 3), 3));
     return g;
   }, []);
+  // 직접 만든 지오메트리는 R3F가 치우지 않으므로 기류를 끌 때 해제
+  useEffect(() => () => geo.dispose(), [geo]);
 
   // 설정이 바뀌면 모든 입자의 경로를 새로 만든다 (진행 위치는 흩어 놓음)
   const state = useMemo(() => {

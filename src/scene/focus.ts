@@ -214,9 +214,12 @@ export function switchRoom(room: RoomLabel, force = false) {
   else viewRoom(room);
 }
 
+// 켜는 순서: 표시를 먼저 켠 뒤 beginThermal (랙 색을 '온도'로 바꾸는 것이 온도 보기 중에 일어나야
+// 설정 저장이 그것을 사용자 선택으로 오해하지 않는다)
 export function enterAir(room: RoomLabel) {
-  if (!thermalOn()) beginThermal();
+  const was = thermalOn();
   useView.getState().setAirOn(true);
+  if (!was) beginThermal();
   viewRoom(room);
 }
 
@@ -224,8 +227,8 @@ export function enterAir(room: RoomLabel) {
 export function enterHeat(room: RoomLabel) {
   const s = useView.getState();
   const was = thermalOn();
-  if (!was) beginThermal();
   s.setHeatOn(true);
+  if (!was) beginThermal();
   if (!was || s.airRoom !== room) heatView(room);
 }
 

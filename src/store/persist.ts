@@ -40,13 +40,17 @@ export function loadSettings() {
 }
 
 let timer = 0;
+// 랙 색칠은 온도 보기 · 시나리오가 잠시 '온도'로 바꾸므로, 둘 다 꺼져 있을 때 사용자가 고른 값만 저장한다
+let userRackColor = useView.getState().rackColor;
 export function watchSettings() {
+  userRackColor = useView.getState().rackColor;
   return useView.subscribe((s, prev) => {
     if (SAVED.every((k) => s[k] === prev[k])) return;
+    if (!s.airOn && !s.heatOn && !s.scenario) userRackColor = s.rackColor;
     clearTimeout(timer);
     timer = window.setTimeout(() => {
       try {
-        const v = useView.getState();
+        const v = { ...useView.getState(), rackColor: userRackColor };
         localStorage.setItem(KEY, JSON.stringify(Object.fromEntries(SAVED.map((k) => [k, v[k]]))));
       } catch {
         // 저장이 막혀도 이번 화면에서는 그대로 쓴다
