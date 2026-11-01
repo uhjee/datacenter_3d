@@ -188,8 +188,14 @@ function endThermal(fly: boolean) {
   if (fly) requestAnimationFrame(() => focusFloor(floor));
 }
 
+// 온도 보기 시점: 위에서(top) · 통로 단면(aisle). 서버실을 바꾸거나 화면 맞춤을 해도 고른 시점을 유지한다
+export type ThermalCam = 'top' | 'aisle';
+let thermalCam: ThermalCam = 'top';
+export const thermalCamOf = () => thermalCam;
+
 // 서버실을 열 방향(동서) 끝에서 바라봐 냉복도 · 열복도 단면이 보이게
 export function viewRoom(room: RoomLabel) {
+  thermalCam = 'aisle';
   const s = useView.getState();
   s.setAirRoom(room);
   const L = AIR_LAYOUT[room];
@@ -200,11 +206,12 @@ export function viewRoom(room: RoomLabel) {
   s.flyTo([cx, y + 9, L.cz + 11], [L.rcx + (fromEast ? -3 : 3), y + 1.2, L.cz]);
 }
 
-// 기류 패널 · 층 이동의 서버실 전환: 켜 둔 보기(기류 · 히트맵)를 그대로 두고 서버실만 바꾼다
+// 온도 카드 · 층 이동의 서버실 전환: 켜 둔 표시(히트맵 · 기류 입자)와 시점을 그대로 두고 서버실만 바꾼다
 export function switchRoom(room: RoomLabel, force = false) {
   const s = useView.getState();
-  if (s.heatOn && !s.airOn) return force || s.airRoom !== room ? heatView(room) : undefined;
-  viewRoom(room);
+  if (!force && s.airRoom === room) return;
+  if (thermalCam === 'top') heatView(room);
+  else viewRoom(room);
 }
 
 export function enterAir(room: RoomLabel) {
@@ -213,7 +220,7 @@ export function enterAir(room: RoomLabel) {
   viewRoom(room);
 }
 
-// 히트맵은 위에서 내려다봐야 분포가 잘 보인다
+// 온도 보기 켜기 (상단 [온도]): 히트맵을 켜고 위에서 내려다본다
 export function enterHeat(room: RoomLabel) {
   const s = useView.getState();
   const was = thermalOn();
@@ -222,7 +229,9 @@ export function enterHeat(room: RoomLabel) {
   if (!was || s.airRoom !== room) heatView(room);
 }
 
-function heatView(room: RoomLabel) {
+// 위에서 내려다보는 시점 (히트맵 분포가 잘 보인다)
+export function heatView(room: RoomLabel) {
+  thermalCam = 'top';
   const s = useView.getState();
   s.setAirRoom(room);
   const L = AIR_LAYOUT[room];
@@ -232,7 +241,8 @@ function heatView(room: RoomLabel) {
   const r = Math.hypot(rm.x[1] - rm.x[0], rm.z[1] - rm.z[0]) / 2;
   const c: V3 = [(rm.x[0] + rm.x[1]) / 2, y, (rm.z[0] + rm.z[1]) / 2];
   // 하단 패널이 열린 뒤의 3D 영역 크기로 거리를 잰다
-  requestAnimationFrame(() => s.flyTo(along(c, [-0.12, 1, 0.62], fitDistance(r) * 0.92), c));
+  // (패널이 열리고 한 번 더 그려진 뒤라야 크기가 맞으므로 두 프레임 뒤)
+  requestAnimationFrame(() => requestAnimationFrame(() => s.flyTo(along(c, [-0.12, 1, 0.62], fitDistance(r) * 0.92), c)));
 }
 
 // 층 이동 버튼: 온도 보기(기류 · 히트맵) 중이면 서버실 층은 그 서버실 시점으로, 다른 층은 온도 보기를 끄고 이동한다.
@@ -259,21 +269,7 @@ export function goOverview() {
   focusOverview();
 }
 
-// fly = false: 다음 동작이 곧바로 카메라를 옮길 때 (가이드 투어)
-export function exitAir(fly = true) {
-  const s = useView.getState();
-  if (!s.airOn) return;
-  s.setAirOn(false);
-  if (!s.heatOn) endThermal(fly);
-}
-
-export function exitHeat(fly = true) {
-  const s = useView.getState();
-  if (!s.heatOn) return;
-  s.setHeatOn(false);
-  if (!s.airOn) endThermal(fly);
-}
-
+// fly = false: 다음 동작이 곧바로 카메라를 옮길 때 (가이드 투어 · 시나리오)
 export function exitThermal(fly = true) {
   const s = useView.getState();
   if (!thermalOn(s)) return;

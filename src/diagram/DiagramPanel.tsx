@@ -11,7 +11,7 @@ import { DIAGRAMS, diagramOf, type DiagramId } from './model';
 import { FloorPlan } from './FloorPlan';
 
 const TABS: { id: DiagramId; name: string }[] = [
-  { id: 'power', name: '전력 흐름도 (단선도)' },
+  { id: 'power', name: '전력 단선도' },
   { id: 'cooling', name: '공조 흐름도' },
 ];
 
@@ -58,7 +58,7 @@ export function DiagramPanel() {
   if (mode === 'off') return null;
   const set = useView.getState().setDiagramMode;
   // 2D 상면도 탭은 기류 · 히트맵을 켰을 때만
-  const tabs = thermal ? [{ id: 'plan' as const, name: '2D 상면도 (온도)' }, ...TABS] : TABS;
+  const tabs = thermal ? [{ id: 'plan' as const, name: '2D 상면도' }, ...TABS] : TABS;
   const cur = !thermal && tab === 'plan' ? 'power' : tab;
   return (
     <section className={`diagram-panel ${mode}`}>
@@ -89,7 +89,7 @@ export function DiagramPanel() {
         />
         <IconButton icon={Scan} label="화면에 맞춤" onClick={() => setFitKey((k) => k + 1)} />
         <IconButton icon={mode === 'full' ? Minimize2 : Maximize2} label={mode === 'full' ? '3D 같이 보기' : '크게 보기'} onClick={() => set(mode === 'full' ? 'half' : 'full')} />
-        <IconButton icon={X} label="흐름도 닫기" onClick={() => set('off')} />
+        <IconButton icon={X} label="도면 닫기" onClick={() => set('off')} />
       </header>
       {/* 선 색 범례: 헤더와 같은 줄에 두면 폭이 모자라 잘리므로 따로 한 줄 (넘치면 다음 줄로) */}
       {cur !== 'plan' && (

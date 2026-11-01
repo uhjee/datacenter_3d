@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { DiagramPanel } from './diagram/DiagramPanel';
-import { Building2, Compass, PanelLeft, PanelRight, Siren, Thermometer, Wind, Workflow } from 'lucide-react';
-import { enterAir, enterHeat, exitAir, exitHeat } from './scene/focus';
+import { Building2, Compass, PanelLeft, PanelRight, Siren, Thermometer, Workflow } from 'lucide-react';
+import { enterHeat, exitThermal } from './scene/focus';
 import { AIR_LAYOUT, type RoomLabel } from './data/thermal';
 import { htmlPortal } from './scene/htmlPortal';
 import { LabelOverlay } from './scene/HoverLabel';
 import { Scene } from './scene/Scene';
 import { InfoPanel } from './ui/InfoPanel';
-import { AirPanel } from './ui/AirPanel';
-import { HeatPanel } from './ui/HeatPanel';
+import { ThermalPanel } from './ui/ThermalPanel';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -31,8 +30,7 @@ export function App() {
   const [left, setLeft] = useState(true);
   const [right, setRight] = useState(true);
   const diagram = useView((s) => s.diagramMode);
-  const airOn = useView((s) => s.airOn);
-  const heatOn = useView((s) => s.heatOn);
+  const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
   // 투어 안내는 오른쪽 패널에 붙으므로 투어를 시작하면 패널을 연다
@@ -49,19 +47,22 @@ export function App() {
         <h1>데이터센터 3D 시뮬레이터</h1>
         <span className="stage">v0.9</span>
         <div className="spacer" />
-        <div className="tb-group" role="group" aria-label="보조 화면">
-          <button className={airOn ? 'on' : ''} onClick={() => (airOn ? exitAir() : enterAir(useView.getState().airRoom))} title="서버실 기류 (냉복도 → 랙 → 열복도 공기 흐름)">
-            <Wind size={15} /> 기류
-          </button>
-          <button className={heatOn ? 'on' : ''} onClick={() => (heatOn ? exitHeat() : enterHeat(heatRoom()))} title="서버실 온도 분포 (3D 바닥 + 하단 2D 상면도)">
-            <Thermometer size={15} /> 히트맵
+        <div className="tb-group" role="group" aria-label="보기">
+          <button
+            className={thermal ? 'on' : ''}
+            aria-pressed={thermal}
+            onClick={() => (thermal ? exitThermal() : enterHeat(heatRoom()))}
+            title="서버실 온도 보기: 히트맵 · 기류 입자 (하단에 2D 상면도)"
+          >
+            <Thermometer size={15} /> 온도
           </button>
           <button
             className={diagram !== 'off' ? 'on' : ''}
+            aria-pressed={diagram !== 'off'}
             onClick={() => useView.getState().setDiagramMode(diagram === 'off' ? 'half' : 'off')}
-            title="전력 흐름도 · 공조 흐름도"
+            title="하단 도면: 전력 단선도 · 공조 흐름도 (온도 보기 중에는 2D 상면도)"
           >
-            <Workflow size={15} /> 흐름도
+            <Workflow size={15} /> 도면
           </button>
         </div>
         <button
@@ -90,8 +91,7 @@ export function App() {
           <Scene />
           <LabelOverlay />
           <TraceBanner />
-          <AirPanel />
-          <HeatPanel />
+          <ThermalPanel />
           <FloorBar />
           <CameraButtons />
         </div>

@@ -598,38 +598,53 @@ button.on {
   margin: 0 4px 0 6px;
   vertical-align: -1px;
 }
-.trace-banner {
+/* 활성 상태 줄: 켜져 있는 보기 · 강조 칩 (3D 아래 가운데, 넘치면 위로 쌓임) */
+.act-bar {
   position: absolute;
   bottom: 12px; /* 위쪽은 층 이동 막대 · 카메라 버튼 자리 */
   left: 50%;
   transform: translateX(-50%);
+  max-width: calc(100% - 140px);
+  display: flex;
+  flex-wrap: wrap-reverse;
+  justify-content: center;
+  gap: 6px;
+  z-index: 8;
+  pointer-events: none;
+}
+.act-chip {
   display: flex;
   align-items: center;
-  gap: 10px;
-  background: rgba(20, 26, 34, 0.9);
+  gap: 8px;
+  background: rgba(20, 26, 34, 0.92);
   border: 1px solid var(--line-2);
   border-left: 3px solid var(--c, var(--info));
   border-radius: var(--r-lg);
-  padding: 4px 4px 4px 10px;
+  padding: 3px 3px 3px 9px;
   font-size: var(--fs-sm);
   white-space: nowrap;
-  z-index: 8;
   backdrop-filter: blur(8px);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
 }
-.trace-banner .tb-ico {
+.act-chip .tb-ico {
   color: var(--c, var(--info));
   flex: none;
 }
-.trace-banner .k-icon-btn {
+.act-chip .k-icon-btn {
   border-color: transparent;
   background: none;
 }
-.trace-banner .k-icon-btn:hover {
+.act-chip .k-icon-btn:hover {
   background: var(--s3);
 }
-.trace-banner b {
+.act-chip b {
   color: var(--ink);
+}
+.act-chip .act-sub {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* 흐름도 패널 */
@@ -3770,4 +3785,44 @@ button.co-tr:hover {
   width: 16px;
   height: 4px;
   border-radius: 2px;
+}
+
+/* 온도 카드: 표시 태그 · 시점 버튼 줄 */
+.th-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.th-row .grow {
+  flex: 1;
+}
+.th-cam {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.thermal-panel .heat-h {
+  display: flex;
+  margin-bottom: 2px;
+}
+.thermal-panel .heat-h button {
+  flex: 1;
+}
+.thermal-panel .air-sum {
+  margin: 6px -10px -2px;
+  width: calc(100% + 20px);
+}
+.thermal-panel h5 .k-help {
+  vertical-align: -2px;
+}
+.plan-where {
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
 }

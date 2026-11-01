@@ -268,7 +268,7 @@ export const useView = create<ViewState>((set, get) => ({
   rightTab: 'info',
   setRightTab: (t) => set({ rightTab: t }),
 
-  diagramMode: 'half',
+  diagramMode: 'off', // 첫 화면은 3D를 넓게. 도면은 상단 [도면]으로 연다
   diagramTab: 'power',
   setDiagramMode: (m) => set({ diagramMode: m }),
   setDiagramTab: (t) => set({ diagramTab: t }),

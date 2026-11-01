@@ -154,20 +154,10 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
   return (
     <div className="plan-wrap">
       <div className="plan-tools">
-        <div className="seg small" role="group" aria-label="서버실">
-          {(['A', 'B'] as RoomLabel[]).map((r) => (
-            <button key={r} className={label === r ? 'on' : ''} onClick={() => useView.getState().setAirRoom(r)}>
-              서버실 {r} · {AIR_LAYOUT[r].floor}
-            </button>
-          ))}
-        </div>
-        <div className="seg small" role="group" aria-label="단면 높이">
-          {HEIGHT_NAME.map((n, i) => (
-            <button key={n} className={h === i ? 'on' : ''} onClick={() => useView.getState().setHeatHeight(i as 0 | 1 | 2)} title={`이중마루 위 ${HEIGHT_M[i]}m 단면`}>
-              {n} {HEIGHT_M[i]}m
-            </button>
-          ))}
-        </div>
+        {/* 서버실 · 단면 높이는 3D의 온도 카드에서 고른다 */}
+        <span className="plan-where">
+          서버실 {label} · {L.floor} · {HEIGHT_NAME[h]} {HEIGHT_M[h]}m 단면
+        </span>
         <div className="seg small" role="group" aria-label="랙 값">
           {(Object.keys(VALUE_NAME) as HeatValue[]).map((v) => (
             <button key={v} className={value === v ? 'on' : ''} onClick={() => useView.getState().setHeatValue(v)}>

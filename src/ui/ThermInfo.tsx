@@ -11,7 +11,7 @@ import { useRoomTherm } from './useStatus';
 export const TEMP_TONE: Record<TempStatus, Tone> = { cold: 'info', ok: 'ok', warn: 'warn', hot: 'crit' };
 
 // 온도 막대 눈금 범위 (°C)
-const T_MIN = 16;
+const T_MIN = 15;
 const T_MAX = 40;
 const tPos = (t: number) => `${((Math.min(T_MAX, Math.max(T_MIN, t)) - T_MIN) / (T_MAX - T_MIN)) * 100}%`;
 

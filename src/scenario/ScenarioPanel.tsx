@@ -5,7 +5,7 @@ import { Droplets, Fan, Flame, Pause, Play, PlugZap, RotateCcw, Server, Zap, typ
 import { RACKS } from '../data/racks';
 import { computeMetrics, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
-import { exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
+import { enterHeat, exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
 import { InfoTip, Meter, Pill, Section, Status, Switch, TipTable } from '../ui/kit';
 import { TEMP_TONE } from '../ui/ThermInfo';
@@ -96,7 +96,7 @@ export function startUpsFail() {
   afterStart();
 }
 
-// 항온항습기 고장: 그 서버실로 카메라를 옮기고 랙을 흡기 온도로 칠한다 (끝내면 원래 색칠로)
+// 항온항습기 고장: 그 서버실 온도 보기(히트맵)를 켜고 랙을 흡기 온도로 칠한다 (끝내면 원래 색칠로)
 let rackColorBefore: RackColorMode | null = null;
 export function startCracFail(room: RoomLabel = 'B') {
   const { s } = beforeStart();
@@ -104,10 +104,9 @@ export function startCracFail(room: RoomLabel = 'B') {
   s.startScenario({ id: 'cracFail', params: { room, unit: 2, second: false, loadKw: th.loadKw, unitKw: th.unitKw, supply: s.airCfg[room].supply } });
   rackColorBefore = s.rackColor;
   s.setRackColor('temp');
-  if (s.diagramMode === 'off') s.setDiagramMode('half');
-  s.setDiagramTab('cooling');
   s.setRightTab('scenario');
-  focusFloor(room === 'A' ? '3F' : '4F');
+  // 온도가 오르는 모습을 히트맵 · 2D 상면도로 바로 보여 준다 (공조 흐름도는 하단 탭에서)
+  enterHeat(room);
 }
 
 // 누수: 서버실 B 이중마루를 투시해 마루 아래 물이 보이게 한다 (끝내면 원래대로)
@@ -120,10 +119,8 @@ export function startLeak() {
   s.setAirCfg('B', { xray: true });
   rackColorBefore = s.rackColor;
   s.setRackColor('temp');
-  if (s.diagramMode === 'off') s.setDiagramMode('half');
-  s.setDiagramTab('cooling');
   s.setRightTab('scenario');
-  focusFloor('4F');
+  enterHeat('B');
 }
 
 // 배터리실 화재: 2층으로. 서버실 화재: 그 서버실 층으로

@@ -18,7 +18,7 @@ export const RAMP_CSS = `linear-gradient(90deg, ${rampColor(0)}, ${rampColor(0.5
 export const RACK_COLOR_META: Record<Exclude<RackColorMode, 'none'>, { name: string; short: string; low: string; high: string; desc: string }> = {
   u: { name: 'U 사용률', short: '공간(U)', low: '0%', high: '100%', desc: '42U 중 장비가 차지한 칸의 비율 (공간 용량)' },
   power: { name: '전력 사용률', short: '전력', low: '0%', high: '100%', desc: '랙에 할당한 설계 전력 대비 실제 소비 전력 (전력 용량)' },
-  temp: { name: '흡기 온도', short: '온도', low: '15°C', high: '35°C', desc: '랙 앞면 흡기 중 가장 높은 온도 (권장 18~27°C)' },
+  temp: { name: '흡기 온도', short: '온도', low: '15°C', high: '40°C', desc: '랙 앞면 흡기 중 가장 높은 온도 (권장 18~27°C)' },
 };
 
 // 랙 하나의 색. 색칠 대상이 아니면 null

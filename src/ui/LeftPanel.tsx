@@ -12,7 +12,7 @@ import { InfoTip, keyToggle, TipTable, ToggleTag } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 
-const TEMP_CSS = tempGradient(15, 35);
+const TEMP_CSS = tempGradient(15, 40); // 온도 카드 · 히트맵과 같은 척도
 
 const FILTERS: { key: Domain | "all"; name: string }[] = [
   { key: "all", name: "전체" },
