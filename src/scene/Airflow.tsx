@@ -329,7 +329,8 @@ function Particles({ label }: { label: RoomLabel }) {
     return { paths, s, seg };
   }, [L, cfg, th, racks]);
 
-  useFrame(({ camera }, dt) => {
+  useFrame(({ camera, invalidate }, dt) => {
+    invalidate(); // 입자는 켜져 있는 동안 계속 움직인다
     // 입자 크기는 기류 시점(약 15m) 기준. 줌을 빼거나 층 전체를 볼 때도 점이 보이도록 거리에 비례해 키운다
     if (mat.current) mat.current.size = Math.max(0.32, camera.position.distanceTo(center.set(L.rcx, floorAnimY[L.floor] + 1.5, L.cz)) * 0.016);
     const pos = geo.attributes.position as BufferAttribute;

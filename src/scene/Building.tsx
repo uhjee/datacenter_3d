@@ -54,11 +54,17 @@ function FloorGroup({ floor }: { floor: Floor }) {
   const visible = isFloorVisible(floor.id, focus);
   const targetY = floorWorldY(floor.id, viewMode);
 
-  useFrame((_, dt) => {
+  useFrame(({ invalidate }, dt) => {
     const g = ref.current;
     if (!g) return;
-    const k = 1 - Math.exp(-dt * 6);
-    g.position.y += (targetY - g.position.y) * k;
+    const d = targetY - g.position.y;
+    if (Math.abs(d) < 0.001) {
+      g.position.y = targetY;
+    } else {
+      // 층이 제자리에 닿을 때까지 이어 그린다 (변화가 있을 때만 그리는 방식)
+      g.position.y += d * (1 - Math.exp(-Math.min(dt, 0.1) * 6));
+      invalidate();
+    }
     floorAnimY[floor.id] = g.position.y;
   });
 

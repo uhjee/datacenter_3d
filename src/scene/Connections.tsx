@@ -105,7 +105,7 @@ export function Connections() {
   }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap]);
 
   const lastY = useRef('');
-  useFrame((_, dt) => {
+  useFrame(({ invalidate }, dt) => {
     // 층이 움직이는 동안에만 선 좌표를 다시 계산
     const sig = FLOORS.map((f) => floorAnimY[f.id].toFixed(3)).join(',');
     if (sig !== lastY.current) {
@@ -115,7 +115,14 @@ export function Connections() {
         d.obj.computeLineDistances();
       }
     }
-    for (const d of drawn) if (d.flow) d.mat.dashOffset -= dt * 1.6;
+    let flowing = false;
+    for (const d of drawn)
+      if (d.flow) {
+        d.mat.dashOffset -= dt * 1.6;
+        flowing = true;
+      }
+    // 시나리오에서 전기가 흐르는 점선은 계속 움직인다
+    if (flowing) invalidate();
   });
 
   useEffect(

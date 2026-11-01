@@ -22,9 +22,10 @@ export function LeakMark() {
   const drop = useRef<Group>(null);
 
   // 물 크기 · 물결은 매 프레임 저장소에서 읽어 바로 반영 (리렌더 없이)
-  useFrame(({ clock }) => {
+  useFrame(({ clock, invalidate }) => {
     const sc = useView.getState().scenario;
     if (!sc || sc.id !== 'leak') return;
+    invalidate(); // 물결은 누수 시나리오 중 계속 움직인다
     const v = leakView(sc.t, sc.params);
     const r = Math.max(0.001, v.radius);
     puddle.current?.scale.set(r, r, 1);

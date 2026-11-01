@@ -44,8 +44,10 @@ function FireAt({ spot }: { spot: { x: [number, number]; z: [number, number]; he
   const seeds = useMemo(() => Array.from({ length: SMOKE_N }, (_, i) => ({ off: i / SMOKE_N, ang: i * 2.39996, spd: 0.12 + (i % 5) * 0.02 })), []);
   const top = spot.height - 0.3;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, invalidate }) => {
     const lv = levels();
+    // 불꽃 · 연기 · 약제는 화재 시나리오 중 계속 움직인다
+    if (lv.flame > 0.01 || lv.smoke > 0.01 || lv.gas > 0.01) invalidate();
     const time = clock.elapsedTime;
     // 연기: 열원에서 천장까지 올라가며 퍼지고 커진다
     const sm = smoke.current;

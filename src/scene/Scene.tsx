@@ -28,6 +28,8 @@ export function Scene() {
       <Canvas
         camera={{ position: overviewPose('explode').position, fov: CAMERA_FOV, near: 0.1, far: 600 }}
         dpr={[1, 2]}
+        // 변화가 있을 때만 그린다 (가만히 있으면 GPU · CPU를 쓰지 않음). 다시 그리는 때는 InvalidateOnChange · 각 애니메이션이 알린다
+        frameloop="demand"
         events={events}
         onPointerMissed={() => useView.getState().select(null)}
       >
@@ -36,6 +38,7 @@ export function Scene() {
         <hemisphereLight args={['#dfe7f0', '#1a1f24', 0.9]} />
         <directionalLight position={[30, 60, 40]} intensity={1.4} />
         <directionalLight position={[-40, 30, -30]} intensity={0.4} />
+        <InvalidateOnChange />
         <CameraRig />
         <LabelProjector />
         <Ground />
@@ -58,11 +61,20 @@ function DevHandle() {
   return null;
 }
 
+// 화면 상태(저장소)가 바뀌면 다시 그린다. 저장소 변화를 받아 장면이 바뀌는 것(React 반영 · 인스턴스 색 갱신)이
+// 다음 한두 프레임에 걸칠 수 있어 3프레임을 그린다
+function InvalidateOnChange() {
+  const invalidate = useThree((s) => s.invalidate);
+  useEffect(() => useView.subscribe(() => invalidate(3)), [invalidate]);
+  return null;
+}
+
 // 장면이 실제로 몇 프레임 그려진 뒤 준비 완료로 본다 (셰이더 컴파일이 첫 프레임에 몰림)
 function FirstFrames({ onReady }: { onReady: () => void }) {
   const n = useRef(0);
-  useFrame(() => {
+  useFrame(({ invalidate }) => {
     if (++n.current === 3) onReady();
+    else invalidate(); // 변화가 있을 때만 그리는 방식이라 3프레임까지 직접 이어 그린다
   });
   return null;
 }
@@ -76,12 +88,13 @@ function OrbitPing() {
   useEffect(() => {
     born.current = performance.now();
   }, [ping]);
-  useFrame(({ camera }) => {
+  useFrame(({ camera, invalidate }) => {
     const m = ref.current;
     if (!m || !ping) return;
     const t = (performance.now() - born.current) / 1000 / PING_SEC;
     m.visible = t < 1;
     if (t >= 1) return;
+    invalidate(); // 퍼지는 동안 계속 그린다
     // 거리에 비례한 크기 → 멀리서 봐도 같은 크기로 보인다
     const s = camera.position.distanceTo(m.position) * 0.02 * (0.6 + t);
     m.scale.setScalar(s);
