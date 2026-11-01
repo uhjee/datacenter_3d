@@ -1,7 +1,7 @@
 import { CameraControls } from '@react-three/drei';
-import { Canvas, events as defaultEvents, useFrame, type RootState } from '@react-three/fiber';
+import { Canvas, events as defaultEvents, useFrame, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Path, Shape, type Intersection, type Object3D } from 'three';
+import { Path, Plane, Raycaster, Shape, Vector2, Vector3, type Intersection, type Mesh, type MeshBasicMaterial, type Object3D } from 'three';
 import type { UseBoundStore, StoreApi } from 'zustand';
 import { FOOTPRINT } from '../data/building';
 import { useView } from '../store/useView';
@@ -41,6 +41,7 @@ export function Scene() {
         <Ground />
         <BuildingFloors />
         <Connections />
+        <OrbitPing />
         {!ready && <FirstFrames onReady={() => setReady(true)} />}
       </Canvas>
     </>
@@ -56,6 +57,36 @@ function FirstFrames({ onReady }: { onReady: () => void }) {
   return null;
 }
 
+// 새 회전 중심: 잠깐 퍼졌다 사라지는 고리 (화면을 향하게)
+const PING_SEC = 0.9;
+function OrbitPing() {
+  const ping = useView((s) => s.orbitPing);
+  const ref = useRef<Mesh>(null);
+  const born = useRef(0);
+  useEffect(() => {
+    born.current = performance.now();
+  }, [ping]);
+  useFrame(({ camera }) => {
+    const m = ref.current;
+    if (!m || !ping) return;
+    const t = (performance.now() - born.current) / 1000 / PING_SEC;
+    m.visible = t < 1;
+    if (t >= 1) return;
+    // 거리에 비례한 크기 → 멀리서 봐도 같은 크기로 보인다
+    const s = camera.position.distanceTo(m.position) * 0.02 * (0.6 + t);
+    m.scale.setScalar(s);
+    m.quaternion.copy(camera.quaternion);
+    (m.material as MeshBasicMaterial).opacity = 1 - t;
+  });
+  if (!ping) return null;
+  return (
+    <mesh ref={ref} position={ping.pos} raycast={() => null} renderOrder={10}>
+      <ringGeometry args={[0.7, 1, 32]} />
+      <meshBasicMaterial color="#ffd43b" transparent depthTest={false} depthWrite={false} />
+    </mesh>
+  );
+}
+
 function CameraRig() {
   const ref = useRef<CameraControls>(null);
   const goal = useView((s) => s.cameraGoal);
@@ -68,8 +99,33 @@ function CameraRig() {
 
   useEffect(() => {
     if (!goal || !ref.current) return;
+    // 더블클릭으로 옮긴 회전 중심(초점 어긋남)을 풀고 목표를 화면 가운데로
+    ref.current.setFocalOffset(0, 0, 0, true);
     ref.current.setLookAt(...goal.position, ...goal.target, true);
   }, [goal]);
+
+  // 더블클릭한 지점을 회전 중심으로 (카메라는 그 자리에 둔다)
+  const { gl, camera, scene } = useThree();
+  useEffect(() => {
+    const el = gl.domElement;
+    const ray = new Raycaster();
+    const ndc = new Vector2();
+    const onDbl = (e: MouseEvent) => {
+      const c = ref.current;
+      if (!c) return;
+      const r = el.getBoundingClientRect();
+      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ray.setFromCamera(ndc, camera);
+      const hit = ray.intersectObjects(scene.children, true).find((h) => (h.object as Mesh).isMesh && shown(h.object));
+      const p = hit?.point ?? ray.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), -c.getTarget(new Vector3()).y), new Vector3());
+      if (!p) return;
+      c.stop();
+      c.setOrbitPoint(p.x, p.y, p.z);
+      useView.getState().pingOrbit([p.x, p.y, p.z]);
+    };
+    el.addEventListener('dblclick', onDbl);
+    return () => el.removeEventListener('dblclick', onDbl);
+  }, [gl, camera, scene]);
 
   // 확대 · 축소 버튼: 지금 거리의 25%씩 당기거나 민다
   useEffect(() => {
@@ -78,7 +134,8 @@ function CameraRig() {
     c.dolly(c.distance * 0.25 * zoom.dir, true);
   }, [zoom]);
 
-  return <CameraControls ref={ref} makeDefault minDistance={3} maxDistance={220} maxPolarAngle={Math.PI * 0.62} smoothTime={0.45} />;
+  // dollyToCursor: 휠은 화면 가운데가 아니라 마우스가 가리키는 곳으로 다가간다
+  return <CameraControls ref={ref} makeDefault dollyToCursor minDistance={3} maxDistance={220} maxPolarAngle={Math.PI * 0.62} smoothTime={0.45} />;
 }
 
 // 지면 (건물 자리에 구멍 → 지하층이 보이도록)

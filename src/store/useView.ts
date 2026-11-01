@@ -57,6 +57,9 @@ interface ViewState {
   zoomCmd: { dir: 1 | -1; key: number } | null;
   zoomStep: (dir: 1 | -1) => void;
   flyTo: (position: [number, number, number], target: [number, number, number]) => void;
+  // 더블클릭으로 옮긴 회전 중심 (잠깐 표시)
+  orbitPing: { pos: [number, number, number]; key: number } | null;
+  pingOrbit: (pos: [number, number, number]) => void;
 
   // 연결선 표시 묶음
   linkFilter: Record<LinkGroup, boolean>;
@@ -161,6 +164,8 @@ export const useView = create<ViewState>((set, get) => ({
   zoomCmd: null,
   zoomStep: (dir) => set((s) => ({ zoomCmd: { dir, key: (s.zoomCmd?.key ?? 0) + 1 } })),
   flyTo: (position, target) => set((s) => ({ cameraGoal: { position, target, key: (s.cameraGoal?.key ?? 0) + 1 } })),
+  orbitPing: null,
+  pingOrbit: (pos) => set((s) => ({ orbitPing: { pos, key: (s.orbitPing?.key ?? 0) + 1 } })),
 
   linkFilter: { power: true, rack: true, mech: false, refrig: true, chw: true, cw: true },
   toggleLink: (k) => set((s) => ({ linkFilter: { ...s.linkFilter, [k]: !s.linkFilter[k] } })),

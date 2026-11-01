@@ -43,7 +43,7 @@ export function CameraButtons() {
       <IconButton icon={Minus} label="축소" onClick={() => useView.getState().zoomStep(-1)} />
       <span className="vc-sep h" />
       <span className="vc-help">
-        <Help text="드래그: 회전 · 우클릭 드래그: 이동 · 휠: 확대/축소 · 클릭: 장비 정보" />
+        <Help text="드래그: 회전 · 우클릭 드래그: 이동 · 휠: 마우스 쪽으로 확대/축소 · 더블클릭: 그 지점을 회전 중심으로 · 클릭: 장비 정보" />
       </span>
     </div>
   );
