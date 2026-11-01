@@ -3672,10 +3672,12 @@ button.co-tr:hover {
 }
 
 /* ── 켜기 · 끄기 태그 (왼쪽 패널 레이어 · 연결선) ── */
+/* 세 칸 격자: 칸 너비는 그 칸에서 가장 넓은 태그, 태그는 제 너비대로 왼쪽 정렬. 자리가 모자라면 칸이 줄고 글자는 말줄임 */
 .lp-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, max-content));
+  justify-items: start;
+  gap: 6px 5px;
 }
 .lp-tags.off {
   opacity: 0.5;
@@ -3684,7 +3686,9 @@ button.co-tr:hover {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px 4px 8px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 9px 4px 7px;
   border-radius: 999px;
   border: 1px dashed var(--line-2);
   background: transparent;
@@ -3737,4 +3741,9 @@ button.co-tr:hover {
 .k-tag:focus-visible {
   outline: 2px solid var(--info);
   outline-offset: 2px;
+}
+.k-tag span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
