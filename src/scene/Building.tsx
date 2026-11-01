@@ -34,6 +34,7 @@ import { LeakMark } from './LeakMark';
 import { FireMark } from './FireMark';
 import { Cages } from './Cages';
 import { Heatmap } from './Heatmap';
+import { MergeStatic } from './merge';
 import { RackRows } from './Racks';
 
 export function BuildingFloors() {
@@ -83,7 +84,9 @@ function FloorGroup({ floor }: { floor: Floor }) {
       ))}
       {!isRoof && (
         <group visible={layers.walls}>
-          <Walls floor={floor} rooms={rooms} />
+          <MergeStatic>
+            <Walls floor={floor} rooms={rooms} />
+          </MergeStatic>
         </group>
       )}
       {isRoof && <Parapet />}
@@ -117,14 +120,19 @@ function FloorGroup({ floor }: { floor: Floor }) {
         if (!layers[domain]) return null;
         return (
           <Selectable key={e.id} id={e.id} size={e.size} position={e.pos} rotationY={e.rotY}>
-            <EquipMesh e={e} />
+            {/* 장비 모양은 정적이라 같은 재질 부품을 합쳐 그리기 호출을 줄인다 */}
+            <MergeStatic>
+              <EquipMesh e={e} />
+            </MergeStatic>
           </Selectable>
         );
       })}
       {hubs.map((h) =>
         layers[h.domain] ? (
           <Selectable key={h.id} id={h.id} size={h.size} position={[h.pos[0], h.pos[1] - h.size[1] / 2, h.pos[2]]}>
-            <HubMesh hub={h} />
+            <MergeStatic>
+              <HubMesh hub={h} />
+            </MergeStatic>
           </Selectable>
         ) : null,
       )}

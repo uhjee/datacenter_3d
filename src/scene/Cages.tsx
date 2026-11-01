@@ -10,6 +10,7 @@ import { CAGE_H, CUSTOMERS, type Customer } from "../data/customers";
 import { RACKS } from "../data/racks";
 import { useView } from "../store/useView";
 import { htmlPortal } from "./htmlPortal";
+import { MergeStatic } from "./merge";
 
 const MESH_CELL = 0.3; // 철망 무늬 한 장 크기 (m)
 const POST = 0.05;
@@ -276,7 +277,16 @@ export function Cages({ floor }: { floor: FloorId }) {
         const lit = selectedId === `customer:${c.id}` || hoveredId === `customer:${c.id}`;
         return (
           <group key={c.id}>
-            <CustomerPick c={c}>{c.cage ? <CageMesh c={c} lit={lit} /> : <RackOutline c={c} lit={lit} />}</CustomerPick>
+            <CustomerPick c={c}>
+              {/* 케이지 기둥 · 테두리는 정적이라 합친다 (철망 면은 무늬가 저마다 달라 그대로, 강조 색 변화도 그대로 반영) */}
+              {c.cage ? (
+                <MergeStatic>
+                  <CageMesh c={c} lit={lit} />
+                </MergeStatic>
+              ) : (
+                <RackOutline c={c} lit={lit} />
+              )}
+            </CustomerPick>
             <CustomerTag c={c} hidden={tagHidden} lit={lit} />
           </group>
         );
