@@ -1775,9 +1775,51 @@ button.primary:hover {
   border-radius: 4px;
   background: repeating-linear-gradient(to bottom, #10151c 0 5px, #161c24 5px 6px);
 }
+.rp-elev {
+  cursor: crosshair;
+}
 .rp-elev i {
   border-radius: 1.5px;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+/* 마우스가 가리키는 장비 · 빈 칸 */
+.rp-elev i.on {
+  box-shadow: 0 0 0 1.5px var(--ink);
+  filter: brightness(1.35);
+  position: relative;
+  z-index: 1;
+}
+.rp-elev i.u-empty {
+  grid-column: 1;
+  border-radius: 1.5px;
+  box-shadow: inset 0 0 0 1px var(--ink-2);
+}
+.rp-elev-legend > div.on .grow {
+  color: var(--ink);
+  font-weight: 700;
+}
+.rp-elev-read {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 5px 8px;
+  border-radius: var(--r-sm);
+  background: var(--s3);
+  font-size: var(--fs-sm);
+}
+.rp-elev-read .sw {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.rp-elev-read .sw.empty {
+  background: #161c24;
+  border: 1px solid var(--line-2);
+}
+.rp-elev-read .num {
+  margin-left: auto;
+  color: var(--ink-2);
 }
 .rp-elev-legend {
   display: flex;

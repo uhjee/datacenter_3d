@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState, type MouseEvent } from 'react';
 import { ArrowUpDown, Building2, Crosshair, Network, X } from 'lucide-react';
 import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SHAFTS } from '../data/building';
 import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
@@ -367,41 +367,74 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
 }
 
 // 42U 입면: 위가 42U. 칸에 마우스를 올리면 장비 · U 위치
+// 랙 입면: 마우스가 가리키는 U를 계산해 그 칸(장비)을 강조하고 범례 아래에 바로 읽어 준다.
+// 브라우저 기본 툴팁(title)은 늦게 뜨고 빈 칸은 알려 주지 않아 직접 그린다
 function RackElevation({ rack }: { rack: Rack }) {
+  const [hoverU, setHoverU] = useState<number | null>(null);
   if (rack.devices.length === 0) return <p className="detail muted">비어 있는 예약 랙입니다 (공간 용량 여유).</p>;
   const counts = rack.devices.reduce<Partial<Record<DeviceKind, { n: number; u: number }>>>((m, d) => {
     const c = m[d.kind] ?? { n: 0, u: 0 };
     m[d.kind] = { n: c.n + 1, u: c.u + d.h };
     return m;
   }, {});
+  const onMove = (e: MouseEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const pad = parseFloat(getComputedStyle(el).paddingTop) || 0;
+    const y = e.clientY - el.getBoundingClientRect().top - el.clientTop - pad;
+    const row = Math.floor((y / (el.clientHeight - pad * 2)) * RACK.U);
+    setHoverU(Math.min(RACK.U, Math.max(1, RACK.U - row)));
+  };
+  const hit = hoverU == null ? null : rack.devices.find((d) => hoverU >= d.u && hoverU < d.u + d.h);
+  const uText = (u: number, h: number) => (h > 1 ? `U${u}~${u + h - 1}` : `U${u}`);
   return (
     <div className="rp-rack">
-      <div className="rp-elev" style={{ gridTemplateRows: `repeat(${RACK.U}, 1fr)` }}>
+      <div className="rp-elev" style={{ gridTemplateRows: `repeat(${RACK.U}, 1fr)` }} onMouseMove={onMove} onMouseLeave={() => setHoverU(null)}>
         {rack.devices.map((d, i) => (
           <i
             key={i}
+            className={hit === d ? 'on' : undefined}
             style={{ gridRow: `${RACK.U + 2 - d.u - d.h} / span ${d.h}`, background: DEVICE_UI[d.kind].color }}
-            title={`${DEVICE_UI[d.kind].name} · U${d.u}${d.h > 1 ? `~${d.u + d.h - 1}` : ''}`}
           />
         ))}
+        {hoverU != null && !hit && <i className="u-empty" style={{ gridRow: `${RACK.U + 1 - hoverU} / span 1` }} />}
       </div>
       <div className="rp-elev-legend">
         {(Object.keys(DEVICE_UI) as DeviceKind[])
           .filter((k) => counts[k])
           .map((k) => (
-            <div key={k}>
+            <div key={k} className={hit?.kind === k ? 'on' : undefined}>
               <span className="sw" style={{ background: DEVICE_UI[k].color }} />
               <span className="grow">{DEVICE_UI[k].name}</span>
               <b className="num">{counts[k]!.n}</b>
               <small className="num">{counts[k]!.u}U</small>
             </div>
           ))}
-        <div>
+        <div className={hoverU != null && !hit ? 'on' : undefined}>
           <span className="sw empty" />
           <span className="grow">빈 칸</span>
           <b className="num">{RACK.U - rack.uUsed}U</b>
         </div>
-        <p className="hint">칸에 마우스를 올리면 장비와 U 위치가 나옵니다. 위가 42U, 아래가 1U입니다.</p>
+        {hoverU == null ? (
+          <p className="hint">칸에 마우스를 올리면 장비와 U 위치가 나옵니다. 위가 42U, 아래가 1U입니다.</p>
+        ) : (
+          <p className="rp-elev-read">
+            {hit ? (
+              <>
+                <span className="sw" style={{ background: DEVICE_UI[hit.kind].color }} />
+                <b>{DEVICE_UI[hit.kind].name}</b>
+                <span className="num">
+                  {uText(hit.u, hit.h)} · {hit.h}U
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="sw empty" />
+                <b>빈 칸</b>
+                <span className="num">U{hoverU}</span>
+              </>
+            )}
+          </p>
+        )}
       </div>
     </div>
   );
