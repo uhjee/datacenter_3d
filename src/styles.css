@@ -2636,6 +2636,31 @@ button.primary:hover {
   box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.3), 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
+/* 고객사 케이지 이름표 */
+.cage-tag {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  color: var(--ink);
+  background: rgba(13, 17, 23, 0.82);
+  border: 1px solid;
+  border-radius: 999px;
+  padding: 2px 10px 2px 7px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+}
+.cage-tag i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.cage-tag small {
+  font-weight: 500;
+  color: var(--ink-3);
+}
+
 /* 기류 패널: 컨테인먼트 아래 세부 설정 접기 */
 .air-more {
   display: flex;

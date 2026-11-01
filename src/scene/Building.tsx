@@ -32,6 +32,7 @@ import { EquipMesh } from './EquipMesh';
 import { AirRoom } from './Airflow';
 import { LeakMark } from './LeakMark';
 import { FireMark } from './FireMark';
+import { Cages } from './Cages';
 import { RackRows } from './Racks';
 
 export function BuildingFloors() {
@@ -99,6 +100,7 @@ function FloorGroup({ floor }: { floor: Floor }) {
             </group>
             <AirRoom label={s.label} />
             {s.label === 'B' && <LeakMark />}
+            <Cages floor={floor.id} />
           </group>
         );
       })}

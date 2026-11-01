@@ -4,7 +4,8 @@ import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SHAFTS } from '../data/building';
 import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
 import { DOMAIN_META, EQUIP_TYPES, TYPE_BY_ID, type Domain } from '../data/equipTypes';
 import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
-import { BLOCK_NAME, RACK } from '../data/building';
+import { BLOCK_NAME, EXPANSION_BLOCK, RACK } from '../data/building';
+import { CUSTOMER_BY_ID } from '../data/customers';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -273,6 +274,7 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
   const from = (kind: string) => nodeName(incoming(`rack:${rack.id}`).find((c) => c.kind === kind)?.from ?? '');
   const maxIn = t && t.kw > 0 ? Math.max(...t.inlet) : null;
   const pw = kw / rack.designKw;
+  const cust = rack.customer ? CUSTOMER_BY_ID[rack.customer] : null;
   return (
     <Card
       head={
@@ -283,6 +285,17 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
           pills={
             <>
               <StatusPill id={`rack:${rack.id}`} />
+              {cust && (
+                <Pill color={cust.color} title={cust.summary}>
+                  {cust.name}
+                  {cust.cage ? ' · 케이지' : ''}
+                </Pill>
+              )}
+              {!cust && rack.serverRoom === 'B' && rack.block === EXPANSION_BLOCK && (
+                <Pill ghost color="var(--ink-3)" title="고객사 임대를 기다리는 빈 랙">
+                  임대 대기
+                </Pill>
+              )}
               <Pill ghost color={rack.feed === 'AB' ? 'var(--ink-2)' : '#be4bdb'}>
                 {rack.feed === 'AB' ? '이중전원' : '단일전원 (STS)'}
               </Pill>

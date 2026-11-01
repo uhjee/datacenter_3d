@@ -1,5 +1,6 @@
 // 서버실 랙. IT 장비는 추후 상세화하며, 지금은 공간(U)·전력 할당과 rPDU A/B 표시용이다.
 
+import { slotOwner, type CustomerId } from './customers';
 import { EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
 
 export type DeviceKind = 'server' | 'storage' | 'gpu' | 'network' | 'patch';
@@ -28,6 +29,7 @@ export interface Rack {
   uUsed: number;
   designKw: number;
   feed: 'AB' | 'STS';
+  customer?: CustomerId; // 임대 고객사 (없으면 자사 운영 · 미임대)
 }
 
 export const DEVICE_COLOR: Record<DeviceKind, string> = {
@@ -118,12 +120,26 @@ function build(): Rack[] {
       }
     });
   }
-  // 증설 블록: 랙은 여섯 열 모두 세웠고, 장비는 1 · 2열(첫 포드)에만 들어왔다. 나머지는 장비 입고를 기다리는 빈 랙.
-  // 개소분 배치가 바뀌지 않도록 난수열을 따로 쓴다
+  // 증설 블록. 개소분 배치가 바뀌지 않도록 난수열을 따로 쓴다
+  // - 서버실 A: 랙은 여섯 열 모두 세웠고, 장비는 1 · 2열(첫 포드)에만 들어왔다. 나머지는 장비 입고를 기다리는 빈 랙.
+  // - 서버실 B: 고객사에 임대한다 (customers.ts). 고객사 랙만 장비가 있고, 케이지 안 예약 칸에는 랙이 없다.
   const rndX = mulberry32(20261101);
   for (const sr of SERVER_ROOMS)
     ROW_OFFSETS.forEach((_, r) => {
-      for (let bi = 0; bi < RACKS_PER_BLOCK; bi++) racks.push(makeRack(sr, r, EXPANSION_BLOCK, bi, fill(ROW_KIND[r], r > 1, rndX), 'AB'));
+      for (let bi = 0; bi < RACKS_PER_BLOCK; bi++) {
+        if (sr.label === 'A') {
+          racks.push(makeRack(sr, r, EXPANSION_BLOCK, bi, fill(ROW_KIND[r], r > 1, rndX), 'AB'));
+          continue;
+        }
+        const { customer, reserved } = slotOwner(sr.roomId, r, bi);
+        if (reserved) continue;
+        const rack = makeRack(sr, r, EXPANSION_BLOCK, bi, fill(customer?.kind ?? ROW_KIND[r], !customer, rndX), 'AB');
+        if (customer) {
+          rack.customer = customer.id;
+          rack.designKw = customer.designKw;
+        }
+        racks.push(rack);
+      }
     });
   return racks;
 }

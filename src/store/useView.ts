@@ -15,13 +15,14 @@ import type { LeakParams } from '../scenario/leak';
 import type { BatFireParams } from '../scenario/batFire';
 import type { SrFireParams } from '../scenario/srFire';
 
-export type LayerKey = Domain | 'labels' | 'walls' | 'shafts' | 'links';
+export type LayerKey = Domain | 'labels' | 'walls' | 'shafts' | 'links' | 'cages';
 export type ViewMode = 'stack' | 'explode';
 
 export const LAYER_META: { key: LayerKey; name: string }[] = [
   { key: 'power', name: '전력' },
   { key: 'cooling', name: '공조' },
   { key: 'it', name: 'IT 랙' },
+  { key: 'cages', name: '케이지' },
   { key: 'fire', name: '방재' },
   { key: 'security', name: '보안' },
   { key: 'links', name: '연결선' },
@@ -139,6 +140,7 @@ export const useView = create<ViewState>((set, get) => ({
     fire: true,
     security: true,
     links: true,
+    cages: true,
     shafts: false, // 처음에는 장비 위주로 보이게 샤프트 · 벽체 · 실 이름은 꺼 둔다
     walls: false,
     labels: false,
