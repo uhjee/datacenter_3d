@@ -4,7 +4,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, EdgesGeometry, Points, PointsMaterial, Vector3 } from 'three';
-import { RAISED_H } from '../data/building';
+import { AISLE_W, RACK, RAISED_H } from '../data/building';
 import { RACKS, type Rack } from '../data/racks';
 import { AIR_LAYOUT, tempRGB, type AirCfg, type AirLayout, type RoomLabel, type RoomTherm } from '../data/thermal';
 import { useView } from '../store/useView';
@@ -206,10 +206,15 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     P(u.x, F + 0.2, u.z, Ts);
   };
 
-  const cz = L.coldZ[Math.floor(rnd() * L.coldZ.length)];
-  const block = Math.floor(rnd() * L.blocks.length);
-  const [bx0, bx1] = L.blocks[block];
-  const ax = bx0 + 0.15 + rnd() * (bx1 - bx0 - 0.3);
+  // 공기가 지나갈 랙을 먼저 고른다. 빈 랙은 팬이 없고 블랭킹 패널로 막혀 있어 공기가 통과하지 않으므로
+  // 장비가 있는 랙만 고른다 → 랙 뒤(열복도)로 나오는 공기는 언제나 랙에서 데워진 배기다.
+  // 블랭킹 패널이 없으면 빈 랙 틈으로 냉기가 그대로 새어 열복도에 섞인다(교육용으로 그 누설을 보여 준다)
+  const pool = cfg.blanking ? racks.filter((r) => r.devices.length > 0) : racks;
+  const row = pool[Math.floor(rnd() * pool.length)];
+  const side = -row.facing; // 냉복도에서 랙 쪽으로 가는 방향
+  const frontZ = row.z + row.facing * (RACK.d / 2);
+  const cz = frontZ + row.facing * (AISLE_W / 2); // 랙 앞 냉복도 중심
+  const ax = row.x + (rnd() - 0.5) * 0.45;
   const az = cz + (rnd() - 0.5) * 0.9;
   // ① 항온항습기 하부 토출 → ② 이중마루 아래: 벽을 따라 그 냉복도 줄까지 간 뒤 냉복도(타공판) 바로 밑을 따라간다.
   // 랙 밑을 대각선으로 가로지르면 타공판이 없는 곳에서 맴도는 것처럼 보이므로 통로를 따라가게 한다
@@ -227,15 +232,9 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     return finish(pts, temps);
   }
 
-  // 바깥 냉복도는 한쪽에만 랙이 있다: 랙이 있는 쪽으로 들어간다
-  const sides = [-1, 1].filter((s) => racks.some((r) => Math.abs(r.z - (cz + s * 1.2)) < 0.1));
-  const side = sides.length === 1 ? sides[0] : rnd() < 0.5 ? -1 : 1;
-  const frontZ = cz + side * 0.6;
-  const backZ = frontZ + side * 1.2;
-  const hotZ = backZ + side * 0.6;
-  const idx = block * 12 + Math.min(11, Math.max(0, Math.floor((ax - bx0) / 0.6)));
-  const row = racks.find((r) => Math.abs(r.z + r.facing * 0.6 - frontZ) < 0.2 && r.index === idx);
-  const rt = row ? th.racks[row.id] : null;
+  const backZ = frontZ + side * RACK.d;
+  const hotZ = backZ + side * (AISLE_W / 2);
+  const rt = th.racks[row.id];
   const h = F + 0.15 + rnd() * 1.95;
   const lv = h < F + 0.75 ? 0 : h < F + 1.5 ? 1 : 2;
   const tin = rt ? rt.inlet[lv] : Ts;
@@ -245,7 +244,7 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
   P(ax, h, frontZ, tin); // ⑤
   P(ax, h, backZ, tex); // ⑥
   // 블랭킹 패널 없음: 빈 칸을 통해 배기가 앞으로 역류
-  if (!cfg.blanking && row && row.uUsed < 40 && rnd() < 0.3) {
+  if (!cfg.blanking && row.uUsed < 40 && rnd() < 0.3) {
     P(ax + 0.05, h + 0.15, frontZ + side * 0.1, tex - 1);
     P(ax + 0.05, h + 0.1, backZ, tex + 1.5);
   }
