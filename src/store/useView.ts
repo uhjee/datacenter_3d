@@ -130,6 +130,11 @@ interface ViewState {
   rightTab: RightTab;
   setRightTab: (t: RightTab) => void;
 
+  // 짧은 안내 (말없이 다른 곳으로 옮겨 갈 때 이유를 알린다). key가 바뀔 때마다 새로 띄운다
+  toast: { text: string; key: number } | null;
+  showToast: (text: string) => void;
+  hideToast: () => void;
+
   // 하단 흐름도 패널
   diagramMode: 'off' | 'half' | 'full';
   diagramTab: PanelTab;
@@ -143,7 +148,7 @@ export type HeatHeight = 0 | 1 | 2;
 export type HeatValue = 'inlet' | 'exhaust' | 'dT';
 
 export type RackColorMode = 'none' | 'u' | 'power' | 'temp';
-export type RightTab = 'info' | 'metrics' | 'scenario';
+export type RightTab = 'info' | 'metrics' | 'alerts' | 'scenario';
 
 export interface Highlight {
   kind: 'trace' | 'group';
@@ -264,6 +269,10 @@ export const useView = create<ViewState>((set, get) => ({
       const t = Math.min(s.scenario.t, scenEnd(def, params));
       return { scenario: { ...s.scenario, params, t, series: def.prepare(params) } as typeof s.scenario, scenSnap: def.snapshot(t, params) };
     }),
+
+  toast: null,
+  showToast: (text) => set((s) => ({ toast: { text, key: (s.toast?.key ?? 0) + 1 } })),
+  hideToast: () => set({ toast: null }),
 
   rightTab: 'info',
   setRightTab: (t) => set({ rightTab: t }),

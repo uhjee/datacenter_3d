@@ -3,13 +3,13 @@
 // 냉복도 · 열복도, 봉쇄 경계, 항온항습기, 온습도 센서, 고객사 케이지를 함께 표시하고 3D 선택과 연동한다.
 // 좌표: 세계 x → 화면 오른쪽, 세계 z(남쪽) → 화면 아래. 1 단위 = 1m
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { AISLE_W, BLOCK_LEN, RACK, ROOM_BY_ID } from '../data/building';
 import { CUSTOMERS } from '../data/customers';
 import { EQUIPMENT } from '../data/equipment';
-import { HEAT_RES, HEIGHT_M, HEIGHT_NAME, heatAlpha, sampleField, type HeatField } from '../data/heatField';
+import { computeHeatField, HEAT_RES, HEIGHT_M, HEIGHT_NAME, heatAlpha, sampleField, type HeatField } from '../data/heatField';
 import { RACKS, type Rack } from '../data/racks';
-import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, tempColor, tempRGB, type RackTherm, type RoomLabel } from '../data/thermal';
+import { AIR_LAYOUT, computeRoom, RECOMMENDED, statusOf, STATUS_META, tempColor, tempRGB, type Containment, type RackTherm, type RoomLabel } from '../data/thermal';
 import { rampColor } from '../scene/rackColor';
 import { focusItem } from '../scene/focus';
 import { useView, type HeatValue } from '../store/useView';
@@ -71,6 +71,7 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
   const cages = useMemo(() => CUSTOMERS.filter((c) => c.room === L.roomId && c.cage), [L.roomId]);
   const [nums, setNums] = useState(true);
   const [hotOpen, setHotOpen] = useState(!compact);
+  const [compare, setCompare] = useState(false);
 
   // 핫스팟: 이 높이 흡기가 권장 상한을 넘는 랙
   const hot = useMemo(
@@ -170,6 +171,9 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
         </label>
         <button className={`plan-hot-btn${hot.length ? ' warn' : ''}${hotOpen ? ' on' : ''}`} onClick={() => setHotOpen((o) => !o)}>
           핫스팟 {hot.length}
+        </button>
+        <button className={`plan-hot-btn${compare ? ' on' : ''}`} aria-pressed={compare} onClick={() => setCompare((c) => !c)} title="다른 봉쇄 방식과 온도 분포를 나란히 비교">
+          비교
         </button>
       </div>
 
@@ -315,7 +319,7 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
           </div>
         )}
 
-        {hotOpen && (
+        {hotOpen && !compare && (
           <div className="plan-hot" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
             <div className="plan-hot-h">
               핫스팟 · {HEIGHT_NAME[h]} 흡기 {RECOMMENDED[1]}°C 초과
@@ -332,7 +336,127 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
           </div>
         )}
 
-        <PlanLegend value={value} />
+        {!compare && <PlanLegend value={value} />}
+        {compare && field && <ComparePlans label={label} h={h} value={value} th={th} field={field} />}
+      </div>
+    </div>
+  );
+}
+
+// ── 비교 보기: 지금 봉쇄 방식 | 다른 봉쇄 방식. 같은 높이 · 같은 운전 조건으로 계산해 나란히 ──
+const CONT_NAME: Record<Containment, string> = { none: '봉쇄 없음', CAC: '냉복도 봉쇄 (CAC)', HAC: '열복도 봉쇄 (HAC)' };
+
+function ComparePlans({ label, h, value, th, field }: { label: RoomLabel; h: number; value: HeatValue; th: ReturnType<typeof useRoomTherm>; field: HeatField }) {
+  const cfg = useView((s) => s.airCfg[label]);
+  const itLoad = useView((s) => s.itLoad);
+  const others = (Object.keys(CONT_NAME) as Containment[]).filter((c) => c !== cfg.containment);
+  const [alt, setAlt] = useState<Containment>(others[0]);
+  const altC = others.includes(alt) ? alt : others[0];
+  const b = useMemo(() => {
+    const c2 = { ...cfg, containment: altC };
+    const th2 = computeRoom(label, c2, itLoad);
+    return { th: th2, field: computeHeatField(label, c2, th2, h) };
+  }, [cfg, altC, label, itLoad, h]);
+  return (
+    <div className="cmp" onPointerDown={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+      <MiniPlan label={label} h={h} value={value} th={th} field={field} head={<b>지금 · {CONT_NAME[cfg.containment]}</b>} />
+      <MiniPlan
+        label={label}
+        h={h}
+        value={value}
+        th={b.th}
+        field={b.field}
+        head={
+          <>
+            <b>비교</b>
+            <div className="seg small">
+              {others.map((c) => (
+                <button key={c} className={altC === c ? 'on' : ''} onClick={() => setAlt(c)}>
+                  {CONT_NAME[c]}
+                </button>
+              ))}
+            </div>
+          </>
+        }
+        base={th}
+      />
+    </div>
+  );
+}
+
+function MiniPlan({
+  label,
+  h,
+  value,
+  th,
+  field,
+  head,
+  base,
+}: {
+  label: RoomLabel;
+  h: number;
+  value: HeatValue;
+  th: ReturnType<typeof useRoomTherm>;
+  field: HeatField;
+  head: ReactNode;
+  base?: ReturnType<typeof useRoomTherm>;
+}) {
+  const L = AIR_LAYOUT[label];
+  const room = ROOM_BY_ID[L.roomId];
+  const img = useMemo(() => fieldImage(field, false), [field]);
+  const racks = useMemo(() => RACKS.filter((r) => r.serverRoom === label), [label]);
+  const over = racks.filter((r) => {
+    const t = th.racks[r.id];
+    return t && t.kw > 0 && t.inlet[h] > RECOMMENDED[1];
+  }).length;
+  const maxIn = Math.max(...racks.map((r) => (th.racks[r.id]?.kw ? th.racks[r.id].inlet[h] : 0)));
+  // 비교 쪽은 지금 대비 차이를 함께
+  const diff = (v: number, b: number | undefined, unit: string, better: 'low' | 'high') => {
+    if (b == null) return null;
+    const d = +(v - b).toFixed(1);
+    if (d === 0) return <small className="cmp-d">같음</small>;
+    const good = better === 'low' ? d < 0 : d > 0;
+    return <small className={`cmp-d ${good ? 'good' : 'bad'}`}>{`${d > 0 ? '+' : ''}${d}${unit}`}</small>;
+  };
+  const baseMax = base ? Math.max(...racks.map((r) => (base.racks[r.id]?.kw ? base.racks[r.id].inlet[h] : 0))) : undefined;
+  const baseOver = base
+    ? racks.filter((r) => {
+        const t = base.racks[r.id];
+        return t && t.kw > 0 && t.inlet[h] > RECOMMENDED[1];
+      }).length
+    : undefined;
+  return (
+    <div className="cmp-col">
+      <div className="cmp-head">{head}</div>
+      <svg viewBox={`${room.x[0]} ${room.z[0]} ${room.x[1] - room.x[0]} ${room.z[1] - room.z[0]}`} preserveAspectRatio="xMidYMid meet">
+        <rect className="plan-room" x={room.x[0]} y={room.z[0]} width={room.x[1] - room.x[0]} height={room.z[1] - room.z[0]} strokeWidth={0.08} />
+        <image href={img} x={field.x0} y={field.z0} width={field.nx * HEAT_RES} height={field.nz * HEAT_RES} preserveAspectRatio="none" opacity={0.9} />
+        {racks.map((r) => {
+          const val = rackValue(th.racks[r.id], value, h);
+          return (
+            <rect
+              key={r.id}
+              x={r.x - RACK.w / 2 + 0.02}
+              y={r.z - RACK.d / 2}
+              width={RACK.w - 0.04}
+              height={RACK.d}
+              fill={rackFill(val, value)}
+              stroke="#0d1117"
+              strokeWidth={0.04}
+            />
+          );
+        })}
+      </svg>
+      <div className="cmp-stats num">
+        <span>
+          최고 흡기 <b style={{ color: tempColor(maxIn) }}>{maxIn.toFixed(1)}°C</b> {diff(maxIn, baseMax, '°C', 'low')}
+        </span>
+        <span>
+          권장 초과 <b>{over}대</b> {diff(over, baseOver, '대', 'low')}
+        </span>
+        <span>
+          환기 <b>{th.returnT}°C</b> {diff(th.returnT, base?.returnT, '°C', 'high')}
+        </span>
       </div>
     </div>
   );

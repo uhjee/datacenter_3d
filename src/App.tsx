@@ -9,9 +9,11 @@ import { Scene } from './scene/Scene';
 import { InfoPanel } from './ui/InfoPanel';
 import { ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
+import { applyHash } from './store/persist';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
+import { Toast } from './ui/Toast';
 import { LeftPanel } from './ui/LeftPanel';
 import { useView } from './store/useView';
 import { IconButton } from './ui/kit';
@@ -24,6 +26,7 @@ function heatRoom(): RoomLabel {
   if (sc?.id === 'cracFail') return sc.params.room;
   if (sc?.id === 'leak') return 'B';
   const here = (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === s.floorFocus);
+  if (!here && s.floorFocus) s.showToast(`${s.floorFocus}에는 서버실이 없어 서버실 ${s.airRoom}(${AIR_LAYOUT[s.airRoom].floor})의 온도를 보여 줍니다.`);
   return here ?? s.airRoom;
 }
 
@@ -33,6 +36,11 @@ export function App() {
   const [search, setSearch] = useState(false);
   const openSearch = useCallback(() => setSearch(true), []);
   useSearchHotkey(openSearch);
+  // 주소(#)에 담긴 장면 열기: 3D 영역 크기가 잡힌 뒤에. 백그라운드 탭에서 열려도 실행되도록 프레임 대신 타이머
+  useEffect(() => {
+    const id = setTimeout(applyHash, 0);
+    return () => clearTimeout(id);
+  }, []);
   const diagram = useView((s) => s.diagramMode);
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
@@ -56,6 +64,8 @@ export function App() {
           <span>검색</span>
           <kbd>⌘K</kbd>
         </button>
+        {/* 상단 바 영역: 검색 │ 보기(화면 전환 켜기 · 끄기) │ 학습(시나리오 · 가이드 투어) */}
+        <span className="tb-cap">보기</span>
         <div className="tb-group" role="group" aria-label="보기">
           <button
             className={thermal ? 'on' : ''}
@@ -74,19 +84,23 @@ export function App() {
             <Workflow size={15} /> 도면
           </button>
         </div>
-        <button
-          className={`tb-btn${scenario ? ' on' : ''}`}
-          onClick={() => {
-            setRight(true);
-            useView.getState().setRightTab('scenario');
-          }}
-          title="사고 시나리오 목록 · 재생 화면"
-        >
-          <Siren size={15} /> {scenario ? '시나리오 재생 중' : '시나리오'}
-        </button>
-        <button className={`tb-btn primary tour-btn${touring ? ' on' : ''}`} onClick={startTour} title="전력 · 공조 흐름을 단계별로 따라가는 안내">
-          <Compass size={15} /> 가이드 투어
-        </button>
+        <span className="tb-sep" />
+        <span className="tb-cap">학습</span>
+        <div className="tb-group learn" role="group" aria-label="학습">
+          <button
+            className={`tb-btn${scenario ? ' on' : ''}`}
+            onClick={() => {
+              setRight(true);
+              useView.getState().setRightTab('scenario');
+            }}
+            title="사고 시나리오 목록 · 재생 화면"
+          >
+            <Siren size={15} /> {scenario ? '시나리오 재생 중' : '시나리오'}
+          </button>
+          <button className={`tb-btn primary tour-btn${touring ? ' on' : ''}`} onClick={startTour} title="전력 · 공조 흐름을 단계별로 따라가는 안내">
+            <Compass size={15} /> 가이드 투어
+          </button>
+        </div>
         <IconButton icon={PanelRight} label={right ? '정보 패널 닫기' : '정보 패널 열기'} active={right} onClick={() => setRight((v) => !v)} />
       </header>
       {search && <SearchPalette onClose={() => setSearch(false)} />}
@@ -101,6 +115,7 @@ export function App() {
           <Scene />
           <LabelOverlay />
           <TraceBanner />
+          <Toast />
           <ThermalPanel />
           <FloorBar />
           <CameraButtons />

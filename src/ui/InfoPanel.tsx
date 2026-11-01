@@ -8,6 +8,7 @@ import { BLOCK_NAME, EXPANSION_BLOCK, RACK } from '../data/building';
 import { CIRCUIT, CUSTOMER_BY_ID, type CustomerId } from '../data/customers';
 import { CustomerCard } from './CustomerCard';
 import { CustomerAlert } from './CustomerSummary';
+import { AlertPanel, useAlerts } from './AlertPanel';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -29,6 +30,9 @@ export function InfoPanel() {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
   const tab = useView((s) => s.rightTab);
+  const alerts = useAlerts();
+  const alertN = alerts.length;
+  const alertTone = alerts.some((a) => a.tone === 'crit') ? 'crit' : 'warn';
   // 장비 · 묶음을 새로 고르면 정보 탭으로
   useEffect(() => {
     if (id || groupId) useView.getState().setRightTab('info');
@@ -43,11 +47,23 @@ export function InfoPanel() {
         <button className={tab === 'metrics' ? 'on' : ''} onClick={() => useView.getState().setRightTab('metrics')}>
           지표 · 용량
         </button>
+        <button className={tab === 'alerts' ? 'on' : ''} onClick={() => useView.getState().setRightTab('alerts')}>
+          주의
+          {alertN > 0 && <span className={`rt-badge ${alertTone}`}>{alertN}</span>}
+        </button>
         <button className={tab === 'scenario' ? 'on' : ''} onClick={() => useView.getState().setRightTab('scenario')}>
           시나리오
         </button>
       </div>
-      {tab === 'metrics' ? <MetricsPanel /> : tab === 'scenario' ? <ScenarioPanel /> : <InfoBody id={id} groupId={groupId} />}
+      {tab === 'metrics' ? (
+        <MetricsPanel />
+      ) : tab === 'scenario' ? (
+        <ScenarioPanel />
+      ) : tab === 'alerts' ? (
+        <AlertPanel />
+      ) : (
+        <InfoBody id={id} groupId={groupId} />
+      )}
     </aside>
   );
 }
