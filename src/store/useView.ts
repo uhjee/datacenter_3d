@@ -255,9 +255,9 @@ export function floorWorldY(floor: FloorId, mode: ViewMode) {
   return f.y + (mode === 'explode' ? f.index * EXPLODE_GAP : 0);
 }
 
+// 층을 고르면 그 층만 보인다 (위 · 아래층 모두 숨김)
 export function isFloorVisible(floor: FloorId, focus: FloorId | null) {
-  if (!focus) return true;
-  return FLOOR_BY_ID[floor].index <= FLOOR_BY_ID[focus].index;
+  return !focus || floor === focus;
 }
 
 export type TraceMark = 'up' | 'down';
