@@ -7,7 +7,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEven
 import { AISLE_W, BLOCK_LEN, RACK, ROOM_BY_ID } from '../data/building';
 import { CUSTOMERS } from '../data/customers';
 import { EQUIPMENT } from '../data/equipment';
-import { HEAT_RES, HEIGHT_M, HEIGHT_NAME, sampleField, type HeatField } from '../data/heatField';
+import { HEAT_RES, HEIGHT_M, HEIGHT_NAME, heatAlpha, sampleField, type HeatField } from '../data/heatField';
 import { RACKS, type Rack } from '../data/racks';
 import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, tempColor, tempRGB, type RackTherm, type RoomLabel } from '../data/thermal';
 import { rampColor } from '../scene/rackColor';
@@ -34,7 +34,7 @@ function rackValue(t: RackTherm | undefined, v: HeatValue, h: number) {
 const rackFill = (val: number | null, v: HeatValue) => (val == null ? '#20262e' : v === 'dT' ? rampColor(val / DT_MAX) : tempColor(val));
 
 // 온도 분포 → 그림 (격자 1칸 = 1픽셀, 화면에서는 부드럽게 늘린다)
-function fieldImage(f: HeatField) {
+function fieldImage(f: HeatField, hotOnly: boolean) {
   const c = document.createElement('canvas');
   c.width = f.nx;
   c.height = f.nz;
@@ -45,7 +45,7 @@ function fieldImage(f: HeatField) {
     img.data[i * 4] = r * 255;
     img.data[i * 4 + 1] = gg * 255;
     img.data[i * 4 + 2] = b * 255;
-    img.data[i * 4 + 3] = 255;
+    img.data[i * 4 + 3] = heatAlpha(f.data[i], hotOnly) * 255;
   }
   g.putImageData(img, 0, 0);
   return c.toDataURL();
@@ -63,7 +63,8 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
   const selectedId = useView((s) => s.selectedId);
   const hoveredId = useView((s) => s.hoveredId);
   const field = useHeatField(label, true);
-  const img = useMemo(() => (field ? fieldImage(field) : null), [field]);
+  const hotOnly = useView((s) => s.heatHotOnly);
+  const img = useMemo(() => (field ? fieldImage(field, hotOnly) : null), [field, hotOnly]);
   const racks = useMemo(() => RACKS.filter((r) => r.serverRoom === label), [label]);
   const sensors = useMemo(() => EQUIPMENT.filter((e) => e.type === 'sensor' && e.room === L.roomId), [L.roomId]);
   const cages = useMemo(() => CUSTOMERS.filter((c) => c.room === L.roomId && c.cage), [L.roomId]);

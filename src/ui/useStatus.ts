@@ -5,7 +5,7 @@ import { computeMetrics } from '../data/metrics';
 import { SRC_META, type NodeState } from '../scenario/core';
 import { snapshot } from '../scenario/outage';
 import { adjustTherm } from '../scenario/cracFail';
-import type { RoomLabel, RoomTherm } from '../data/thermal';
+import type { AirCfg, RoomLabel, RoomTherm } from '../data/thermal';
 import { computeHeatField, type HeatField } from '../data/heatField';
 import { useView } from '../store/useView';
 import type { Tone } from './kit';
@@ -58,10 +58,19 @@ export function useRoomTherm(label: RoomLabel): RoomTherm {
   }, [base, crac, leak, series, sec, label]);
 }
 
-// 서버실 온도 분포 (히트맵 · 2D 상면도 공용). 꺼져 있으면 계산하지 않는다
+// 서버실 온도 분포 (3D 히트맵 · 2D 상면도 · 히트맵 카드 공용). 꺼져 있으면 계산하지 않는다.
+// 세 곳이 같은 조건으로 부르므로 서버실마다 마지막 결과를 재사용한다
+const fieldCache = new Map<RoomLabel, { cfg: AirCfg; th: RoomTherm; h: number; f: HeatField }>();
 export function useHeatField(label: RoomLabel, on: boolean): HeatField | null {
   const th = useRoomTherm(label);
   const cfg = useView((s) => s.airCfg[label]);
   const h = useView((s) => s.heatHeight);
-  return useMemo(() => (on ? computeHeatField(label, cfg, th, h) : null), [on, label, cfg, th, h]);
+  return useMemo(() => {
+    if (!on) return null;
+    const c = fieldCache.get(label);
+    if (c && c.cfg === cfg && c.th === th && c.h === h) return c.f;
+    const f = computeHeatField(label, cfg, th, h);
+    fieldCache.set(label, { cfg, th, h, f });
+    return f;
+  }, [on, label, cfg, th, h]);
 }

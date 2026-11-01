@@ -8,6 +8,7 @@ import { LabelOverlay } from './scene/HoverLabel';
 import { Scene } from './scene/Scene';
 import { InfoPanel } from './ui/InfoPanel';
 import { AirPanel } from './ui/AirPanel';
+import { HeatPanel } from './ui/HeatPanel';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -90,6 +91,7 @@ export function App() {
           <LabelOverlay />
           <TraceBanner />
           <AirPanel />
+          <HeatPanel />
           <FloorBar />
           <CameraButtons />
         </div>

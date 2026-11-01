@@ -6,7 +6,7 @@
 
 import { RACK, ROOM_BY_ID } from './building';
 import { RACKS } from './racks';
-import { AIR_LAYOUT, type AirCfg, type RoomLabel, type RoomTherm } from './thermal';
+import { AIR_LAYOUT, RECOMMENDED, type AirCfg, type RoomLabel, type RoomTherm } from './thermal';
 
 export const HEAT_RES = 0.2; // 격자 한 칸 (m)
 export const HEIGHT_NAME = ['하', '중', '상'] as const;
@@ -159,4 +159,14 @@ export function sampleField(f: HeatField, x: number, z: number): number | null {
   const iz = Math.floor((z - f.z0) / HEAT_RES);
   if (ix < 0 || iz < 0 || ix >= f.nx || iz >= f.nz) return null;
   return f.data[iz * f.nx + ix];
+}
+
+// 칸 불투명도: '주의 이상만 강조'면 권장 상한(27°C) 이하를 거의 비운다
+export const heatAlpha = (t: number, hotOnly: boolean) => (!hotOnly || t > RECOMMENDED[1] ? 1 : 0.1);
+
+// 단면 통계 (격자 칸 평균)
+export function fieldStats(f: HeatField) {
+  let s = 0;
+  for (const v of f.data) s += v;
+  return { min: f.min, max: f.max, avg: s / f.data.length };
 }

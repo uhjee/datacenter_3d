@@ -95,6 +95,12 @@ interface ViewState {
   setHeatOn: (v: boolean) => void;
   setHeatHeight: (h: HeatHeight) => void;
   setHeatValue: (v: HeatValue) => void;
+  heatOpacity: number; // 3D 바닥 히트맵 불투명도
+  heatHotOnly: boolean; // 권장 상한(27°C) 넘는 곳만 진하게
+  heatProbe: { t: number; x: number; z: number } | null; // 3D 바닥에서 마우스가 가리키는 지점 온도
+  setHeatOpacity: (v: number) => void;
+  setHeatHotOnly: (v: boolean) => void;
+  setHeatProbe: (p: { t: number; x: number; z: number } | null) => void;
 
   // 지표 (운전 조건)
   itLoad: number; // IT 부하율 (1 = 기준)
@@ -206,6 +212,12 @@ export const useView = create<ViewState>((set, get) => ({
   setHeatOn: (v) => set({ heatOn: v }),
   setHeatHeight: (h) => set({ heatHeight: h }),
   setHeatValue: (v) => set({ heatValue: v }),
+  heatOpacity: 0.82,
+  heatHotOnly: false,
+  heatProbe: null,
+  setHeatOpacity: (v) => set({ heatOpacity: v }),
+  setHeatHotOnly: (v) => set({ heatHotOnly: v }),
+  setHeatProbe: (p) => set({ heatProbe: p }),
   setAirCfg: (r, patch) =>
     set((s) => {
       const cfg = { ...s.airCfg[r], ...patch };

@@ -3338,3 +3338,191 @@ button.co-tr:hover {
 .plan-unit-s.down {
   fill: var(--crit);
 }
+
+/* ── 히트맵 카드 (3D 왼쪽 아래) ───────────────── */
+.heat-panel {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: 300px;
+  max-height: calc(100% - 270px); /* 위쪽 층 이동 막대와 겹치지 않게 */
+  min-height: 0;
+  overflow-y: auto;
+  background: rgba(21, 27, 35, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  z-index: 7;
+  font-size: 12px;
+}
+.heat-panel header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.heat-panel header .heat-where {
+  flex: 1;
+  color: var(--ink-3);
+}
+.heat-panel header .icon {
+  padding: 2px 7px;
+}
+.heat-fold svg {
+  transition: transform 0.15s;
+}
+.heat-fold:not(.open) svg {
+  transform: rotate(180deg);
+}
+.heat-body {
+  padding: 8px 10px 10px;
+}
+.heat-h {
+  display: flex;
+}
+.heat-h button {
+  flex: 1;
+}
+.heat-bar {
+  margin-top: 10px;
+}
+.heat-bar-c {
+  position: relative;
+  height: 10px;
+  border-radius: 5px;
+}
+.heat-bar-c em {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  margin-left: -1px;
+  background: #0d1117;
+}
+.heat-probe-mark {
+  position: absolute;
+  top: -5px;
+  bottom: -5px;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 0 0 1px #0d1117;
+}
+.heat-range {
+  position: relative;
+  height: 4px;
+  margin-top: 3px;
+}
+.heat-range i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--ink-2);
+}
+.heat-ticks {
+  position: relative;
+  height: 14px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.heat-ticks span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.heat-ticks span:first-child {
+  transform: none;
+}
+.heat-ticks span:last-child {
+  transform: translateX(-100%);
+}
+.heat-bands {
+  position: relative;
+  height: 16px;
+  margin-top: 3px;
+}
+.heat-bands span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  border-top: 2px solid;
+  font-size: 10px;
+  line-height: 13px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.heat-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-top: 8px;
+}
+.heat-stats > div {
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: var(--s2);
+}
+.heat-stats small {
+  display: block;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.heat-stats b {
+  font-size: 13px;
+}
+.heat-hot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  margin-top: 6px;
+  padding: 5px 8px;
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.heat-hot b {
+  color: var(--ink);
+}
+.heat-hot span {
+  margin-left: auto;
+  color: var(--warn);
+}
+.heat-opts {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  color: var(--ink-2);
+}
+.heat-opts label:first-child {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.heat-opts input[type='range'] {
+  flex: 1;
+}
+.heat-probe {
+  margin-top: 8px;
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+  min-height: 18px;
+  color: var(--ink-2);
+}
+.heat-probe b {
+  font-size: 13px;
+}
+.heat-opts label {
+  white-space: nowrap;
+}
