@@ -34,9 +34,8 @@ function rackValue(t: RackTherm | undefined, v: HeatValue, h: number) {
 // 랙 칸 색: 흡기 · 배기는 온도 색, ΔT는 한 색 밝기
 const rackFill = (val: number | null, v: HeatValue) => (val == null ? '#20262e' : v === 'dT' ? rampColor(val / DT_MAX) : tempColor(val));
 
-// 온도 분포 → 그림 (격자 1칸 = 1픽셀, 화면에서는 부드럽게 늘린다)
-function fieldImage(f: HeatField, hotOnly: boolean) {
-  const c = document.createElement('canvas');
+// 온도 분포를 캔버스에 찍는다 (격자 1칸 = 1픽셀, 화면에서는 부드럽게 늘린다)
+function paintField(c: HTMLCanvasElement, f: HeatField, hotOnly: boolean) {
   c.width = f.nx;
   c.height = f.nz;
   const g = c.getContext('2d')!;
@@ -49,6 +48,12 @@ function fieldImage(f: HeatField, hotOnly: boolean) {
     img.data[i * 4 + 3] = heatAlpha(f.data[i], hotOnly) * 255;
   }
   g.putImageData(img, 0, 0);
+}
+
+// 비교 보기 등 SVG 안에 넣을 그림 (PNG 인코딩이라 느리므로 자주 바뀌는 본 화면에는 쓰지 않는다)
+function fieldImage(f: HeatField, hotOnly: boolean) {
+  const c = document.createElement('canvas');
+  paintField(c, f, hotOnly);
   return c.toDataURL();
 }
 
@@ -65,7 +70,11 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
   const hoveredId = useView((s) => s.hoveredId);
   const field = useHeatField(label, true);
   const hotOnly = useView((s) => s.heatHotOnly);
-  const img = useMemo(() => (field ? fieldImage(field, hotOnly) : null), [field, hotOnly]);
+  // 본 화면의 온도 분포는 SVG 아래 캔버스에 바로 찍는다 (시나리오 재생 중 자주 바뀌어 PNG 인코딩을 피한다)
+  const fieldCanvas = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    if (field && fieldCanvas.current) paintField(fieldCanvas.current, field, hotOnly);
+  }, [field, hotOnly]);
   const racks = useMemo(() => RACKS.filter((r) => r.serverRoom === label), [label]);
   const sensors = useMemo(() => EQUIPMENT.filter((e) => e.type === 'sensor' && e.room === L.roomId), [L.roomId]);
   const cages = useMemo(() => CUSTOMERS.filter((c) => c.room === L.roomId && c.cage), [L.roomId]);
@@ -187,13 +196,26 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
         onPointerLeave={() => setHoverPt(null)}
         onClick={() => !dragged() && useView.getState().select(null)}
       >
+        {/* 방 바닥 + 온도 분포: SVG와 같은 확대 · 이동을 CSS 변환으로 맞춘 캔버스 */}
+        <div
+          className="plan-floor"
+          style={{
+            left: view.tx + room.x[0] * k,
+            top: view.ty + room.z[0] * k,
+            width: (room.x[1] - room.x[0]) * k,
+            height: (room.z[1] - room.z[0]) * k,
+          }}
+        />
+        {field && (
+          <canvas
+            ref={fieldCanvas}
+            className="plan-field"
+            style={{ transform: `translate(${view.tx + field.x0 * k}px, ${view.ty + field.z0 * k}px) scale(${k * HEAT_RES})` }}
+          />
+        )}
         <svg width={size.w} height={size.h}>
           <g transform={`translate(${view.tx},${view.ty}) scale(${k})`}>
-            {/* 방 바닥 + 온도 분포 */}
-            <rect className="plan-room" x={room.x[0]} y={room.z[0]} width={room.x[1] - room.x[0]} height={room.z[1] - room.z[0]} strokeWidth={px(1.5)} />
-            {img && field && (
-              <image href={img} x={field.x0} y={field.z0} width={field.nx * HEAT_RES} height={field.nz * HEAT_RES} preserveAspectRatio="none" opacity={0.9} />
-            )}
+            <rect className="plan-room edge" x={room.x[0]} y={room.z[0]} width={room.x[1] - room.x[0]} height={room.z[1] - room.z[0]} strokeWidth={px(1.5)} />
 
             {/* 봉쇄 경계 */}
             {cfg.containment !== 'none' &&

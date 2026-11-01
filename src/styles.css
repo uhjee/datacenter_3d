@@ -4259,3 +4259,24 @@ kbd {
 .cmp-head .seg button {
   white-space: nowrap;
 }
+/* 2D 상면도 바닥 · 온도 분포 캔버스 (SVG 아래) */
+.plan-floor,
+.plan-field {
+  position: absolute;
+  pointer-events: none;
+}
+.plan-floor {
+  background: #141a21;
+}
+.plan-field {
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  opacity: 0.9;
+}
+.plan-box > svg {
+  position: relative;
+}
+.plan-room.edge {
+  fill: none;
+}

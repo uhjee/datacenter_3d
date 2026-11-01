@@ -52,7 +52,14 @@ export function useRoomTherm(label: RoomLabel): RoomTherm {
   const crac = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario : null)?.params ?? null);
   const leak = useView((s) => (s.scenario?.id === 'leak' ? s.scenario : null)?.params ?? null);
   const series = useView((s) => (s.scenario?.id === 'cracFail' ? s.scenario.series : s.scenario?.id === 'leak' ? s.scenario.series.cool : null));
-  const sec = useView((s) => (s.scenario?.id === 'cracFail' || s.scenario?.id === 'leak' ? Math.floor(s.scenario.t) : 0));
+  const sec = useView((s) => {
+    const sc = s.scenario;
+    if (sc?.id !== 'cracFail' && sc?.id !== 'leak') return 0;
+    // 재생 중에는 실제 시간 1초에 약 4번만 갱신 (20배속이면 시뮬레이션 5초 단위).
+    // 히트맵 · 2D 상면도를 매 시뮬레이션 초마다 다시 계산하면 빠른 재생에서 프레임이 밀린다. 멈춤 · 시점 이동은 1초 단위 그대로
+    const step = sc.playing ? Math.max(1, Math.floor(sc.speed / 4)) : 1;
+    return Math.floor(sc.t / step) * step;
+  });
   return useMemo(() => {
     // 누수는 서버실 B 항온항습기 한 대가 밸브 차단으로 멈추는 것과 같다
     const p = crac ?? (leak ? { room: 'B' as const, unit: leak.unit, second: false, loadKw: leak.loadKw, unitKw: leak.unitKw, supply: leak.supply } : null);
