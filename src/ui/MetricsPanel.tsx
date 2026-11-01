@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { PART_COLOR, RT_KW, type Metrics, type RoomMetrics } from '../data/metrics';
 import { type RoomLabel } from '../data/thermal';
-import { activateGroup, enterAir } from '../scene/focus';
+import { activateGroup, enterHeat } from '../scene/focus';
 import { useView } from '../store/useView';
+import { CustomerSummary } from './CustomerSummary';
 import { InfoTip, Kpi, KpiRow, Meter, Props, Section, Status, TipTable } from './kit';
 
 const CONT_NAME = { none: '봉쇄 없음', CAC: '냉복도 봉쇄', HAC: '열복도 봉쇄' } as const;
@@ -53,7 +54,7 @@ export function MetricsPanel() {
             <InfoTip
               text={
                 <>
-                  <p>급기 온도 · 컨테인먼트는 기류 패널 설정을 따릅니다.</p>
+                  <p>급기 온도 · 컨테인먼트는 온도 카드(상단 [온도])의 설정을 따릅니다.</p>
                   <TipTable
                     head={['', '급기', '컨테인먼트']}
                     rows={(['A', 'B'] as const).map((r) => [`서버실 ${r}`, <span className="num">{cfg[r].supply}°C</span>, CONT_NAME[cfg[r].containment]])}
@@ -62,8 +63,8 @@ export function MetricsPanel() {
               }
             />
           </span>
-          <button className="link" onClick={() => enterAir(useView.getState().airRoom)}>
-            기류 패널 열기 →
+          <button className="link" onClick={() => enterHeat(useView.getState().airRoom)}>
+            온도 카드 열기 →
           </button>
         </div>
 
@@ -83,6 +84,8 @@ export function MetricsPanel() {
         {room === 'cmp' ? <RoomCompare m={m} /> : <RoomView m={m} r={room} />}
 
         <Ups m={m} />
+
+        <CustomerSummary />
       </div>
     </div>
   );

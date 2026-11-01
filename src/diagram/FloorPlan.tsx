@@ -247,6 +247,11 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
                     e.stopPropagation();
                     if (!dragged()) useView.getState().select(id);
                   }}
+                  // 더블클릭: 3D 카메라를 그 랙으로
+                  onDoubleClick={(e) => {
+                    e.stopPropagation();
+                    focusItem(id);
+                  }}
                 >
                   <rect
                     x={r.x - RACK.w / 2 + 0.02}

@@ -161,16 +161,19 @@ export function ScenarioPanel() {
   return <ScenarioRun />;
 }
 
+// 시나리오 목록 (오른쪽 탭 · 전역 검색 공용): [아이콘, 이름, 설명, 시작]
+export const SCENARIO_ITEMS: [LucideIcon, string, string, (() => void) | null][] = [
+  [Zap, '한전 완전 정전', '본선 · 예비선이 모두 끊겼을 때 배터리 → 발전기 → 복전까지', startOutage],
+  [PlugZap, '한전 1회선 정전', '본선만 끊김 → ALTS가 예비선으로 절체. 몇 초의 순간 정전에도 공조는 다시 켜야 한다', startLineOut],
+  [Server, 'UPS 고장', 'UPS 한 대가 멈춰도 2N이라 랙은 그대로. STS 절체 · 예비 없는 N 상태 · 정비 바이패스', startUpsFail],
+  [Fan, '항온항습기 고장', '6대 중 1대 고장 → 대기기 자동 투입(N+1), 그사이 주변 랙 흡기 상승. 한 대 더 멈추면?', () => startCracFail()],
+  [Flame, '배터리실 화재', '리튬이온 열폭주 → 가스 소화 → 재발화 → 전원 차단. 오프가스 감지 · 방화구획 분리가 피해 범위를 가른다', startBatFire],
+  [Flame, '서버실 화재', '랙 전원부 과열 → VESDA 단계 경보 → 조기 대응 또는 가스 소화. 다른 랙은 계속 동작', startSrFire],
+  [Droplets, '누수', '서버실 B 마루 아래 냉수 배관 누수 → 감지 → 밸브 차단. 대응 방식에 따라 번지는 물의 양', startLeak],
+];
+
 function ScenarioList() {
-  const items: [LucideIcon, string, string, (() => void) | null][] = [
-    [Zap, '한전 완전 정전', '본선 · 예비선이 모두 끊겼을 때 배터리 → 발전기 → 복전까지', startOutage],
-    [PlugZap, '한전 1회선 정전', '본선만 끊김 → ALTS가 예비선으로 절체. 몇 초의 순간 정전에도 공조는 다시 켜야 한다', startLineOut],
-    [Server, 'UPS 고장', 'UPS 한 대가 멈춰도 2N이라 랙은 그대로. STS 절체 · 예비 없는 N 상태 · 정비 바이패스', startUpsFail],
-    [Fan, '항온항습기 고장', '6대 중 1대 고장 → 대기기 자동 투입(N+1), 그사이 주변 랙 흡기 상승. 한 대 더 멈추면?', () => startCracFail()],
-    [Flame, '배터리실 화재', '리튬이온 열폭주 → 가스 소화 → 재발화 → 전원 차단. 오프가스 감지 · 방화구획 분리가 피해 범위를 가른다', startBatFire],
-    [Flame, '서버실 화재', '랙 전원부 과열 → VESDA 단계 경보 → 조기 대응 또는 가스 소화. 다른 랙은 계속 동작', startSrFire],
-    [Droplets, '누수', '서버실 B 마루 아래 냉수 배관 누수 → 감지 → 밸브 차단. 대응 방식에 따라 번지는 물의 양', startLeak],
-  ];
+  const items = SCENARIO_ITEMS;
   return (
     <div className="rp-card">
       <div className="rp-body rp-pad-top">

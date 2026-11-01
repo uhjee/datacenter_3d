@@ -7,6 +7,7 @@ import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
 import { BLOCK_NAME, EXPANSION_BLOCK, RACK } from '../data/building';
 import { CIRCUIT, CUSTOMER_BY_ID, type CustomerId } from '../data/customers';
 import { CustomerCard } from './CustomerCard';
+import { CustomerAlert } from './CustomerSummary';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -523,6 +524,7 @@ function Overview() {
     <Card
       head={<PanelHead glyph={<Glyph icon={Building2} color="var(--ink-2)" />} crumb={['지하 1층 ~ 옥상 · 6개 층']} title="건물 개요" info="층을 누르면 그 층으로 이동하고, 3D에서 장비를 클릭하면 이 자리에 정보가 나옵니다." pills={<Pill ghost color="var(--ink-2)">랙 {RACKS.length}대</Pill>} />}
     >
+      <CustomerAlert />
       <Section id="ov-floors" title="층" count={FLOORS.length}>
         <div className="rp-floors">
           {[...FLOORS].reverse().map((f) => (

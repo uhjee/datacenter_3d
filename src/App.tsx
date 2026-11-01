@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { DiagramPanel } from './diagram/DiagramPanel';
-import { Building2, Compass, PanelLeft, PanelRight, Siren, Thermometer, Workflow } from 'lucide-react';
+import { Building2, Compass, PanelLeft, PanelRight, Search, Siren, Thermometer, Workflow } from 'lucide-react';
 import { enterHeat, exitThermal } from './scene/focus';
 import { AIR_LAYOUT, type RoomLabel } from './data/thermal';
 import { htmlPortal } from './scene/htmlPortal';
@@ -8,6 +8,7 @@ import { LabelOverlay } from './scene/HoverLabel';
 import { Scene } from './scene/Scene';
 import { InfoPanel } from './ui/InfoPanel';
 import { ThermalPanel } from './ui/ThermalPanel';
+import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -29,6 +30,9 @@ function heatRoom(): RoomLabel {
 export function App() {
   const [left, setLeft] = useState(true);
   const [right, setRight] = useState(true);
+  const [search, setSearch] = useState(false);
+  const openSearch = useCallback(() => setSearch(true), []);
+  useSearchHotkey(openSearch);
   const diagram = useView((s) => s.diagramMode);
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
@@ -47,6 +51,11 @@ export function App() {
         <h1>데이터센터 3D 시뮬레이터</h1>
         <span className="stage">v0.9</span>
         <div className="spacer" />
+        <button className="tb-search" onClick={() => setSearch(true)} title="장비 · 랙 · 고객사 · 계통 · 층 · 시나리오 검색">
+          <Search size={14} />
+          <span>검색</span>
+          <kbd>⌘K</kbd>
+        </button>
         <div className="tb-group" role="group" aria-label="보기">
           <button
             className={thermal ? 'on' : ''}
@@ -80,6 +89,7 @@ export function App() {
         </button>
         <IconButton icon={PanelRight} label={right ? '정보 패널 닫기' : '정보 패널 열기'} active={right} onClick={() => setRight((v) => !v)} />
       </header>
+      {search && <SearchPalette onClose={() => setSearch(false)} />}
       {left && <LeftPanel />}
       <main className={`viewport diagram-${diagram}`}>
         <div

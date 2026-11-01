@@ -2,7 +2,7 @@
 // 시나리오 재생 · 온도 보기 · 추적 · 계통 묶음 · 랙 색칠이 동시에 켜져 있어도 한 줄에서 확인할 수 있다
 
 import type { CSSProperties, ReactNode } from 'react';
-import { Layers, Paintbrush, Pause, Play, Route, Siren, Thermometer, X } from 'lucide-react';
+import { Building2, Layers, Paintbrush, Pause, Play, Route, Siren, Thermometer, X } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { nodeName } from '../data/graph';
 import { GROUP_BY_ID } from '../data/groups';
@@ -12,7 +12,7 @@ import { RACK_COLOR_META } from '../scene/rackColor';
 import { fmtT } from '../scenario/core';
 import { defOf } from '../scenario/registry';
 import { stopScenario } from '../scenario/ScenarioPanel';
-import { activateGroup, exitThermal, startTrace } from '../scene/focus';
+import { activateGroup, exitThermal, goOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
 import { IconButton } from './kit';
 
@@ -39,6 +39,7 @@ export function TraceBanner() {
   const airOn = useView((s) => s.airOn);
   const room = useView((s) => s.airRoom);
   const rackColor = useView((s) => s.rackColor);
+  const floor = useView((s) => s.floorFocus);
   const chips: ReactNode[] = [];
 
   if (sc) {
@@ -68,6 +69,28 @@ export function TraceBanner() {
       </Chip>,
     );
   }
+  // 층 하나만 보는 중: 온도 보기는 그 서버실 층을 이미 보여 주므로 따로 띄우지 않는다
+  if (floor && !thermal) {
+    const floorGroup = `floor-${floor}`;
+    const lit = groupId === floorGroup;
+    chips.push(
+      <Chip
+        key="floor"
+        icon={Building2}
+        color="var(--ink-2)"
+        off={() => goOverview()}
+        offLabel="전체 층 보기"
+        extra={
+          <button className={`small act-btn${lit ? ' on' : ''}`} aria-pressed={lit} onClick={() => activateGroup(lit ? null : floorGroup)} title="이 층 장비와 층을 넘는 연결만 남기고 나머지는 흐리게">
+            장비 강조
+          </button>
+        }
+      >
+        <b>{floor}</b>
+        <span className="muted">만 보기</span>
+      </Chip>,
+    );
+  }
   if (t) {
     chips.push(
       <Chip key="trace" icon={Route} color={TRACE_COLOR[t.dir === 'down' ? 'down' : 'up']} off={() => startTrace(null)} offLabel="추적 끄기">
@@ -86,7 +109,7 @@ export function TraceBanner() {
       </Chip>,
     );
   }
-  if (groupId) {
+  if (groupId && groupId !== `floor-${floor}`) {
     const g = GROUP_BY_ID[groupId];
     chips.push(
       <Chip key="group" icon={Layers} color="var(--info)" off={() => activateGroup(null)} offLabel="묶음 해제">
