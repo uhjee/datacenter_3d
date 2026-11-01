@@ -7,7 +7,7 @@ import { computeMetrics, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
 import { exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
-import { InfoTip, Meter, Pill, Section, Status, Switch } from '../ui/kit';
+import { InfoTip, Meter, Pill, Section, Status, Switch, TipTable } from '../ui/kit';
 import { TEMP_TONE } from '../ui/ThermInfo';
 import { fmtT, scenEnd, SRC_META, STARTING_COLOR, FAULT_COLOR, type Src } from './core';
 import { tl, values, type Values } from './outage';
@@ -238,7 +238,18 @@ function ScenarioRun() {
     const genSwitch = <Switch checked={p.genFail} onChange={() => set.setScenParams({ genFail: !p.genFail })} label="발전기-2 기동 실패 (N+1: 1대로도 감당하는지)" />;
     if (single) {
       condSummary = `ALTS ${p.alts}초${p.genFail ? ' · 발전기-2 실패' : ''}`;
-      condNote = <>발전기는 정격까지 약 10초, ATS는 그 뒤에 넘어갑니다(정전 후 13초). ALTS가 그보다 빠르면 ATS는 상용 쪽에 그대로 있고, 느리면 완전 정전처럼 발전기로 갔다가 돌아옵니다.</>;
+      condNote = (
+        <>
+          <p>발전기는 정격까지 약 10초, ATS는 그 뒤 정전 후 13초에 넘어갑니다. ALTS 절체가 이보다 빠른지에 따라 결과가 갈립니다.</p>
+          <TipTable
+            head={['ALTS 절체', '결과']}
+            rows={[
+              ['3초 (발전기보다 빠름)', '예비선으로 바로 넘어가 ATS는 상용 쪽에 그대로'],
+              ['20초 (발전기보다 느림)', '완전 정전처럼 발전기로 갔다가 예비선이 살아나면 돌아옴'],
+            ]}
+          />
+        </>
+      );
       cond = (
         <div className="rp-cond">
           <div className="rp-cond-row">
@@ -397,8 +408,19 @@ function ScenarioRun() {
     <div className="rp-card scen">
       <div className="rp-body rp-pad-top">
         <div className="rp-scen-top">
-          <Pill tone="crit">{def.name}</Pill>
-          <InfoTip text={def.note} label="모델 설명" />
+          <span className="rp-scen-name">
+            <Pill tone="crit">{def.name}</Pill>
+            <InfoTip
+              label="모델 설명"
+              text={
+                <>
+                  <p>{def.note}</p>
+                  {def.scaled && <TipTable head={['줄인 시간', '실제', '이 재생']} rows={def.scaled.map(([k, a, b]) => [k, a, b])} />}
+                  {def.assume && <TipTable head={['가정', '값']} rows={def.assume.map(([k, v]) => [k, v])} />}
+                </>
+              }
+            />
+          </span>
           <button className="small" onClick={stopScenario}>
             끝내기
           </button>

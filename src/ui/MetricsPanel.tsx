@@ -5,7 +5,9 @@ import { PART_COLOR, RT_KW, type Metrics, type RoomMetrics } from '../data/metri
 import { type RoomLabel } from '../data/thermal';
 import { activateGroup, enterAir } from '../scene/focus';
 import { useView } from '../store/useView';
-import { InfoTip, Kpi, KpiRow, Meter, Props, Section, Status } from './kit';
+import { InfoTip, Kpi, KpiRow, Meter, Props, Section, Status, TipTable } from './kit';
+
+const CONT_NAME = { none: '봉쇄 없음', CAC: '냉복도 봉쇄', HAC: '열복도 봉쇄' } as const;
 import { useMetrics } from './useStatus';
 
 const f0 = (v: number) => Math.round(v).toLocaleString('ko-KR');
@@ -48,7 +50,17 @@ export function MetricsPanel() {
         <div className="rp-airlink">
           <span className="hint">
             급기 · 봉쇄 조건{' '}
-            <InfoTip text={`급기 온도 · 컨테인먼트는 기류 패널 설정(서버실 A ${cfg.A.supply}°C · B ${cfg.B.supply}°C)을 따릅니다.`} />
+            <InfoTip
+              text={
+                <>
+                  <p>급기 온도 · 컨테인먼트는 기류 패널 설정을 따릅니다.</p>
+                  <TipTable
+                    head={['', '급기', '컨테인먼트']}
+                    rows={(['A', 'B'] as const).map((r) => [`서버실 ${r}`, <span className="num">{cfg[r].supply}°C</span>, CONT_NAME[cfg[r].containment]])}
+                  />
+                </>
+              }
+            />
           </span>
           <button className="link" onClick={() => enterAir(useView.getState().airRoom)}>
             기류 패널 열기 →
@@ -100,7 +112,22 @@ function Pue({ m }: { m: Metrics }) {
         <div>
           <div className="rp-hero-k">
             PUE{' '}
-            <InfoTip text="막대 조각에 마우스를 올리면 그 항목의 전력이 나옵니다. 총 시설 전력 ÷ IT 전력. 1.0에 가까울수록 IT 말고 쓰는 전력이 적습니다. 2024년 세계 평균은 약 1.56, 국내 우수 사례는 1.1~1.3 수준입니다. UPS · 냉각 설비는 부하가 낮을수록 효율이 떨어지고 고정 전력 비중이 커져 PUE가 나빠집니다." />
+            <InfoTip
+              text={
+                <>
+                  <p>총 시설 전력 ÷ IT 전력. 1.0에 가까울수록 IT 말고 쓰는 전력이 적습니다.</p>
+                  <TipTable
+                    head={['비교', 'PUE']}
+                    rows={[
+                      ['이 건물 (지금)', <span className="num">{m.pue.toFixed(2)}</span>],
+                      ['세계 평균 (2024)', <span className="num">약 1.56</span>],
+                      ['국내 우수 사례', <span className="num">1.1 ~ 1.3</span>],
+                    ]}
+                  />
+                  <p>UPS · 냉각 설비는 부하가 낮을수록 효율이 떨어지고 고정 전력 비중이 커져 PUE가 나빠집니다. 막대 조각에 마우스를 올리면 그 항목의 전력이 나옵니다.</p>
+                </>
+              }
+            />
           </div>
           <div className="rp-hero-v num">{m.pue.toFixed(2)}</div>
         </div>
@@ -166,12 +193,17 @@ function RoomView({ m, r }: { m: Metrics; r: RoomLabel }) {
         title="남은 용량"
         info={
           <>
+            <p>공간 · 전력 · 냉각 중 하나가 먼저 차면 나머지가 남아도 랙을 더 넣지 못합니다(고립 용량). 막대의 눈금은 가장 먼저 차는 자원의 위치입니다.</p>
+            <TipTable
+              head={['자원', '기준', '먼저 쓰는 랙']}
+              rows={[
+                ['냉각', 'N+1 (1대 예비) 냉각 용량', '고밀도 GPU 열'],
+                ['전력', '랙 할당 전력 합', '고밀도 GPU 열'],
+                ['공간', '42U × 랙 수', '스토리지 · 네트워크 열'],
+              ]}
+            />
             <p>
-              공간 · 전력 · 냉각 중 하나가 먼저 차면 나머지가 남아도 랙을 더 넣지 못합니다(고립 용량). 고밀도 GPU 열은 전력 · 냉각을, 스토리지 · 네트워크 열은 공간을
-              먼저 씁니다. 냉각은 N+1(1대 예비) 용량 기준입니다.
-            </p>
-            <p>
-              1 USRT = {RT_KW}kW. 눈금은 가장 먼저 차는 자원의 위치입니다. 왼쪽 패널 "랙 색칠"에서 U 사용률 · 전력으로 칠해 볼 수 있습니다.
+              1 USRT = {RT_KW}kW. 왼쪽 패널 "랙 색칠"에서 U 사용률 · 전력으로 칠해 볼 수 있습니다.
             </p>
           </>
         }
@@ -225,8 +257,17 @@ function RoomCompare({ m }: { m: Metrics }) {
           <tr>
             <th>
               <InfoTip
-                text="부분 PUE = (서버실 IT + 그 서버실 냉각 + 공용 손실 몫) ÷ 서버실 IT. 냉각 COP는 옮긴 열 ÷ 냉각에 쓴 전력입니다. 외기가 차가우면 서버실 B는 냉동기 대신 판형 열교환기로 냉수를 만들어(프리쿨링) 냉각 전력이 크게 줄어듭니다."
                 label="비교 기준"
+                text={
+                  <TipTable
+                    head={['지표', '계산']}
+                    rows={[
+                      ['부분 PUE', '(서버실 IT + 그 서버실 냉각 + 공용 손실 몫) ÷ 서버실 IT'],
+                      ['냉각 COP', '옮긴 열 ÷ 냉각에 쓴 전력 (클수록 효율 좋음)'],
+                      ['프리쿨링', '외기가 차가우면 서버실 B가 냉동기 대신 판형 열교환기로 냉수를 만드는 비율 (냉각 전력이 크게 줄어듦)'],
+                    ]}
+                  />
+                }
               />
             </th>
             <td>A · 공냉식</td>
@@ -277,7 +318,20 @@ function Ups({ m }: { m: Metrics }) {
     <Section
       id="ups-2n"
       title="UPS 2N"
-      info="2N 구성은 한 대가 멈춰도 다른 한 대가 전부 받아야 하므로 평상시 각 UPS를 50% 이하로 둡니다(막대의 눈금). 단일전원 랙(STS)은 평상시 UPS-A로 받습니다. 손실은 열이 되어 UPS실 공조가 다시 식힙니다."
+      info={
+        <>
+          <p>2N 구성은 한 대가 멈춰도 다른 한 대가 전부 받아야 하므로 평상시 각 UPS를 50% 이하로 둡니다(막대의 눈금).</p>
+          <TipTable
+            head={['상태', 'UPS 부하']}
+            rows={[
+              ['평상시 (두 대 운전)', '각 50% 이하 권장'],
+              ['한 대 고장', '남은 한 대가 전부 (100% 이하여야 2N 유지)'],
+              ['단일전원 랙 (STS)', '평상시 UPS-A로 받음'],
+            ]}
+          />
+          <p>손실은 열이 되어 UPS실 공조가 다시 식힙니다.</p>
+        </>
+      }
       aside={fail <= 1 ? <Status tone="ok">한 대 고장 시 {pct(fail)}로 감당</Status> : <Status tone="crit">한 대 고장 시 {pct(fail)} · 2N 깨짐</Status>}
     >
       <div className="rp-caps">

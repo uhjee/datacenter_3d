@@ -123,5 +123,9 @@ export const LINE_OUT: ScenarioDef<ScenarioParams, Series> = {
     { color: STARTING_COLOR, name: '재기동 중' },
     { color: SRC_META.none.color, name: '정전' },
   ],
-  note: '근사 모델입니다. ALTS 절체 시간은 제품 · 설정에 따라 달라 조건으로 바꿀 수 있게 했습니다. 재기동 시간은 완전 정전과 같습니다(공냉식 압축기 45초, 냉동기 240초).',
+  note: '근사 모델입니다. ALTS 절체 시간은 제품 · 설정에 따라 달라 조건으로 바꿀 수 있게 했습니다. 재기동 시간은 완전 정전과 같습니다.',
+  assume: [
+    ['공냉식 압축기 재기동', '45초'],
+    ['냉동기 재기동', '240초'],
+  ],
 };

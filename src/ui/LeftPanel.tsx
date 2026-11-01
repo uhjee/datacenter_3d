@@ -8,7 +8,7 @@ import { DOMAIN_META, TYPE_BY_ID, type Domain } from "../data/equipTypes";
 import { activateGroup, focusItem } from "../scene/focus";
 import { RACK_COLOR_META, RAMP_CSS } from "../scene/rackColor";
 import { LAYER_META, useView, type RackColorMode } from "../store/useView";
-import { InfoTip, keyToggle, Switch } from "./kit";
+import { InfoTip, keyToggle, Switch, TipTable } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 
@@ -84,7 +84,17 @@ export function LeftPanel() {
       <LeftSection
         id="links"
         title="연결선"
-        info="층을 넘는 선은 샤프트(EPS-A/B, PS, 냉매 배관 샤프트)를 지납니다. 배관은 공급 · 환수 두 줄, 점선은 대기 경로입니다."
+        info={
+          <TipTable
+            head={["표시", "뜻"]}
+            rows={[
+              ["실선", "평상시 전기 · 냉매 · 물이 흐르는 경로"],
+              ["점선", "평상시 쓰지 않는 대기 경로 (발전기 · 예비선 · 연계 · 프리쿨링)"],
+              ["두 줄 배관", "공급과 환수 (냉수 · 냉각수 · 냉매)"],
+              ["층을 넘는 선", "샤프트를 지남 (EPS-A/B 전력, PS 배관, 냉매 배관 샤프트)"],
+            ]}
+          />
+        }
         summary={
           layers.links
             ? `${LINK_GROUPS.filter((g) => linkFilter[g.key]).length}/${LINK_GROUPS.length} 켬`
@@ -111,13 +121,16 @@ export function LeftPanel() {
         id="rack-color"
         title="랙 색칠"
         info={
-          <ul>
-            {(["u", "power", "temp"] as const).map((k) => (
-              <li key={k}>
-                <b>{RACK_COLOR_META[k].short}</b> — {RACK_COLOR_META[k].desc}
-              </li>
-            ))}
-          </ul>
+          <TipTable
+            head={["방식", "칠하는 값", "범위"]}
+            rows={(["u", "power", "temp"] as const).map((k) => [
+              RACK_COLOR_META[k].short,
+              RACK_COLOR_META[k].desc,
+              <span className="num">
+                {RACK_COLOR_META[k].low} ~ {RACK_COLOR_META[k].high}
+              </span>,
+            ])}
+          />
         }
         summary={
           rackColor === "none" ? "없음" : RACK_COLOR_META[rackColor].name

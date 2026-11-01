@@ -1582,9 +1582,6 @@ button.link {
 .k-help:focus-visible {
   color: var(--info);
 }
-.k-tip.up {
-  transform: translateY(-100%);
-}
 .k-tip p {
   margin: 0;
 }
@@ -1607,8 +1604,9 @@ button.link {
   position: fixed;
   z-index: 1000;
   text-align: left;
-  width: 280px;
-  padding: 8px 10px;
+  width: max-content;
+  max-width: min(460px, calc(100vw - 16px));
+  padding: 10px 12px;
   border-radius: var(--r);
   background: var(--s3);
   border: 1px solid var(--line-2);
@@ -1616,7 +1614,7 @@ button.link {
   color: var(--ink);
   font-size: var(--fs-sm);
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.6;
   pointer-events: none;
 }
 
@@ -3607,4 +3605,68 @@ button.co-tr:hover {
 }
 .plan-legend-n {
   align-items: center;
+}
+
+/* 툴팁 안 표 */
+.k-tip-table {
+  border-collapse: collapse;
+  margin: 2px 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.k-tip p + .k-tip-table,
+.k-tip-table + p {
+  margin-top: 8px;
+}
+.k-tip-table th,
+.k-tip-table td {
+  padding: 3px 10px 3px 0;
+  vertical-align: top;
+  text-align: left;
+}
+.k-tip-table tbody tr + tr > * {
+  border-top: 1px solid var(--line);
+}
+.k-tip-table thead th {
+  padding-bottom: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border-bottom: 1px solid var(--line-2);
+}
+.k-tip-table tbody th {
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--ink);
+}
+.k-tip-table td {
+  color: var(--ink-2);
+}
+.k-tip-table td.num,
+.k-tip-table .num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.k-tip-sw {
+  display: inline-block;
+  width: 12px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  vertical-align: -1px;
+}
+.k-tip-sw.line {
+  height: 3px;
+  vertical-align: 2px;
+}
+.k-tip:has(.k-tip-table) {
+  max-width: min(560px, calc(100vw - 16px));
+}
+.k-tip-table td.nowrap {
+  white-space: nowrap;
+}
+.rp-scen-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }

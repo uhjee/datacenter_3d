@@ -48,7 +48,9 @@ export interface ScenarioDef<P, S> {
   eventLog: (p: P) => LogItem[];
   segments: (p: P) => Segment[];
   legend: { color: string; name: string }[];
-  note: string;
+  note: string; // 모델 설명 (시나리오 이름 옆 info)
+  scaled?: [string, string, string][]; // 재생을 위해 줄인 시간: [항목, 실제, 이 재생]
+  assume?: [string, string][]; // 그 밖의 가정: [항목, 값]
 }
 
 export const SRC_META: Record<Src, { name: string; color: string }> = {

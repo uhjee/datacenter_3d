@@ -1,6 +1,6 @@
 // 패널 공통 부품 (docs/ui-proposal.html 시안의 부품). 클래스 이름은 기존 규칙과 겹치지 않게 k- 로 시작한다
 
-import { useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookOpen,
@@ -207,22 +207,31 @@ export function LearnBox({ title, children, long }: { title: string; children: R
 }
 
 // 제목 옆 ⓘ 단추: 마우스를 올리거나 초점을 주면(누르면 고정) 설명. 화면에 늘 깔아 두지 않을 사용법 · 기준 · 범례 설명을 여기에 둔다.
-// 패널 스크롤에 잘리지 않게 화면 기준(fixed)으로 띄우고, 아래 공간이 모자라면 위로 띄운다
+// 패널 스크롤 · 카드 쌓임에 갇히지 않게 body에 화면 기준(fixed)으로 띄운다.
+// 너비는 내용에 맞추되 넉넉한 상한까지 넓혀 줄바꿈을 줄이고, 실제 크기를 재서 화면 안 · 아래(모자라면 위)에 놓는다
 export function InfoTip({ text, label = '설명' }: { text: ReactNode; label?: string }) {
-  const [pos, setPos] = useState<{ x: number; y: number; up: boolean } | null>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
   const [pinned, setPinned] = useState(false);
-  const show = (el: HTMLElement) => {
-    const r = el.getBoundingClientRect();
-    const w = 280;
-    const up = r.bottom > window.innerHeight * 0.62;
-    setPos({ x: Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)), y: up ? r.top - 6 : r.bottom + 6, up });
-  };
+  const tip = useRef<HTMLDivElement>(null);
+  const show = (el: HTMLElement) => setAnchor(el.getBoundingClientRect());
   const hide = () => {
-    if (!pinned) setPos(null);
+    if (!pinned) setAnchor(null);
   };
+  useLayoutEffect(() => {
+    const el = tip.current;
+    if (!el || !anchor) return;
+    const { width: w, height: h } = el.getBoundingClientRect();
+    const m = 8;
+    const x = Math.max(m, Math.min(window.innerWidth - w - m, anchor.left + anchor.width / 2 - w / 2));
+    const below = anchor.bottom + 6;
+    const y = below + h <= window.innerHeight - m ? below : Math.max(m, anchor.top - 6 - h);
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    el.style.visibility = 'visible';
+  }, [anchor, text]);
   return (
     <span
-      className={`k-help${pos ? ' on' : ''}`}
+      className={`k-help${anchor ? ' on' : ''}`}
       role="button"
       tabIndex={0}
       aria-label={label}
@@ -231,7 +240,7 @@ export function InfoTip({ text, label = '설명' }: { text: ReactNode; label?: s
       onFocus={(e) => show(e.currentTarget)}
       onBlur={() => {
         setPinned(false);
-        setPos(null);
+        setAnchor(null);
       }}
       // 섹션 제목 줄 안에 있어도 접히지 않게
       onClick={(e) => {
@@ -242,17 +251,54 @@ export function InfoTip({ text, label = '설명' }: { text: ReactNode; label?: s
       onKeyDown={(e) => e.stopPropagation()}
     >
       <Info size={13} />
-      {/* 카드가 만드는 쌓임 순서에 갇히지 않게 body에 띄운다 */}
-      {pos &&
+      {anchor &&
         createPortal(
-          <span className={`k-tip${pos.up ? ' up' : ''}`} role="tooltip" style={{ left: pos.x, top: pos.y }}>
+          // 크기를 잰 뒤 보이게 (첫 그림에서 엉뚱한 자리에 깜빡이지 않도록)
+          <div ref={tip} className="k-tip" role="tooltip" style={{ left: 0, top: 0, visibility: 'hidden' }}>
             {text}
-          </span>,
+          </div>,
           document.body,
         )}
     </span>
   );
 }
+
+// 툴팁 안 표: 머리 줄(선택) + 행. 첫 칸은 이름처럼 진하게. nowrap: 줄바꿈하지 않을 짧은 칸 번호
+export function TipTable({ head, rows, nowrap = [] }: { head?: ReactNode[]; rows: ReactNode[][]; nowrap?: number[] }) {
+  return (
+    <table className="k-tip-table">
+      {head && (
+        <thead>
+          <tr>
+            {head.map((h, i) => (
+              <th key={i}>{h}</th>
+            ))}
+          </tr>
+        </thead>
+      )}
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            {r.map((c, j) =>
+              j === 0 ? (
+                <th key={j}>{c}</th>
+              ) : (
+                <td key={j} className={nowrap.includes(j) ? 'nowrap' : undefined}>
+                  {c}
+                </td>
+              ),
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+// 툴팁 안 색 견본
+export const TipSwatch = ({ color, line }: { color: string; line?: boolean }) => (
+  <i className={`k-tip-sw${line ? ' line' : ''}`} style={{ background: color }} />
+);
 export const Help = InfoTip;
 
 // 켜기 · 끄기 스위치 (체크박스 대신). 왼쪽에 색 점이나 선 견본을 붙일 수 있다

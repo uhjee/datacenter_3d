@@ -8,7 +8,7 @@ import { TONE_TEXT, TREND_DAYS, WARN_RATIO, cageArea, coloStats, monthsBetween, 
 import { RECOMMENDED } from '../data/thermal';
 import { focusItem } from '../scene/focus';
 import { useView } from '../store/useView';
-import { Card, Glyph, IconButton, Kpi, KpiRow, LearnBox, PanelHead, Pill, Props, Section, Status, type Tone } from './kit';
+import { Card, Glyph, IconButton, Kpi, KpiRow, LearnBox, PanelHead, Pill, Props, Section, Status, TipTable, type Tone } from './kit';
 import { useRoomTherm } from './useStatus';
 
 const TONE_VAR: Record<Tone, string> = { ok: 'var(--ok)', warn: 'var(--warn)', crit: 'var(--crit)', info: 'var(--info)', muted: 'var(--ink-3)' };
@@ -81,7 +81,20 @@ export function CustomerCard({ id }: { id: CustomerId }) {
       <Section
         id="co-racks"
         title="랙별 전력 · 회로 여유"
-        info={`회로 ${CIRCUIT[c.contract.circuit].name} · 연속 한도 ${CIRCUIT[c.contract.circuit].cont}kW(정격의 80%). '한쪽 회로 단독'은 A · B 중 한쪽이 끊겨 남은 회로가 랙 전체를 받을 때 한도 대비 비율이며, 100%를 넘으면 한쪽 회로 고장 때 차단기가 떨어질 수 있습니다. 행을 누르면 그 랙으로 이동합니다.`}
+        info={
+          <>
+            <TipTable
+              rows={[
+                ['랙 회로', `A · B 각 ${CIRCUIT[c.contract.circuit].name}`],
+                ['정격', <span className="num">{CIRCUIT[c.contract.circuit].kva}kVA</span>],
+                ['연속 한도', <span className="num">{CIRCUIT[c.contract.circuit].cont}kW (정격의 80%)</span>],
+                ['한쪽 회로 단독', 'A · B 중 한쪽이 끊겨 남은 회로가 랙 전체를 받을 때 연속 한도 대비'],
+                ['판정', '80%부터 주의, 100% 넘으면 한쪽 고장 때 차단기가 떨어질 수 있음'],
+              ]}
+            />
+            <p>행을 누르면 그 랙으로 이동합니다.</p>
+          </>
+        }
         count={`${s.racks.length}대${s.circuitOver ? ` · 회로 부족 ${s.circuitOver}` : ''}`}
       >
         <RackTable c={c} s={s} />

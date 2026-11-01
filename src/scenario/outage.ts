@@ -376,5 +376,9 @@ export const OUTAGE: ScenarioDef<ScenarioParams, Series> = {
     { color: STARTING_COLOR, name: '재기동 중' },
     { color: SRC_META.none.color, name: '정전' },
   ],
-  note: '근사 모델입니다. 실제보다 줄인 시간: ATS 복귀 대기 5분 → 60초, 발전기 냉각 운전 5분 → 120초.',
+  note: '근사 모델입니다.',
+  scaled: [
+    ['ATS 복귀 대기', '5분', '60초'],
+    ['발전기 냉각 운전', '5분', '120초'],
+  ],
 };

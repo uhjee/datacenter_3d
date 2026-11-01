@@ -252,5 +252,6 @@ export const CRAC_FAIL: ScenarioDef<CracFailParams, CracFailSeries> = {
     { color: N_COLOR, name: 'N · 예비 없음' },
     { color: FAULT_COLOR, name: '용량 부족' },
   ],
-  note: '근사 모델입니다. 정상 상태 온도 위에 운전 대수 부족에 따른 급기 상승과 고장 유닛 주변 국부 상승을 더했습니다. 공냉식 압축기 재기동 보호 시간(실제 3~5분)은 2분으로 줄였습니다.',
+  note: '근사 모델입니다. 정상 상태 온도 위에 운전 대수 부족에 따른 급기 상승과 고장 유닛 주변 국부 상승을 더했습니다.',
+  scaled: [['공냉식 압축기 재기동 보호', '3~5분', '2분']],
 };

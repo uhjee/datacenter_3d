@@ -237,7 +237,11 @@ export const LEAK: ScenarioDef<LeakParams, LeakSeries> = {
     { color: FAULT_COLOR, name: '차단 · 냉각 공백' },
     { color: STARTING_COLOR, name: 'N · 예비 없음' },
   ],
-  note: '근사 모델입니다. 누수량 분당 20L, 바닥에 3mm 두께로 고르게 번진다고 보았습니다. 감지 · 이동 · 수리 시간은 줄였습니다.',
+  note: '근사 모델입니다. 감지 · 이동 · 수리 시간은 줄였습니다.',
+  assume: [
+    ['누수량', '분당 20L'],
+    ['번지는 모양', '바닥에 3mm 두께로 고르게'],
+  ],
 };
 
 // 3D 표시용: 시나리오 시각의 누수 지점 · 물 반지름

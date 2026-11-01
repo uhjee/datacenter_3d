@@ -8,7 +8,7 @@ import { RACKS } from '../data/racks';
 import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, TEMP_BANDS, tempColor, tempGradient } from '../data/thermal';
 import { exitHeat, focusItem } from '../scene/focus';
 import { useView, type HeatHeight } from '../store/useView';
-import { InfoTip } from './kit';
+import { InfoTip, TipSwatch, TipTable } from './kit';
 import { useHeatField, useRoomTherm } from './useStatus';
 
 const LO = 15;
@@ -62,13 +62,17 @@ export function HeatPanel() {
             text={
               <>
                 <p>고른 높이 단면의 공기 온도 분포입니다. 판정은 랙 흡기 기준이며, 열복도의 35°C 넘는 값은 정상 배기입니다.</p>
-                <ul>
-                  {[...TEMP_BANDS].reverse().map((b) => (
-                    <li key={b.name}>
-                      {b.lo === -Infinity ? `${b.hi}°C 미만` : b.hi === Infinity ? `${b.lo}°C 초과` : `${b.lo}~${b.hi}°C`} · {b.name}
-                    </li>
-                  ))}
-                </ul>
+                <TipTable
+                  head={['구간', '온도', '뜻']}
+                  rows={[...TEMP_BANDS].reverse().map((b) => [
+                    <>
+                      <TipSwatch color={b.color} />
+                      {SHORT[b.name] ?? '과냉'}
+                    </>,
+                    <span className="num">{b.lo === -Infinity ? `${b.hi}°C 미만` : b.hi === Infinity ? `${b.lo}°C 초과` : `${b.lo} ~ ${b.hi}°C`}</span>,
+                    b.name,
+                  ])}
+                />
                 <p>바닥 통로를 가리키면 그 지점 온도가 나옵니다. 막대 아래 회색 선은 이 단면의 최저 ~ 최고 범위입니다.</p>
               </>
             }

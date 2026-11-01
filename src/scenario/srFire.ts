@@ -185,5 +185,6 @@ export const SR_FIRE: ScenarioDef<SrFireParams, null> = {
     { color: FAULT_COLOR, name: '화재' },
     { color: '#e9ecef', name: '약제 유지' },
   ],
-  note: '근사 모델입니다. 시간을 줄였고(약제 유지 · 배출 10분 이상 → 4분), VESDA 단계 이름은 대표적인 4단계(Alert · Action · Fire1 · Fire2)를 줄여 썼습니다.',
+  note: '근사 모델입니다. VESDA 단계 이름은 대표적인 4단계(Alert · Action · Fire1 · Fire2)를 줄여 썼습니다.',
+  scaled: [['소화약제 유지 · 배출', '10분 이상', '4분']],
 };

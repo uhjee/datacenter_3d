@@ -205,7 +205,8 @@ export const UPS_FAIL: ScenarioDef<UpsFailParams, null> = {
     { color: SRC_META.bypass.color, name: '바이패스 (상용 직결)' },
     { color: STARTING_COLOR, name: '재기동 중' },
   ],
-  note: '근사 모델입니다. 실제 수리 시간(수 시간)을 약 8분으로 줄였고, 인버터 고장 시 출력이 끊기는 경우를 가정했습니다.',
+  note: '근사 모델입니다. 인버터 고장 시 출력이 끊기는 경우를 가정했습니다.',
+  scaled: [['UPS 수리', '수 시간', '약 8분']],
 };
 
 export const UPS_FAIL_COUNTS = { dual: DUAL, single: SINGLE };

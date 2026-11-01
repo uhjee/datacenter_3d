@@ -5,17 +5,19 @@ import { ChevronDown } from 'lucide-react';
 import { RECOMMENDED, STATUS_META, tempColor, tempGradient, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
 import { exitAir, switchRoom } from '../scene/focus';
 import { useView } from '../store/useView';
-import { InfoTip } from './kit';
+import { InfoTip, TipTable } from './kit';
 import { useRoomTherm } from './useStatus';
 
-const CONTAINMENT: { key: Containment; name: string; desc: string }[] = [
+const CONTAINMENT: { key: Containment; name: string; blocks: string; room: string; desc: string }[] = [
   {
     key: 'none',
     name: '봉쇄 없음',
+    blocks: '없음',
+    room: '섞인 공기',
     desc: '냉기와 열기가 섞입니다. 랙 위로 넘어온 열기가 다시 흡기되고(재순환), 일부 냉기는 랙을 거치지 않고 돌아갑니다(바이패스).',
   },
-  { key: 'CAC', name: '냉복도 봉쇄 (CAC)', desc: '냉복도 위와 양 끝을 막아 냉기를 랙 앞에 가둡니다. 나머지 방은 열기로 차므로 방 온도는 높아집니다.' },
-  { key: 'HAC', name: '열복도 봉쇄 (HAC)', desc: '열복도를 막아 열기를 굴뚝처럼 천장 리턴으로 바로 보냅니다. 방 전체가 냉기로 채워집니다.' },
+  { key: 'CAC', name: '냉복도 봉쇄 (CAC)', blocks: '냉복도 위 · 양 끝', room: '뜨거움 (열기)', desc: '냉복도 위와 양 끝을 막아 냉기를 랙 앞에 가둡니다. 나머지 방은 열기로 차므로 방 온도는 높아집니다.' },
+  { key: 'HAC', name: '열복도 봉쇄 (HAC)', blocks: '열복도 (천장 리턴으로)', room: '차가움 (냉기)', desc: '열복도를 막아 열기를 굴뚝처럼 천장 리턴으로 바로 보냅니다. 방 전체가 냉기로 채워집니다.' },
 ];
 
 // 카드 전체와 컨테인먼트 아래 세부 설정 · 수치는 기본으로 접는다 (3D 상면을 덜 가리도록). 열고 닫은 상태는 이번 화면 동안 기억
@@ -54,13 +56,12 @@ export function AirPanel() {
             text={
               <>
                 <p>입자는 찬 공기(파랑)가 랙을 지나며 데워져(빨강) 항온항습기로 돌아가는 길입니다.</p>
-                <p className="stages">
-                  {STAGES.map((s, i) => (
-                    <span key={s}>
-                      {'①②③④⑤⑥⑦⑧⑨⑩'[i]} {s}{' '}
-                    </span>
-                  ))}
-                </p>
+                <TipTable
+                  rows={STAGES.slice(0, 5).map((a, i) => [
+                    `${'①②③④⑤'[i]} ${a}`,
+                    `${'⑥⑦⑧⑨⑩'[i]} ${STAGES[i + 5]}`,
+                  ])}
+                />
               </>
             }
           />
@@ -93,13 +94,19 @@ export function AirPanel() {
             컨테인먼트
             <InfoTip
               text={
-                <ul>
-                  {CONTAINMENT.map((c) => (
-                    <li key={c.key}>
-                      <b>{c.name}</b> — {c.desc}
-                    </li>
-                  ))}
-                </ul>
+                <TipTable
+                  head={['방식', '막는 곳', '방 공기', '특징']}
+                  nowrap={[1, 2]}
+                  rows={CONTAINMENT.map((c) => [
+                    <>
+                      {c.name}
+                      {c.key === cfg.containment ? ' ✓' : ''}
+                    </>,
+                    c.blocks,
+                    c.room,
+                    c.desc,
+                  ])}
+                />
               }
             />
           </h5>
@@ -152,7 +159,19 @@ export function AirPanel() {
 
               <h5>
                 수치
-                <InfoTip text="급기와 환기의 온도 차가 클수록 같은 바람으로 더 많은 열을 옮기므로 항온항습기 효율이 좋아집니다. 바이패스가 크면 찬 공기가 그냥 돌아와 이 차이가 줄어듭니다. 재순환은 랙 배기가 다시 흡기로 돌아오는 비율입니다." />
+                <InfoTip
+                  text={
+                    <TipTable
+                      head={['수치', '뜻', '좋은 쪽']}
+                      rows={[
+                        ['환기 − 급기', '항온항습기로 돌아오는 공기와 내보내는 공기의 온도 차. 같은 바람으로 옮기는 열의 양', '클수록'],
+                        ['재순환', '랙 배기가 다시 흡기로 돌아오는 비율 (흡기 온도를 올림)', '작을수록'],
+                        ['바이패스', '찬 공기가 랙을 거치지 않고 그냥 돌아가는 비율 (환기 − 급기 차이를 줄임)', '작을수록'],
+                        ['열부하 / 냉각 용량', '1대를 예비로 뺀(N+1) 냉각 용량 대비 지금 열부하', '100% 이하'],
+                      ]}
+                    />
+                  }
+                />
               </h5>
               <div className="air-metrics">
                 <Metric name="평균 흡기" value={`${th.avgInlet}°C`} color={tempColor(th.avgInlet)} />

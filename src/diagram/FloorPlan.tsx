@@ -13,7 +13,7 @@ import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, tempColor, tempRGB, typ
 import { rampColor } from '../scene/rackColor';
 import { focusItem } from '../scene/focus';
 import { useView, type HeatValue } from '../store/useView';
-import { InfoTip } from '../ui/kit';
+import { InfoTip, TipSwatch, TipTable } from '../ui/kit';
 import { useHeatField, useNodeStatus, useRoomTherm } from '../ui/useStatus';
 
 interface ViewT {
@@ -471,7 +471,19 @@ function PlanLegend({ value }: { value: HeatValue }) {
           text={
             <>
               <p>권장 18~27°C · 허용 상한 32°C (ASHRAE A1). 판정은 랙 흡기 기준이고, 열복도의 35°C 넘는 값은 정상 배기입니다.</p>
-              <p>랙 칸은 고른 값(흡기 · 배기 · ΔT)으로 칠하고, 랙 앞면(흡기) 쪽에 어두운 선을 그었습니다. 흰 점은 온습도 센서, 오른쪽 · 왼쪽 숫자 칸은 항온항습기입니다.</p>
+              <TipTable
+                head={['기호', '뜻']}
+                rows={[
+                  [<><TipSwatch color={tempColor(22)} />랙 칸</>, '고른 값(흡기 · 배기 · ΔT)의 색 · 숫자. 어두운 칸은 장비 없는 랙'],
+                  [<><TipSwatch color="#0d1117" line />칸 안 어두운 선</>, '랙 앞면 (흡기 쪽)'],
+                  [<><TipSwatch color="#e9ecef" />흰 점</>, '온습도 센서'],
+                  [<><TipSwatch color="#2b3542" />숫자 칸</>, '항온항습기 (아래 급기 → 환기 °C, 고장이면 ✕)'],
+                  [<><TipSwatch color="#74c0fc" line />파란 점선</>, '냉복도 봉쇄 (CAC)'],
+                  [<><TipSwatch color="#ff8787" line />빨간 점선</>, '열복도 봉쇄 (HAC)'],
+                  [<><TipSwatch color="#f783ac" line />색 점선</>, '고객사 케이지'],
+                  [<><TipSwatch color="#74c0fc" line />화살표</>, '기류를 켰을 때 냉복도 → 랙 → 열복도'],
+                ]}
+              />
             </>
           }
         />
