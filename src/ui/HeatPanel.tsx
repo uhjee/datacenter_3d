@@ -22,8 +22,8 @@ const SHORT: Record<string, string> = {
   '위험 (흡기) · 열복도는 정상 배기': '위험 · 배기',
 };
 
-// 접힘 상태는 이번 화면 동안 기억
-let open0 = true;
+// 기본은 접힘 (기류 카드 세부 설정과 같이). 펼친 상태는 이번 화면 동안 기억
+let open0 = false;
 
 export function HeatPanel() {
   const on = useView((s) => s.heatOn);
