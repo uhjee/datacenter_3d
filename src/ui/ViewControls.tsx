@@ -1,10 +1,10 @@
-// 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 확대 · 축소 · 전체 보기
+// 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 화면 맞춤 · 확대 · 축소 · 조작 안내
 
-import { FoldVertical, House, Minus, Plus, UnfoldVertical } from 'lucide-react';
+import { FoldVertical, Minus, Plus, Scan, UnfoldVertical } from 'lucide-react';
 import { FLOORS, type FloorId } from '../data/building';
 import { focusFloor, focusOverview, goFloor, goOverview, switchRoom, thermalOn } from '../scene/focus';
 import { useView } from '../store/useView';
-import { Help, IconButton } from './kit';
+import { IconButton, InfoTip, TipTable } from './kit';
 
 export function FloorBar() {
   const focus = useView((s) => s.floorFocus);
@@ -12,8 +12,7 @@ export function FloorBar() {
   const changeMode = (m: 'stack' | 'explode') => {
     useView.getState().setViewMode(m);
     // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
-    const s = useView.getState();
-    requestAnimationFrame(() => (thermalOn(s) ? switchRoom(s.airRoom, true) : focus ? focusFloor(focus) : focusOverview()));
+    requestAnimationFrame(fitView);
   };
   return (
     <div className="vc-floors">
@@ -34,16 +33,40 @@ export function FloorBar() {
   );
 }
 
+// 화면 맞춤: 지금 보고 있는 범위로 카메라를 되돌린다.
+// 기류 · 히트맵 중이면 그 서버실 시점, 층을 골랐으면 그 층, 전체면 건물 전체
+export function fitView() {
+  const s = useView.getState();
+  if (thermalOn(s)) return switchRoom(s.airRoom, true);
+  if (s.floorFocus) return focusFloor(s.floorFocus);
+  focusOverview();
+}
+
 export function CameraButtons() {
   return (
     <div className="vc-cam vc-bar col">
-      <IconButton icon={House} label="전체 보기" onClick={goOverview} />
+      <IconButton icon={Scan} label="화면에 맞춤 (선택한 층 기준)" onClick={fitView} />
       <span className="vc-sep h" />
       <IconButton icon={Plus} label="확대" onClick={() => useView.getState().zoomStep(1)} />
       <IconButton icon={Minus} label="축소" onClick={() => useView.getState().zoomStep(-1)} />
       <span className="vc-sep h" />
       <span className="vc-help">
-        <Help text="드래그: 회전 · 우클릭 드래그: 이동 · 휠: 마우스 쪽으로 확대/축소 · 더블클릭: 그 지점을 회전 중심으로 · 클릭: 장비 정보" />
+        <InfoTip
+          label="3D 조작 방법"
+          text={
+            <TipTable
+              head={['조작', '동작']}
+              rows={[
+                ['드래그', '회전'],
+                ['우클릭 드래그', '이동'],
+                ['휠', '마우스가 가리키는 쪽으로 확대 · 축소'],
+                ['더블클릭', '그 지점을 회전 중심으로'],
+                ['클릭', '장비 선택 · 정보 보기'],
+                ['화면 맞춤 버튼', '선택한 층(전체면 건물 전체)으로 카메라 되돌리기'],
+              ]}
+            />
+          }
+        />
       </span>
     </div>
   );
