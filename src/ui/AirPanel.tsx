@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-import { RECOMMENDED, STATUS_META, tempColor, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
-import { enterAir, exitAir } from '../scene/focus';
+import { RECOMMENDED, STATUS_META, tempColor, tempGradient, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
+import { exitThermal, switchRoom } from '../scene/focus';
 import { useView } from '../store/useView';
 import { useRoomTherm } from './useStatus';
 
@@ -23,7 +23,7 @@ let detailOpen = false;
 const STAGES = ['급기(하부)', '이중마루 하부', '타공판', '냉복도', '랙 흡기', '랙 배기', '열복도', '천장 · 리턴', '항온항습기 흡입', '코일에서 열 전달'];
 
 export function AirPanel() {
-  const on = useView((s) => s.airOn);
+  const on = useView((s) => s.airOn || s.heatOn);
   const room = useView((s) => s.airRoom);
   const cfg = useView((s) => s.airCfg[room]);
   const th = useRoomTherm(room);
@@ -44,12 +44,12 @@ export function AirPanel() {
         <b>기류 · 온도</b>
         <div className="seg small">
           {(['A', 'B'] as RoomLabel[]).map((r) => (
-            <button key={r} className={room === r ? 'on' : ''} onClick={() => enterAir(r)}>
+            <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)}>
               서버실 {r} ({r === 'A' ? '3F 공냉식' : '4F 수냉식'})
             </button>
           ))}
         </div>
-        <button className="icon" onClick={() => exitAir()} title="기류 보기 끄기">
+        <button className="icon" onClick={() => exitThermal()} title="기류 · 히트맵 끄기">
           ✕
         </button>
       </header>
@@ -115,13 +115,13 @@ export function AirPanel() {
             </div>
 
             <div className="temp-scale">
-              <div className="bar" />
+              <div className="bar" style={{ background: tempGradient(15, 35) }} />
               <div className="ticks">
-                <span>16°C</span>
+                <span>15°C</span>
                 <span>
                   권장 {RECOMMENDED[0]}~{RECOMMENDED[1]}°C
                 </span>
-                <span>36°C</span>
+                <span>35°C</span>
               </div>
             </div>
             <p className="hint stages">

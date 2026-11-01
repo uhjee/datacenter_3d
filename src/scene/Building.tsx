@@ -33,6 +33,7 @@ import { AirRoom } from './Airflow';
 import { LeakMark } from './LeakMark';
 import { FireMark } from './FireMark';
 import { Cages } from './Cages';
+import { Heatmap } from './Heatmap';
 import { RackRows } from './Racks';
 
 export function BuildingFloors() {
@@ -99,6 +100,7 @@ function FloorGroup({ floor }: { floor: Floor }) {
               <RackRows roomId={s.roomId} />
             </group>
             <AirRoom label={s.label} />
+            <Heatmap label={s.label} />
             {s.label === 'B' && <LeakMark />}
             <Cages floor={floor.id} />
           </group>

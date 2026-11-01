@@ -56,7 +56,7 @@ export function Connections() {
   const focus = useView((s) => s.floorFocus);
   const selectedId = useView((s) => s.selectedId);
   const highlight = useView((s) => s.highlight);
-  const airOn = useView((s) => s.airOn);
+  const airOn = useView((s) => s.airOn || s.heatOn); // 온도 보기 중에는 연결선을 숨긴다
   const snap = useView((s) => s.scenSnap);
 
   // 상태가 바뀔 때만 재질 · 표시 갱신

@@ -5,7 +5,7 @@ import { Droplets, Fan, Flame, Pause, Play, PlugZap, RotateCcw, Server, Zap, typ
 import { RACKS } from '../data/racks';
 import { computeMetrics, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
-import { exitAir, focusFloor, focusOverview, startTrace } from '../scene/focus';
+import { exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
 import { Meter, Pill, Section, Status, Switch } from '../ui/kit';
 import { TEMP_TONE } from '../ui/ThermInfo';
@@ -47,7 +47,7 @@ function beforeStart() {
   startTrace(null);
   s.setGroup(null);
   s.select(null);
-  exitAir(false);
+  exitThermal(false);
   return { s, m: computeMetrics(s.itLoad, s.outdoorT, s.airCfg, s.therm) };
 }
 function afterStart() {

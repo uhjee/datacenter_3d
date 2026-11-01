@@ -8,6 +8,7 @@ import { useView } from '../store/useView';
 import { Help, IconButton } from '../ui/kit';
 import { FlowDiagram } from './FlowDiagram';
 import { DIAGRAMS, diagramOf, type DiagramId } from './model';
+import { FloorPlan } from './FloorPlan';
 
 const TABS: { id: DiagramId; name: string }[] = [
   { id: 'power', name: '전력 흐름도 (단선도)' },
@@ -38,6 +39,7 @@ export function DiagramPanel() {
   const selectedId = useView((s) => s.selectedId);
   const traced = useView((s) => s.traced);
   const [fitKey, setFitKey] = useState(0);
+  const thermal = useView((s) => s.airOn || s.heatOn);
 
   // 3D에서 고른 장비가 다른 흐름도에만 있으면 탭 전환. 선택이 바뀔 때만 따지고,
   // 사용자가 직접 탭을 바꾼 것은 되돌리지 않는다.
@@ -47,6 +49,7 @@ export function DiagramPanel() {
     lastSel.current = selectedId;
     if (!selectedId) return;
     const cur = useView.getState().diagramTab;
+    if (cur === 'plan') return; // 2D 상면도에서는 탭을 바꾸지 않는다
     const here = DIAGRAMS[cur].nodes.some((n) => n.ref === selectedId || (!n.ref && n.type !== 'mech' && n.members.includes(selectedId)));
     const where = diagramOf(selectedId);
     if (!here && where) useView.getState().setDiagramTab(where);
@@ -54,18 +57,21 @@ export function DiagramPanel() {
 
   if (mode === 'off') return null;
   const set = useView.getState().setDiagramMode;
+  // 2D 상면도 탭은 기류 · 히트맵을 켰을 때만
+  const tabs = thermal ? [{ id: 'plan' as const, name: '2D 상면도 (온도)' }, ...TABS] : TABS;
+  const cur = !thermal && tab === 'plan' ? 'power' : tab;
   return (
     <section className={`diagram-panel ${mode}`}>
       <header>
         <div className="dp-tabs" role="tablist">
-          {TABS.map((t) => (
-            <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'on' : ''} onClick={() => useView.getState().setDiagramTab(t.id)}>
+          {tabs.map((t) => (
+            <button key={t.id} role="tab" aria-selected={cur === t.id} className={cur === t.id ? 'on' : ''} onClick={() => useView.getState().setDiagramTab(t.id)}>
               {t.name}
             </button>
           ))}
         </div>
         <div className="legend small">
-          {LEGEND[tab].map((l) => (
+          {cur !== 'plan' && LEGEND[cur].map((l) => (
             <span key={l.text}>
               <i style={{ background: l.dash ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)` : l.color }} /> {l.text}
             </span>
@@ -81,12 +87,18 @@ export function DiagramPanel() {
             </button>
           </span>
         )}
-        <Help text="휠: 확대/축소 · 드래그: 이동 · 장비 클릭: 3D에서 그 장비로 이동 · 굵은 선: 선택 장비의 연결" />
-        <IconButton icon={Scan} label="흐름도를 화면에 맞춤" onClick={() => setFitKey((k) => k + 1)} />
+        <Help
+          text={
+            cur === 'plan'
+              ? '휠: 확대/축소 · 드래그: 이동 · 랙에 마우스: 하 · 중 · 상 흡기 · 배기 · 빈 곳에 마우스: 그 지점 공기 온도 · 랙 클릭: 3D와 같이 선택'
+              : '휠: 확대/축소 · 드래그: 이동 · 장비 클릭: 3D에서 그 장비로 이동 · 굵은 선: 선택 장비의 연결'
+          }
+        />
+        <IconButton icon={Scan} label="화면에 맞춤" onClick={() => setFitKey((k) => k + 1)} />
         <IconButton icon={mode === 'full' ? Minimize2 : Maximize2} label={mode === 'full' ? '3D 같이 보기' : '크게 보기'} onClick={() => set(mode === 'full' ? 'half' : 'full')} />
         <IconButton icon={X} label="흐름도 닫기" onClick={() => set('off')} />
       </header>
-      <FlowDiagram key={tab} id={tab} fitKey={fitKey} compact={mode === 'half'} />
+      {cur === 'plan' ? <FloorPlan fitKey={fitKey} compact={mode === 'half'} /> : <FlowDiagram key={cur} id={cur} fitKey={fitKey} compact={mode === 'half'} />}
     </section>
   );
 }

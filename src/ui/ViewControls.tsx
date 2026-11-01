@@ -2,7 +2,7 @@
 
 import { FoldVertical, House, Minus, Plus, UnfoldVertical } from 'lucide-react';
 import { FLOORS, type FloorId } from '../data/building';
-import { enterAir, focusFloor, focusOverview, goFloor, goOverview } from '../scene/focus';
+import { focusFloor, focusOverview, goFloor, goOverview, switchRoom, thermalOn } from '../scene/focus';
 import { useView } from '../store/useView';
 import { Help, IconButton } from './kit';
 
@@ -13,7 +13,7 @@ export function FloorBar() {
     useView.getState().setViewMode(m);
     // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
     const s = useView.getState();
-    requestAnimationFrame(() => (s.airOn ? enterAir(s.airRoom) : focus ? focusFloor(focus) : focusOverview()));
+    requestAnimationFrame(() => (thermalOn(s) ? switchRoom(s.airRoom, true) : focus ? focusFloor(focus) : focusOverview()));
   };
   return (
     <div className="vc-floors">

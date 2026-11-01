@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { DiagramPanel } from './diagram/DiagramPanel';
-import { Building2, Compass, PanelLeft, PanelRight, Siren, Wind, Workflow } from 'lucide-react';
-import { enterAir, exitAir } from './scene/focus';
+import { Building2, Compass, PanelLeft, PanelRight, Siren, Thermometer, Wind, Workflow } from 'lucide-react';
+import { enterAir, enterHeat, exitAir, exitHeat } from './scene/focus';
+import { AIR_LAYOUT, type RoomLabel } from './data/thermal';
 import { htmlPortal } from './scene/htmlPortal';
 import { LabelOverlay } from './scene/HoverLabel';
 import { Scene } from './scene/Scene';
@@ -15,11 +16,22 @@ import { useView } from './store/useView';
 import { IconButton } from './ui/kit';
 import { CameraButtons, FloorBar } from './ui/ViewControls';
 
+// 히트맵을 켤 서버실: 공조 시나리오가 재생 중이면 그 서버실, 아니면 지금 보고 있는 층의 서버실, 아니면 마지막으로 본 서버실
+function heatRoom(): RoomLabel {
+  const s = useView.getState();
+  const sc = s.scenario;
+  if (sc?.id === 'cracFail') return sc.params.room;
+  if (sc?.id === 'leak') return 'B';
+  const here = (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === s.floorFocus);
+  return here ?? s.airRoom;
+}
+
 export function App() {
   const [left, setLeft] = useState(true);
   const [right, setRight] = useState(true);
   const diagram = useView((s) => s.diagramMode);
   const airOn = useView((s) => s.airOn);
+  const heatOn = useView((s) => s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
   // 투어 안내는 오른쪽 패널에 붙으므로 투어를 시작하면 패널을 연다
@@ -39,6 +51,9 @@ export function App() {
         <div className="tb-group" role="group" aria-label="보조 화면">
           <button className={airOn ? 'on' : ''} onClick={() => (airOn ? exitAir() : enterAir(useView.getState().airRoom))} title="서버실 기류 · 온도">
             <Wind size={15} /> 기류
+          </button>
+          <button className={heatOn ? 'on' : ''} onClick={() => (heatOn ? exitHeat() : enterHeat(heatRoom()))} title="서버실 온도 분포 (3D 바닥 + 하단 2D 상면도)">
+            <Thermometer size={15} /> 히트맵
           </button>
           <button
             className={diagram !== 'off' ? 'on' : ''}

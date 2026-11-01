@@ -3057,3 +3057,284 @@ button.co-tr:hover {
 .co-temp .co-bar-scale span:last-child {
   transform: translateX(-100%);
 }
+
+/* ── 2D 상면도 (온도) ───────────────────────── */
+.plan-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.plan-tools {
+  position: absolute;
+  z-index: 2;
+  top: 6px;
+  left: 8px;
+  right: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  pointer-events: none;
+}
+.plan-tools > * {
+  pointer-events: auto;
+}
+.plan-tools .seg.small button {
+  white-space: nowrap;
+}
+.plan-tools .chk.small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  border: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.plan-hot-btn {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line-2);
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.plan-hot-btn.warn {
+  border-color: color-mix(in srgb, var(--warn) 60%, transparent);
+  color: var(--warn);
+}
+.plan-hot-btn.on {
+  background: var(--s3);
+}
+.plan-box {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  cursor: grab;
+  user-select: none;
+  background: #0b0f14;
+}
+.plan-box:active {
+  cursor: grabbing;
+}
+.plan-box svg {
+  display: block;
+}
+.plan-room {
+  fill: #141a21;
+  stroke: var(--line-3);
+}
+.plan-contain {
+  fill: none;
+}
+.plan-contain.CAC {
+  stroke: #74c0fc;
+}
+.plan-contain.HAC {
+  stroke: #ff8787;
+}
+.plan-cage {
+  fill: none;
+}
+.plan-cage-t {
+  font-weight: 700;
+}
+.plan-rack {
+  cursor: pointer;
+}
+.plan-num {
+  fill: #0d1117;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.plan-unit rect {
+  fill: #2b3542;
+  stroke: #8ea0b5;
+}
+.plan-unit rect.down {
+  fill: #3a1f24;
+  stroke: var(--crit);
+}
+.plan-unit {
+  cursor: pointer;
+}
+.plan-x {
+  stroke: var(--crit);
+}
+.plan-unit-t,
+.plan-unit-s {
+  text-anchor: middle;
+  fill: var(--ink);
+  pointer-events: none;
+}
+.plan-unit-t {
+  font-weight: 700;
+}
+.plan-unit-s {
+  fill: var(--ink-2);
+}
+.plan-sensor {
+  fill: #e9ecef;
+  stroke: #0d1117;
+}
+.plan-aisle {
+  text-anchor: end;
+  font-weight: 600;
+}
+.plan-aisle.cold {
+  fill: #74c0fc;
+}
+.plan-aisle.hot {
+  fill: #ff8787;
+}
+.plan-tip {
+  position: absolute;
+  z-index: 3;
+  max-width: 220px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  background: rgba(13, 17, 23, 0.94);
+  border: 1px solid var(--line-2);
+  font-size: 12px;
+  color: var(--ink-2);
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.plan-tip b {
+  color: var(--ink);
+}
+.plan-tip-grid {
+  display: grid;
+  grid-template-columns: auto repeat(3, 1fr);
+  gap: 1px 8px;
+  margin: 4px 0;
+  text-align: right;
+}
+.plan-tip-grid > span:nth-child(4n + 1) {
+  text-align: left;
+  color: var(--ink-3);
+}
+.plan-hot {
+  position: absolute;
+  z-index: 2;
+  top: 40px;
+  right: 8px;
+  width: 190px;
+  max-height: calc(100% - 100px);
+  overflow: auto;
+  padding: 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 94%, transparent);
+  border: 1px solid var(--line);
+  cursor: default;
+}
+.plan-hot-h {
+  padding: 2px 4px 6px;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.plan-hot button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.plan-hot button:hover,
+.plan-hot button.on {
+  background: var(--s3);
+}
+.plan-hot button i {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.plan-hot button b {
+  margin-left: auto;
+}
+.plan-legend {
+  position: absolute;
+  z-index: 2;
+  left: 8px;
+  bottom: 6px;
+  width: 280px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 90%, transparent);
+  border: 1px solid var(--line);
+  cursor: default;
+}
+.plan-legend-bar {
+  position: relative;
+  height: 8px;
+  border-radius: 4px;
+}
+.plan-legend-bar em {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 1.5px;
+  background: #0d1117;
+}
+.plan-legend-t {
+  position: relative;
+  height: 13px;
+  margin-top: 2px;
+  font-size: 10px;
+  color: var(--ink-3);
+}
+.plan-legend-t span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.plan-legend-t span:first-child {
+  transform: none;
+}
+.plan-legend-t span:last-child {
+  transform: translateX(-100%);
+}
+.plan-legend-n {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  font-size: 10.5px;
+  color: var(--ink-2);
+}
+.plan-legend-dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 10.5px;
+  color: var(--ink-2);
+}
+.plan-legend-dt i {
+  width: 70px;
+  height: 7px;
+  border-radius: 3px;
+}
+.plan-aisle,
+.plan-cage-t,
+.plan-unit-s {
+  paint-order: stroke;
+  stroke: #0b0f14;
+  stroke-linejoin: round;
+}
+.plan-unit-s.down {
+  fill: var(--crit);
+}

@@ -65,13 +65,16 @@ export const STATUS_META: Record<TempStatus, { name: string; color: string }> = 
   hot: { name: '허용 초과', color: '#ff6b6b' },
 };
 
-// 온도 → 색 (파랑 18°C → 노랑 27°C → 빨강 35°C 이상)
+// 온도 → 색. ASHRAE A1 경계(허용 15 · 권장 18~27 · 허용 32)에 색이 바뀌도록 맞춘 연속 색표.
+// 진한 파랑(과냉) → 하늘 → 초록(권장) → 노랑(권장 상한) → 주황(주의) → 빨강 → 자주(열복도 배기)
 const STOPS: [number, [number, number, number]][] = [
-  [16, [0x4d, 0xab, 0xf7]],
-  [21, [0x63, 0xe6, 0xbe]],
+  [15, [0x19, 0x71, 0xc2]],
+  [18, [0x4d, 0xab, 0xf7]],
+  [22, [0x51, 0xcf, 0x66]],
   [27, [0xff, 0xd4, 0x3b]],
-  [31, [0xff, 0x92, 0x2b]],
-  [36, [0xfa, 0x52, 0x52]],
+  [32, [0xff, 0x92, 0x2b]],
+  [38, [0xfa, 0x52, 0x52]],
+  [45, [0xc2, 0x25, 0x5c]],
 ];
 export function tempRGB(t: number): [number, number, number] {
   if (t <= STOPS[0][0]) return STOPS[0][1].map((v) => v / 255) as [number, number, number];
@@ -90,6 +93,21 @@ export function tempColor(t: number) {
   const h = (v: number) => Math.round(v * 255).toString(16).padStart(2, '0');
   return `#${h(r)}${h(g)}${h(b)}`;
 }
+// lo ~ hi 범위의 온도 색 그라데이션 (범례용 CSS)
+export function tempGradient(lo: number, hi: number) {
+  const n = 12;
+  const stops = Array.from({ length: n + 1 }, (_, i) => `${tempColor(lo + ((hi - lo) * i) / n)} ${((i / n) * 100).toFixed(0)}%`);
+  return `linear-gradient(90deg, ${stops.join(', ')})`;
+}
+
+// 온도 구간 (범례 · 2D 상면도 랙 칸). 판정은 흡기 기준, 열복도의 32°C 초과는 정상 배기
+export const TEMP_BANDS: { lo: number; hi: number; name: string; color: string }[] = [
+  { lo: -Infinity, hi: 15, name: '허용 미만 (과냉)', color: tempColor(14) },
+  { lo: 15, hi: 18, name: '권장보다 낮음', color: tempColor(16.5) },
+  { lo: 18, hi: 27, name: '권장 범위', color: tempColor(22) },
+  { lo: 27, hi: 32, name: '주의 (권장 초과 · 허용 이내)', color: tempColor(30) },
+  { lo: 32, hi: Infinity, name: '위험 (흡기) · 열복도는 정상 배기', color: tempColor(38) },
+];
 
 // ── 서버실 기하 (기류 경로 · 봉쇄 형상 공용) ──
 export interface AirLayout {

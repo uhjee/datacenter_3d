@@ -5,8 +5,8 @@ import { Compass, Hand, X } from 'lucide-react';
 import { IconButton } from './kit';
 import { useEffect } from 'react';
 import type { AirCfg, RoomLabel } from '../data/thermal';
-import { activateGroup, enterAir, exitAir, focusFloor, focusItem, focusOverview, startTrace } from '../scene/focus';
-import { useView, type RackColorMode } from '../store/useView';
+import { activateGroup, enterAir, exitThermal, focusFloor, focusItem, focusOverview, startTrace } from '../scene/focus';
+import { useView, type PanelTab, type RackColorMode } from '../store/useView';
 
 interface Step {
   title: string;
@@ -22,7 +22,7 @@ function clean() {
   startTrace(null);
   s.setGroup(null);
   s.select(null);
-  exitAir(false);
+  exitThermal(false);
   s.setRightTab('info');
   if (s.diagramMode === 'off') s.setDiagramMode('half');
 }
@@ -250,7 +250,7 @@ export const STEPS: Step[] = [
 ];
 
 // 투어 전 상태를 기억했다가 끝낼 때 되돌린다
-let saved: { airCfg: Record<RoomLabel, AirCfg>; rackColor: RackColorMode; diagramMode: 'off' | 'half' | 'full'; diagramTab: 'power' | 'cooling' } | null = null;
+let saved: { airCfg: Record<RoomLabel, AirCfg>; rackColor: RackColorMode; diagramMode: 'off' | 'half' | 'full'; diagramTab: PanelTab } | null = null;
 
 export function startTour() {
   const s = useView.getState();

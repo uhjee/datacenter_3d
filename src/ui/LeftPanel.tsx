@@ -9,10 +9,10 @@ import { activateGroup, focusItem } from "../scene/focus";
 import { RACK_COLOR_META, RAMP_CSS } from "../scene/rackColor";
 import { LAYER_META, useView, type RackColorMode } from "../store/useView";
 import { Switch } from "./kit";
+import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 
-const TEMP_CSS =
-  "linear-gradient(90deg, #4dabf7 0%, #63e6be 25%, #ffd43b 55%, #ff922b 75%, #fa5252 100%)";
+const TEMP_CSS = tempGradient(15, 35);
 
 const FILTERS: { key: Domain | "all"; name: string }[] = [
   { key: "all", name: "전체" },

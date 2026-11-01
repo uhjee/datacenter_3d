@@ -1,7 +1,7 @@
 // 정보 카드의 온도 부분: 랙 흡기 · 배기, 온습도 센서 측정값, 항온항습기 급기 · 환기
 
 import { RACK_BY_ID } from '../data/racks';
-import { sensorRack, STATUS_META, statusOf, tempColor, type RoomLabel, type TempStatus } from '../data/thermal';
+import { sensorRack, STATUS_META, statusOf, tempColor, tempGradient, type RoomLabel, type TempStatus } from '../data/thermal';
 import { enterAir } from '../scene/focus';
 import { useView } from '../store/useView';
 import { Kpi, KpiRow, Section, Status, type Tone } from './kit';
@@ -64,7 +64,7 @@ export function RackTempSection({ rackId }: { rackId: string }) {
         })}
       </div>
       <div className="rp-tscale">
-        <div className="rp-tscale-bar" />
+        <div className="rp-tscale-bar" style={{ background: tempGradient(T_MIN, T_MAX) }} />
         {t.inlet.map((v, i) => (
           <em key={i} style={{ left: tPos(v) }} title={`흡기 ${v}°C`} />
         ))}

@@ -6,6 +6,7 @@ import { SRC_META, type NodeState } from '../scenario/core';
 import { snapshot } from '../scenario/outage';
 import { adjustTherm } from '../scenario/cracFail';
 import type { RoomLabel, RoomTherm } from '../data/thermal';
+import { computeHeatField, type HeatField } from '../data/heatField';
 import { useView } from '../store/useView';
 import type { Tone } from './kit';
 
@@ -55,4 +56,12 @@ export function useRoomTherm(label: RoomLabel): RoomTherm {
     const p = crac ?? (leak ? { room: 'B' as const, unit: leak.unit, second: false, loadKw: leak.loadKw, unitKw: leak.unitKw, supply: leak.supply } : null);
     return p && series && p.room === label ? adjustTherm(base, p, series, sec) : base;
   }, [base, crac, leak, series, sec, label]);
+}
+
+// 서버실 온도 분포 (히트맵 · 2D 상면도 공용). 꺼져 있으면 계산하지 않는다
+export function useHeatField(label: RoomLabel, on: boolean): HeatField | null {
+  const th = useRoomTherm(label);
+  const cfg = useView((s) => s.airCfg[label]);
+  const h = useView((s) => s.heatHeight);
+  return useMemo(() => (on ? computeHeatField(label, cfg, th, h) : null), [on, label, cfg, th, h]);
 }

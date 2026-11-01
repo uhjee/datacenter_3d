@@ -136,6 +136,8 @@ export function RackRows({ roomId }: { roomId: string }) {
   const therm = useRoomTherm(label);
   const itLoad = useView((s) => s.itLoad);
   const scen = useView((s) => s.scenSnap);
+  // 히트맵이 켜져 있으면 랙도 그 단면 높이의 흡기로 칠한다
+  const heatH = useView((s) => (s.heatOn ? s.heatHeight : undefined));
   useLayoutEffect(() => {
     const cab = cabRef.current!;
     racks.forEach((r, i) => {
@@ -144,13 +146,13 @@ export function RackRows({ roomId }: { roomId: string }) {
       const inGroup = highlight?.kind === 'group' && highlight.nodes.has(id);
       // 시나리오: 배터리 · 발전기 전원으로 버티는 동안 랙 본체에 그 색을 살짝 입힌다
       const src = scen?.nodes[id]?.src;
-      const c = src === 'battery' ? '#8a7420' : src === 'gen' ? '#5b7f24' : rackColorOf(colorMode, r, therm, itLoad);
+      const c = src === 'battery' ? '#8a7420' : src === 'gen' ? '#5b7f24' : rackColorOf(colorMode, r, therm, itLoad, heatH);
       // 온도 색은 랙 장비 앞면과 섞여 보이도록 어둡게 덜어낸다
       const paint = c ? `#${col.set(c).lerp(dark, colorMode === 'temp' ? 0.55 : 0.2).getHexString()}` : null;
       cab.setColorAt(i, col.set(m === 'up' ? '#1d5c4e' : m === 'down' ? '#6b2b47' : inGroup ? '#1f4a6b' : (paint ?? (r.uUsed === 0 ? '#2a3038' : '#151a20'))));
     });
     if (cab.instanceColor) cab.instanceColor.needsUpdate = true;
-  }, [racks, traced, highlight, colorMode, therm, itLoad, scen]);
+  }, [racks, traced, highlight, colorMode, therm, itLoad, scen, heatH]);
   const roomDim = useView((s) => !!s.highlight && !racks.some((r) => s.highlight!.nodes.has(`rack:${r.id}`)));
   const whole = useRef<Group>(null);
   useDim(whole, roomDim);

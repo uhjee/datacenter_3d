@@ -1,10 +1,10 @@
 // 카메라 이동 대상 계산
 
-import { FLOOR_BY_ID, FLOORS, SHAFTS, type FloorId } from '../data/building';
+import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SHAFTS, type FloorId } from '../data/building';
 import { nodeInfo, traceNodes, type TraceDir } from '../data/graph';
 import { GROUP_BY_ID } from '../data/groups';
 import { AIR_LAYOUT, type RoomLabel } from '../data/thermal';
-import { floorWorldY, useView } from '../store/useView';
+import { floorWorldY, useView, type PanelTab } from '../store/useView';
 import { htmlPortal } from './htmlPortal';
 
 type V3 = [number, number, number];
@@ -161,20 +161,36 @@ function frameNodes(ids: string[]) {
   s.flyTo(along(c, [-0.5, 0.62, 0.85], Math.max(14, fitDistance(r) * 1.15)), c);
 }
 
-// 기류 보기: 서버실을 열 방향(동서) 끝에서 바라봐 냉복도 · 열복도 단면이 보이게
-let diagramBeforeAir: 'off' | 'half' | 'full' = 'half';
-let tempColorByAir = false; // 기류 보기를 켜며 랙 온도 색을 켰는지 (끌 때 되돌림)
-export function enterAir(room: RoomLabel) {
+// 온도 보기(기류 · 히트맵): 둘 중 하나라도 켜면 서버실 시점으로 가고, 하단 패널은 2D 상면도 탭으로 연다.
+// 둘 다 끄면 하단 패널 · 랙 색을 켜기 전으로 되돌린다.
+export const thermalOn = (s = useView.getState()) => s.airOn || s.heatOn;
+let panelBefore: { mode: 'off' | 'half' | 'full'; tab: PanelTab } = { mode: 'half', tab: 'power' };
+let tempColorByAir = false; // 온도 보기를 켜며 랙 온도 색을 켰는지 (끌 때 되돌림)
+
+function beginThermal() {
   const s = useView.getState();
-  if (!s.airOn) {
-    diagramBeforeAir = s.diagramMode;
-    s.setDiagramMode('off');
-    s.select(null); // 다른 층 장비 이름표가 기류 화면에 떠 있지 않도록
-    s.setGroup(null);
-    tempColorByAir = s.rackColor === 'none';
-    if (tempColorByAir) s.setRackColor('temp');
-  }
-  s.setAirOn(true);
+  panelBefore = { mode: s.diagramMode, tab: s.diagramTab === 'plan' ? 'power' : s.diagramTab };
+  s.select(null); // 다른 층 장비 이름표가 온도 화면에 떠 있지 않도록
+  s.setGroup(null);
+  tempColorByAir = s.rackColor === 'none';
+  if (tempColorByAir) s.setRackColor('temp');
+  s.setDiagramMode(s.diagramMode === 'full' ? 'full' : 'half');
+  s.setDiagramTab('plan');
+}
+
+function endThermal(fly: boolean) {
+  const s = useView.getState();
+  s.setDiagramMode(panelBefore.mode);
+  s.setDiagramTab(panelBefore.tab);
+  if (tempColorByAir && s.rackColor === 'temp') s.setRackColor('none');
+  // 서버실 안 근접 시점에서 그 층 전체 보기로. 패널 크기가 바뀐 뒤 계산
+  const floor = AIR_LAYOUT[s.airRoom].floor;
+  if (fly) requestAnimationFrame(() => focusFloor(floor));
+}
+
+// 서버실을 열 방향(동서) 끝에서 바라봐 냉복도 · 열복도 단면이 보이게
+export function viewRoom(room: RoomLabel) {
+  const s = useView.getState();
   s.setAirRoom(room);
   const L = AIR_LAYOUT[room];
   s.setFloorFocus(L.floor);
@@ -184,14 +200,49 @@ export function enterAir(room: RoomLabel) {
   s.flyTo([cx, y + 9, L.cz + 11], [L.rcx + (fromEast ? -3 : 3), y + 1.2, L.cz]);
 }
 
-// 층 이동 버튼: 기류 보기 중이면 서버실 층은 그 서버실의 기류 시점으로, 다른 층은 기류 보기를 끄고 이동한다.
+// 기류 · 온도 패널의 서버실 버튼: 켜 둔 보기(기류 · 히트맵)를 그대로 두고 서버실만 바꾼다
+export function switchRoom(room: RoomLabel, force = false) {
+  const s = useView.getState();
+  if (s.heatOn && !s.airOn) return force || s.airRoom !== room ? heatView(room) : undefined;
+  viewRoom(room);
+}
+
+export function enterAir(room: RoomLabel) {
+  if (!thermalOn()) beginThermal();
+  useView.getState().setAirOn(true);
+  viewRoom(room);
+}
+
+// 히트맵은 위에서 내려다봐야 분포가 잘 보인다
+export function enterHeat(room: RoomLabel) {
+  const s = useView.getState();
+  const was = thermalOn();
+  if (!was) beginThermal();
+  s.setHeatOn(true);
+  if (!was || s.airRoom !== room) heatView(room);
+}
+
+function heatView(room: RoomLabel) {
+  const s = useView.getState();
+  s.setAirRoom(room);
+  const L = AIR_LAYOUT[room];
+  s.setFloorFocus(L.floor);
+  const y = floorWorldY(L.floor, s.viewMode);
+  const rm = ROOM_BY_ID[L.roomId];
+  const r = Math.hypot(rm.x[1] - rm.x[0], rm.z[1] - rm.z[0]) / 2;
+  const c: V3 = [(rm.x[0] + rm.x[1]) / 2, y, (rm.z[0] + rm.z[1]) / 2];
+  // 하단 패널이 열린 뒤의 3D 영역 크기로 거리를 잰다
+  requestAnimationFrame(() => s.flyTo(along(c, [-0.12, 1, 0.62], fitDistance(r) * 0.92), c));
+}
+
+// 층 이동 버튼: 온도 보기(기류 · 히트맵) 중이면 서버실 층은 그 서버실 시점으로, 다른 층은 온도 보기를 끄고 이동한다.
 // (일반 층 시점은 멀어서 기류 입자가 거의 안 보이고, 기류 패널만 떠 있게 된다)
 export function goFloor(id: FloorId) {
   const s = useView.getState();
-  if (s.airOn) {
+  if (thermalOn(s)) {
     const room = (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === id);
-    if (room) return enterAir(room);
-    exitAir(false);
+    if (room) return switchRoom(room, true);
+    exitThermal(false);
     // 흐름도 패널이 돌아와 3D 영역 크기가 바뀐 뒤 계산
     requestAnimationFrame(() => focusFloor(id));
     return;
@@ -200,8 +251,8 @@ export function goFloor(id: FloorId) {
 }
 
 export function goOverview() {
-  if (useView.getState().airOn) {
-    exitAir(false);
+  if (thermalOn()) {
+    exitThermal(false);
     requestAnimationFrame(() => focusOverview());
     return;
   }
@@ -213,9 +264,20 @@ export function exitAir(fly = true) {
   const s = useView.getState();
   if (!s.airOn) return;
   s.setAirOn(false);
-  s.setDiagramMode(diagramBeforeAir);
-  if (tempColorByAir && s.rackColor === 'temp') s.setRackColor('none');
-  // 서버실 안 근접 시점에서 그 층 전체 보기로. 패널 크기가 바뀐 뒤 계산
-  const floor = AIR_LAYOUT[s.airRoom].floor;
-  if (fly) requestAnimationFrame(() => focusFloor(floor));
+  if (!s.heatOn) endThermal(fly);
+}
+
+export function exitHeat(fly = true) {
+  const s = useView.getState();
+  if (!s.heatOn) return;
+  s.setHeatOn(false);
+  if (!s.airOn) endThermal(fly);
+}
+
+export function exitThermal(fly = true) {
+  const s = useView.getState();
+  if (!thermalOn(s)) return;
+  s.setAirOn(false);
+  s.setHeatOn(false);
+  endThermal(fly);
 }

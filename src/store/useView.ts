@@ -88,6 +88,14 @@ interface ViewState {
   setAirRoom: (r: RoomLabel) => void;
   setAirCfg: (r: RoomLabel, patch: Partial<AirCfg>) => void;
 
+  // 히트맵: 서버실 온도 분포 (3D 바닥 + 하단 2D 상면도). 기류와 따로 켜고 끈다
+  heatOn: boolean;
+  heatHeight: HeatHeight; // 단면 높이 0 하 · 1 중 · 2 상
+  heatValue: HeatValue;
+  setHeatOn: (v: boolean) => void;
+  setHeatHeight: (h: HeatHeight) => void;
+  setHeatValue: (v: HeatValue) => void;
+
   // 지표 (운전 조건)
   itLoad: number; // IT 부하율 (1 = 기준)
   outdoorT: number; // 외기 온도 °C
@@ -118,10 +126,15 @@ interface ViewState {
 
   // 하단 흐름도 패널
   diagramMode: 'off' | 'half' | 'full';
-  diagramTab: DiagramId;
+  diagramTab: PanelTab;
   setDiagramMode: (m: 'off' | 'half' | 'full') => void;
-  setDiagramTab: (t: DiagramId) => void;
+  setDiagramTab: (t: PanelTab) => void;
 }
+
+// 하단 패널 탭: 흐름도 두 가지 + 2D 상면도(기류 · 히트맵을 켜면 열림)
+export type PanelTab = DiagramId | 'plan';
+export type HeatHeight = 0 | 1 | 2;
+export type HeatValue = 'inlet' | 'exhaust' | 'dT';
 
 export type RackColorMode = 'none' | 'u' | 'power' | 'temp';
 export type RightTab = 'info' | 'metrics' | 'scenario';
@@ -187,6 +200,12 @@ export const useView = create<ViewState>((set, get) => ({
   therm: { A: computeRoom('A', DEFAULT_AIR_BY_ROOM.A), B: computeRoom('B', DEFAULT_AIR_BY_ROOM.B) },
   setAirOn: (v) => set({ airOn: v }),
   setAirRoom: (r) => set({ airRoom: r }),
+  heatOn: false,
+  heatHeight: 2,
+  heatValue: 'inlet',
+  setHeatOn: (v) => set({ heatOn: v }),
+  setHeatHeight: (h) => set({ heatHeight: h }),
+  setHeatValue: (v) => set({ heatValue: v }),
   setAirCfg: (r, patch) =>
     set((s) => {
       const cfg = { ...s.airCfg[r], ...patch };
