@@ -24,12 +24,23 @@ export function Symbol({ type }: { type: DNode['type'] }) {
         </g>
       );
     case 'hvPanel':
-    case 'lvPanel':
-      // 차단기: 사각형 안 X
+      // 특고압 수배전반: 함체 안 차단기(VCB) 단선도 기호 — 고정 접점의 ×와 열린 칼날
       return (
         <g {...S}>
-          <rect x={-7} y={-7} width={14} height={14} />
-          <path d="M-7,-7 L7,7 M7,-7 L-7,7" />
+          <rect x={-10} y={-10} width={20} height={20} rx={2} />
+          <path d="M0,-7.5 V-3 M0,7.5 V4.5 L-4.8,-2.2" strokeWidth={1.6} />
+          <path d="M-2.3,-5.3 L2.3,-0.7 M2.3,-5.3 L-2.3,-0.7" strokeWidth={1.6} />
+        </g>
+      );
+    case 'lvPanel':
+      // 저압 배전반: 모선(굵은 가로선)에서 갈라지는 차단기(작은 네모) 세 갈래
+      return (
+        <g {...S}>
+          <path d="M-9,-6 H9" strokeWidth={2.4} />
+          <path d="M-6,-6 V-2 M0,-6 V-2 M6,-6 V-2 M-6,4 V9 M0,4 V9 M6,4 V9" />
+          <rect x={-7.5} y={-2} width={3} height={6} />
+          <rect x={-1.5} y={-2} width={3} height={6} />
+          <rect x={4.5} y={-2} width={3} height={6} />
         </g>
       );
     case 'tr':
@@ -58,9 +69,12 @@ export function Symbol({ type }: { type: DNode['type'] }) {
         </g>
       );
     case 'fuelTank':
+      // 연료 탱크: 눕힌 원통 + 연료 높이
       return (
         <g {...S}>
           <rect x={-9} y={-6} width={18} height={12} rx={5} />
+          <path d="M-7.5,1.5 q2,-1.5 4,0 t4,0 t4,0 t3.5,0" />
+          <path d="M0,-6 V-9 M-2,-9 H2" />
         </g>
       );
     case 'ats':
@@ -114,14 +128,34 @@ export function Symbol({ type }: { type: DNode['type'] }) {
       );
     case 'crac':
     case 'crah':
+      // 항온항습기: 함체 안 코일(물결). 수냉식은 물방울, 공냉식은 냉매 화살표
       return (
         <g {...S}>
           <rect x={-9} y={-9} width={18} height={18} />
-          <path d="M-5,-4 h10 M-5,0 h10 M-5,4 h10" />
+          <path d="M-6,-3 q1.5,-2 3,0 t3,0 t3,0 t3,0 M-6,2 q1.5,-2 3,0 t3,0 t3,0 t3,0" />
+          {type === 'crah' ? <path d="M5,4.5 q-2,2.6 0,3.6 q2,-1 0,-3.6 Z" /> : <path d="M-5,6 h7 M0,4 l2,2 l-2,2" />}
         </g>
       );
     case 'condenser':
+      // 실외기: 함체 안 팬
+      return (
+        <g {...S}>
+          <rect x={-10} y={-10} width={20} height={20} rx={2} />
+          <g transform="scale(0.8)">
+            <Fan />
+          </g>
+        </g>
+      );
     case 'coolingTower':
+      // 냉각탑: 위가 좁은 탑 + 꼭대기 팬
+      return (
+        <g {...S}>
+          <path d="M-9,9 L-5,-5 H5 L9,9 Z" />
+          <path d="M-7,-8 H7" strokeWidth={2} />
+          <path d="M-3,-5 V-8 M3,-5 V-8" />
+          <path d="M-6,4 q1.5,-1.5 3,0 t3,0 t3,0 t3,0" />
+        </g>
+      );
     case 'mech':
       return <Fan />;
     case 'pump':

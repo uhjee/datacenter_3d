@@ -70,13 +70,6 @@ export function DiagramPanel() {
             </button>
           ))}
         </div>
-        <div className="legend small">
-          {cur !== 'plan' && LEGEND[cur].map((l) => (
-            <span key={l.text}>
-              <i style={{ background: l.dash ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)` : l.color }} /> {l.text}
-            </span>
-          ))}
-        </div>
         <div className="spacer" />
         {traced && (
           <span className="trace-chip">
@@ -98,6 +91,16 @@ export function DiagramPanel() {
         <IconButton icon={mode === 'full' ? Minimize2 : Maximize2} label={mode === 'full' ? '3D 같이 보기' : '크게 보기'} onClick={() => set(mode === 'full' ? 'half' : 'full')} />
         <IconButton icon={X} label="흐름도 닫기" onClick={() => set('off')} />
       </header>
+      {/* 선 색 범례: 헤더와 같은 줄에 두면 폭이 모자라 잘리므로 따로 한 줄 (넘치면 다음 줄로) */}
+      {cur !== 'plan' && (
+        <div className="dp-legend">
+          {LEGEND[cur].map((l) => (
+            <span key={l.text}>
+              <i style={{ background: l.dash ? `repeating-linear-gradient(90deg, ${l.color} 0 4px, transparent 4px 7px)` : l.color }} /> {l.text}
+            </span>
+          ))}
+        </div>
+      )}
       {cur === 'plan' ? <FloorPlan fitKey={fitKey} compact={mode === 'half'} /> : <FlowDiagram key={cur} id={cur} fitKey={fitKey} compact={mode === 'half'} />}
     </section>
   );
