@@ -1,9 +1,11 @@
 // 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 화면 맞춤 · 확대 · 축소 · 조작 안내
 
-import { FoldVertical, Link2, Minus, Plus, Scan, UnfoldVertical } from 'lucide-react';
+import { FoldVertical, House, Link2, Minus, Plus, Scan, UnfoldVertical } from 'lucide-react';
 import { FLOORS, type FloorId } from '../data/building';
-import { focusFloor, focusOverview, goFloor, goOverview, switchRoom, thermalOn } from '../scene/focus';
-import { useView } from '../store/useView';
+import { exitThermal, focusFloor, focusOverview, goFloor, goOverview, startTrace, switchRoom, thermalOn } from '../scene/focus';
+import { INITIAL_VIEW, useView } from '../store/useView';
+import { stopScenario } from '../scenario/ScenarioPanel';
+import { endTour } from './Tour';
 import { sceneHash } from '../store/persist';
 import { IconButton, InfoTip, TipTable } from './kit';
 
@@ -34,6 +36,41 @@ export function FloorBar() {
   );
 }
 
+// 처음 화면으로: 보기 설정 · 층 · 레이어 · 선택 · 온도 보기 · 도면 · 시나리오 · 투어를 모두 처음 상태로 되돌린다
+const RESET_KEYS = [
+  'layers',
+  'linkFilter',
+  'rackColor',
+  'viewMode',
+  'airCfg',
+  'therm',
+  'itLoad',
+  'outdoorT',
+  'heatHeight',
+  'heatValue',
+  'heatOpacity',
+  'heatHotOnly',
+  'airRoom',
+  'floorFocus',
+  'diagramMode',
+  'diagramTab',
+  'rightTab',
+  'traceCross',
+] as const;
+function resetAll() {
+  const s = useView.getState();
+  if (s.tourStep != null) endTour();
+  if (s.scenario) stopScenario();
+  exitThermal(false);
+  startTrace(null);
+  s.setGroup(null);
+  s.select(null);
+  s.hover(null);
+  useView.setState(Object.fromEntries(RESET_KEYS.map((k) => [k, INITIAL_VIEW[k]])));
+  focusOverview();
+  s.showToast('처음 화면으로 되돌렸습니다. 보기 설정 · 층 · 레이어 · 선택이 모두 처음 상태입니다.');
+}
+
 // 화면 맞춤: 지금 보고 있는 범위로 카메라를 되돌린다.
 // 기류 · 히트맵 중이면 그 서버실 시점, 층을 골랐으면 그 층, 전체면 건물 전체
 export function fitView() {
@@ -53,6 +90,8 @@ function copySceneLink() {
 export function CameraButtons() {
   return (
     <div className="vc-cam vc-bar col">
+      <IconButton icon={House} label="처음 화면으로 (보기 설정 · 층 · 레이어 모두 초기화)" onClick={resetAll} />
+      <span className="vc-sep h" />
       <IconButton icon={Scan} label="화면에 맞춤 (선택한 층 기준)" onClick={fitView} />
       <span className="vc-sep h" />
       <IconButton icon={Link2} label="지금 장면 링크 복사" onClick={copySceneLink} />
@@ -74,6 +113,7 @@ export function CameraButtons() {
                 ['클릭 (3D · 2D 화면)', '선택만 · 정보 카드 열기 (카메라는 그대로)'],
                 ['목록 · 표 · 도면에서 고르기', '선택하고 3D 카메라를 그 자리로 이동'],
                 ['정보 카드의 ⌖ · 2D 랙 더블클릭', '선택한 장비 · 랙으로 카메라 이동'],
+                ['홈 버튼', '처음 화면으로: 보기 설정 · 층 · 레이어 · 선택 · 온도 보기 · 도면 · 시나리오를 모두 초기화'],
                 ['화면 맞춤 버튼', '선택한 층(전체면 건물 전체)으로 카메라 되돌리기'],
                 ['⌘K / Ctrl+K', '전체 검색'],
                 ['링크 버튼', '지금 장면(층 · 선택 · 온도 보기 · 도면) 주소 복사'],

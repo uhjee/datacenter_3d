@@ -283,6 +283,9 @@ export const useView = create<ViewState>((set, get) => ({
   setDiagramTab: (t) => set({ diagramTab: t }),
 }));
 
+// 처음 상태 (저장된 설정을 되살리기 전). '처음 화면으로' 버튼이 이 값으로 되돌린다
+export const INITIAL_VIEW = useView.getState();
+
 useView.subscribe((s, prev) => {
   if (s.traced === prev.traced && s.groupId === prev.groupId) return;
   const g = s.groupId ? GROUP_BY_ID[s.groupId] : null;
