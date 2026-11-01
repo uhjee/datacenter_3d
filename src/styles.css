@@ -271,6 +271,65 @@ button.on {
   background: var(--s3);
   color: var(--accent);
 }
+/* 장비 목록 머리: 제목 + 설비/랙 전환 */
+.lp-tree-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.lp-tree-head .seg {
+  margin: 0;
+  flex: none;
+  flex-wrap: nowrap;
+}
+.lp-tree-head .seg button {
+  flex: none;
+  white-space: nowrap;
+  padding: 2px 12px;
+}
+/* 랙 트리: 고객사 · 열 묶음 */
+.tree details.sub {
+  margin: 0 0 2px;
+}
+.tree details.sub > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 4px;
+  font-size: var(--fs-sm);
+}
+.tree details.sub > summary::-webkit-details-marker {
+  display: none;
+}
+.tree details.sub > summary::before {
+  content: '▸';
+  width: 10px;
+  color: var(--ink-3);
+  transition: transform 0.15s;
+}
+.tree details.sub[open] > summary::before {
+  transform: rotate(90deg);
+}
+.tree details.sub > summary .count {
+  margin-left: auto;
+}
+.tree details.sub > .item {
+  padding-left: 20px;
+}
+.tree-tag {
+  font-size: 10px;
+  color: var(--ink-3);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+.item-meta {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--ink-3);
+}
 
 /* 정보 카드 */
 .role {
