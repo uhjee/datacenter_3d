@@ -2,7 +2,7 @@
 // pos는 해당 층 바닥면 기준 로컬 좌표, 장비 바닥 중심.
 // size = [폭, 높이, 깊이]는 장비 자체 기준(전면 = +z)이며 rotY로 회전한다.
 
-import { RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
+import { BLOCK_NAME, EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
 import type { TypeId } from './equipTypes';
 import { RACKS } from './racks';
 
@@ -65,22 +65,23 @@ function sensors(room: ServerRoomLayout): Equip[] {
   });
 }
 
-// PDU: 포드(안쪽 통로를 공유하는 두 열) × 블록마다 A · B 한 대씩 = 서버실당 PDU-A 6대 + PDU-B 6대.
+// PDU: 포드(안쪽 통로를 공유하는 두 열) × 블록마다 A · B 한 대씩 = 서버실당 PDU-A 9대 + PDU-B 9대.
+// 개소분은 1~6번(포드 순서대로 서쪽 · 동쪽 블록), 증설 블록은 7~9번(포드 순서).
 // PDU 한 대 = 랙 22~24대. 랙 수는 차단기 극수가 아니라 전력이 정한다: 225kVA × 80%(연속 부하) × 역률 0.9 ≈ 162kW 안에
 // 담당 랙의 설계 전력 합이 들어가야 하고(GPU 열 포드는 180kW라 300kVA), 42극 분전반 2면(84극) 중 24회로만 써서 증설 여유를 둔다.
 // A는 앞열(1·3·5열) 끝, B는 뒷열(2·4·6열) 끝에 선다.
 export const pduId = (sys: 'a' | 'b', room: ServerRoomLayout, n: number) => `pdu-${sys}${room.label === 'A' ? 1 : 2}-${n}`;
-export const pduIndex = (pod: number, block: number) => pod * 2 + block + 1;
+export const pduIndex = (pod: number, block: number) => (block === EXPANSION_BLOCK ? 7 + pod : pod * 2 + block + 1);
 
 function pdus(room: ServerRoomLayout): Equip[] {
   const out: Equip[] = [];
   const rn = room.label === 'A' ? 1 : 2;
   for (let pod = 0; pod < 3; pod++) {
-    for (const block of [0, 1]) {
+    for (let block = 0; block < room.blocks.length; block++) {
       const n = pduIndex(pod, block);
-      const side = block === 0 ? -1 : 1;
+      const side = room.pduSide[block];
       const x = blockOuterX(room, block) + side * 0.5;
-      const rows = `${pod * 2 + 1}·${pod * 2 + 2}열 ${block === 0 ? '서쪽' : '동쪽'} 블록`;
+      const rows = `${pod * 2 + 1}·${pod * 2 + 2}열 ${BLOCK_NAME[block]}`;
       // 담당 랙의 설계 전력 합으로 PDU 용량을 고른다 (GPU 열이 있는 포드는 300kVA)
       const racks = RACKS.filter((r) => r.serverRoom === room.label && r.pod === pod && r.block === block && r.feed === 'AB');
       const design = racks.reduce((sum, r) => sum + r.designKw, 0);
@@ -566,9 +567,9 @@ export const EQUIPMENT: Equip[] = [
     system: 'A계통 (2N)',
     specs: [
       ['방식', '온라인 이중변환'],
-      ['용량', '1,200kVA / 1,080kW (모듈형)'],
+      ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
       ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 A계통 (PDU-A1-1~6, PDU-A2-1~6, STS-1·2)'],
+      ['담당', '서버실 A·B의 A계통 (PDU-A1-1~9, PDU-A2-1~9, STS-1·2)'],
       ['권장 부하율', '≤50% (2N)'],
     ],
   }),
@@ -583,9 +584,9 @@ export const EQUIPMENT: Equip[] = [
     system: 'B계통 (2N)',
     specs: [
       ['방식', '온라인 이중변환'],
-      ['용량', '1,200kVA / 1,080kW (모듈형)'],
+      ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
       ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 B계통 (PDU-B1-1~6, PDU-B2-1~6, STS-1·2)'],
+      ['담당', '서버실 A·B의 B계통 (PDU-B1-1~9, PDU-B2-1~9, STS-1·2)'],
       ['권장 부하율', '≤50% (2N)'],
     ],
   }),
@@ -601,7 +602,7 @@ export const EQUIPMENT: Equip[] = [
     specs: [
       ['종류', '리튬인산철(LFP), BMS 내장'],
       ['용량', '300kWh'],
-      ['백업 시간', '약 15분 @ 1,080kW'],
+      ['백업 시간', '약 13분 @ 1,350kW'],
       ['연결', 'UPS-A 직류 링크'],
     ],
   }),
@@ -617,7 +618,7 @@ export const EQUIPMENT: Equip[] = [
     specs: [
       ['종류', '리튬인산철(LFP), BMS 내장'],
       ['용량', '300kWh'],
-      ['백업 시간', '약 15분 @ 1,080kW'],
+      ['백업 시간', '약 13분 @ 1,350kW'],
       ['연결', 'UPS-B 직류 링크'],
     ],
   }),
@@ -670,8 +671,8 @@ export const EQUIPMENT: Equip[] = [
       rotY: Math.PI / 2,
       system: 'N+1',
       specs: [
-        ['냉각 용량', '120kW (≈34 USRT)'],
-        ['풍량', '30,000m³/h'],
+        ['냉각 용량', '140kW (≈40 USRT)'],
+        ['풍량', '35,000m³/h'],
         ['급기 설정', '20°C'],
         ['취출', '하향 → 이중마루 하부'],
         ['짝', `실외기-${i + 1} (냉매 배관, 1:1)`],
@@ -726,8 +727,8 @@ export const EQUIPMENT: Equip[] = [
       rotY: -Math.PI / 2,
       system: 'N+1',
       specs: [
-        ['냉각 용량', '130kW (≈37 USRT)'],
-        ['풍량', '32,500m³/h'],
+        ['냉각 용량', '150kW (≈43 USRT)'],
+        ['풍량', '37,500m³/h'],
         ['급기 설정', '20°C'],
         ['냉수', '공급 7°C / 환수 12°C (냉수 헤더)'],
         ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],
@@ -794,7 +795,7 @@ export const EQUIPMENT: Equip[] = [
       size: [2.4, 1.5, 2.0],
       system: 'N+1',
       specs: [
-        ['방열 용량', '≈130kW'],
+        ['방열 용량', '≈160kW'],
         ['외기 대응', '-15~43°C'],
         ['짝', `항온항습기(공냉식)-${i + 1} (냉매 배관, 1:1)`],
         ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],

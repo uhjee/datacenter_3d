@@ -207,7 +207,7 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
   };
 
   const cz = L.coldZ[Math.floor(rnd() * L.coldZ.length)];
-  const block = rnd() < 0.5 ? 0 : 1;
+  const block = Math.floor(rnd() * L.blocks.length);
   const [bx0, bx1] = L.blocks[block];
   const ax = bx0 + 0.15 + rnd() * (bx1 - bx0 - 0.3);
   const az = cz + (rnd() - 0.5) * 0.9;

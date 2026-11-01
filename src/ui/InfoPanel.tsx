@@ -4,7 +4,7 @@ import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SHAFTS } from '../data/building';
 import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
 import { DOMAIN_META, EQUIP_TYPES, TYPE_BY_ID, type Domain } from '../data/equipTypes';
 import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
-import { RACK } from '../data/building';
+import { BLOCK_NAME, RACK } from '../data/building';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -278,7 +278,7 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
       head={
         <PanelHead
           glyph={<Glyph icon={DOMAIN_ICON.it} color={DOMAIN_META.it.color} />}
-          crumb={[rack.floor, `서버실 ${rack.serverRoom}`, `${rack.row + 1}열 ${rack.index + 1}번`, rack.block === 0 ? '서쪽 블록' : '동쪽 블록']}
+          crumb={[rack.floor, `서버실 ${rack.serverRoom}`, `${rack.row + 1}열 ${rack.index + 1}번`, BLOCK_NAME[rack.block]]}
           title={rack.name}
           pills={
             <>

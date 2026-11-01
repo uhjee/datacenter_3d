@@ -169,7 +169,7 @@ C('ats-b', 'mcc-b', 'lv', { sys: 'B' });
 // UPS · 배터리
 C('bat-a', 'ups-a', 'dc', { sys: 'A', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
 C('bat-b', 'ups-b', 'dc', { sys: 'B', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
-// UPS → PDU (서버실마다 A · B 6대씩) · STS
+// UPS → PDU (서버실마다 A · B 9대씩) · STS
 for (const e of EQUIPMENT) {
   if (e.type !== 'pdu') continue;
   const sys = e.system?.startsWith('A') ? 'A' : 'B';

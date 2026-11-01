@@ -173,7 +173,7 @@ const POWER_POS: Record<string, [number, number]> = {
   'sts-2': [1.5, 7],
 };
 
-// PDU는 서버실 · 계통마다 6대씩이라 흐름도에서는 한 묶음 노드로 보여준다
+// PDU는 서버실 · 계통마다 9대씩이라 흐름도에서는 한 묶음 노드로 보여준다
 const PDU_GROUPS: { id: string; sys: 'A' | 'B'; room: 'A' | 'B'; col: number }[] = [
   { id: 'pdus:a1', sys: 'A', room: 'A', col: -3.5 },
   { id: 'pdus:b1', sys: 'B', room: 'A', col: -2.5 },

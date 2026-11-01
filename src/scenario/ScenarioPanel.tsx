@@ -3,7 +3,7 @@
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Droplets, Fan, Flame, Pause, Play, PlugZap, RotateCcw, Server, Zap, type LucideIcon } from 'lucide-react';
 import { RACKS } from '../data/racks';
-import { computeMetrics } from '../data/metrics';
+import { computeMetrics, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
 import { exitAir, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -645,7 +645,7 @@ function UpsBoard({ v, side }: { v: UpsFailValues; side: 'A' | 'B' }) {
         v={`부하율 ${Math.round(oPct * 100)}%`}
         c={oColor}
         meter={{ v: oPct, color: oColor }}
-        s={`${Math.round(v.load[o])}kW · 정격 1,080kW`}
+        s={`${Math.round(v.load[o])}kW · 정격 ${UPS_KW.toLocaleString()}kW`}
       />
       <Tile k="이중화" v={v.redundancy} c={nColor} s={v.redundancy === '2N' ? '한 대가 멈춰도 버팀' : v.redundancy.startsWith('N ·') ? `UPS-${o}가 멈추면 전체 정지` : `${side}계통은 보호 없음`} />
       <Tile k={`이중전원 랙 ${UPS_FAIL_COUNTS.dual}대`} v={dualText} c={v.pduSrc === 'none' ? 'var(--warn)' : SRC_META.utility.color} s="끊김 없음" />

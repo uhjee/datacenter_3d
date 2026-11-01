@@ -111,8 +111,8 @@ export interface AirLayout {
 export function airLayout(label: RoomLabel): AirLayout {
   const sr = SERVER_ROOMS.find((s) => s.label === label)!;
   const blocks = sr.blocks.map((x) => [x, x + BLOCK_LEN] as [number, number]);
-  const x0 = blocks[0][0];
-  const x1 = blocks[1][1];
+  const x0 = Math.min(...blocks.map((b) => b[0]));
+  const x1 = Math.max(...blocks.map((b) => b[1]));
   const type = label === 'A' ? 'crac' : 'crah';
   return {
     label,
@@ -185,7 +185,7 @@ export function computeRoom(label: RoomLabel, cfg: AirCfg, itLoad = 1): RoomTher
   const b = BYPASS[cfg.containment];
   const avgExhaust = exSum / Math.max(load, 1);
   const units = 6;
-  const unitKw = label === 'A' ? 120 : 130;
+  const unitKw = label === 'A' ? 140 : 150;
   return {
     racks: out,
     avgInlet: +(sum / Math.max(loaded, 1)).toFixed(1),

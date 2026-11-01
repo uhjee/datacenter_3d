@@ -71,11 +71,11 @@ export const ROOMS: Room[] = [
   R('2f-ups-b', '2F', 'UPS실 B', [4, 20], [-10, 1], '#3d3126', 'B계통 UPS가 있습니다. 서버실 A·B의 B계통 전원을 모두 담당합니다.'),
   R('2f-bat-b', '2F', '배터리실 B', [4, 20], [1, 12], '#233a35', 'UPS-B용 리튬이온 배터리. A와 다른 방화구획입니다.'),
   // 3F
-  R('3f-sr-a', '3F', '서버실 A (공냉식)', [-20, 14], [-10, 12], '#1d2833', '공냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도를 막은 열복도 봉쇄(HAC) 3개 포드, 랙 144대. 열은 냉매 배관으로 옥상 실외기에 버립니다. 동쪽 빈 바닥은 증설 예정 상면입니다.', 'server'),
+  R('3f-sr-a', '3F', '서버실 A (공냉식)', [-20, 14], [-10, 12], '#1d2833', '공냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도를 막은 열복도 봉쇄(HAC) 3개 포드, 랙 216대. 열은 냉매 배관으로 옥상 실외기에 버립니다. 동쪽은 나중에 들인 증설 블록(25~36번)입니다.', 'server'),
   R('3f-ante', '3F', '전실 · 출입통제', [14, 20], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
   // 4F
   R('4f-ante', '4F', '전실 · 출입통제', [-20, -14], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
-  R('4f-sr-b', '4F', '서버실 B (수냉식)', [-14, 20], [-10, 12], '#1d2c33', '수냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도와 포드 사이 · 바깥 냉복도의 봉쇄 없는 배치, 랙 144대. 열은 냉수로 지하 냉동기에 보냅니다. 서쪽 빈 바닥은 증설 예정 상면입니다.', 'server'),
+  R('4f-sr-b', '4F', '서버실 B (수냉식)', [-14, 20], [-10, 12], '#1d2c33', '수냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도와 포드 사이 · 바깥 냉복도의 봉쇄 없는 배치, 랙 216대. 열은 냉수로 지하 냉동기에 보냅니다. 서쪽은 나중에 들인 증설 블록(25~36번)입니다.', 'server'),
   // PH
   R('ph-roof', 'PH', '옥상', [-20, 20], [-10, 12], '#2e3236', '실외기와 냉각탑이 있는 옥상 기계 공간입니다.', 'roof'),
 ];
@@ -148,13 +148,15 @@ export const SHAFTS: Shaft[] = [
 // 안쪽 통로를 사이에 둔 두 열이 한 묶음(포드)이고 피치는 4.8m. 서버실마다 포드 3개 = 6열.
 // 두 서버실 모두 안쪽 통로가 열복도(두 열이 등을 맞댐)이고, 포드 사이 · 바깥 통로가 냉복도(타공판)다.
 // 서버실 A는 그 열복도를 봉쇄(HAC)하고, 서버실 B는 봉쇄 없이 둔다.
-// 각 열은 12랙 블록 두 개로 나뉘고, 블록 바깥 끝에 PDU가 선다(가운데는 이동 통로).
-// 항온항습기 반대쪽 빈 바닥은 증설 예정 상면이다.
+// 각 열은 12랙 블록으로 나뉘고, 블록 바깥 끝에 PDU가 선다(블록 사이는 이동 통로).
+// 처음 두 블록(1~24번)이 개소 때 설치분이고, 항온항습기 반대쪽 빈 바닥에 세 번째 블록(25~36번)을 증설했다.
+// 랙 번호를 바꾸지 않으려고 증설 블록은 위치와 관계없이 블록 2(25~36번)로 둔다.
 export interface ServerRoomLayout {
   roomId: string;
   floor: FloorId;
   cz: number; // 포드 중심 z
-  blocks: [number, number]; // 블록 두 개의 서쪽 끝 x
+  blocks: number[]; // 블록마다 서쪽 끝 x (0 · 1 = 개소분, 2 = 증설분)
+  pduSide: (1 | -1)[]; // 블록마다 PDU가 서는 끝 (-1 서쪽, 1 동쪽)
   label: 'A' | 'B';
   hotInner?: boolean; // 포드 안쪽 통로가 열복도 (랙이 등을 맞댐)
 }
@@ -162,13 +164,13 @@ export interface ServerRoomLayout {
 export const RACK = { w: 0.6, d: 1.2, h: 2.2, U: 42 };
 export const RACKS_PER_BLOCK = 12;
 export const BLOCK_LEN = RACKS_PER_BLOCK * RACK.w; // 7.2m
-export const RACKS_PER_ROW = RACKS_PER_BLOCK * 2;
+export const EXPANSION_BLOCK = 2;
 
 export const SERVER_ROOMS: ServerRoomLayout[] = [
-  // 서버실 A: 항온항습기가 서쪽 벽, 증설 상면은 동쪽
-  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4], label: 'A', hotInner: true },
-  // 서버실 B: 항온항습기가 동쪽 벽, 증설 상면은 서쪽 (A와 좌우 대칭)
-  { roomId: '4f-sr-b', floor: '4F', cz: 1, blocks: [-1.8, 7.8], label: 'B', hotInner: true },
+  // 서버실 A: 항온항습기가 서쪽 벽, 증설 블록은 동쪽 (PDU는 벽 쪽 끝)
+  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4, 5.0], pduSide: [-1, 1, 1], label: 'A', hotInner: true },
+  // 서버실 B: 항온항습기가 동쪽 벽, 증설 블록은 서쪽 (A와 좌우 대칭)
+  { roomId: '4f-sr-b', floor: '4F', cz: 1, blocks: [-1.8, 7.8, -12.2], pduSide: [-1, 1, -1], label: 'B', hotInner: true },
 ];
 
 export const POD_PITCH = 4.8;
@@ -191,5 +193,6 @@ export const hotAisleDZ = (sr: ServerRoomLayout) => (sr.hotInner ? INNER_AISLE_D
 
 // 블록 b의 i번째(0~11) 랙 중심 x
 export const rackX = (sr: ServerRoomLayout, block: number, i: number) => sr.blocks[block] + RACK.w / 2 + i * RACK.w;
-// 블록의 바깥 끝(PDU 쪽) x: 서쪽 블록은 서쪽 끝, 동쪽 블록은 동쪽 끝
-export const blockOuterX = (sr: ServerRoomLayout, block: number) => (block === 0 ? sr.blocks[0] : sr.blocks[1] + BLOCK_LEN);
+// 블록의 바깥 끝(PDU 쪽) x
+export const blockOuterX = (sr: ServerRoomLayout, block: number) => sr.blocks[block] + (sr.pduSide[block] === 1 ? BLOCK_LEN : 0);
+export const BLOCK_NAME = ['서쪽 블록', '동쪽 블록', '증설 블록'];

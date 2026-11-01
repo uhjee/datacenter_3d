@@ -1,6 +1,6 @@
 // 서버실 랙. IT 장비는 추후 상세화하며, 지금은 공간(U)·전력 할당과 rPDU A/B 표시용이다.
 
-import { RACK, RACKS_PER_BLOCK, RACKS_PER_ROW, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId } from './building';
+import { EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
 
 export type DeviceKind = 'server' | 'storage' | 'gpu' | 'network' | 'patch';
 
@@ -17,8 +17,8 @@ export interface Rack {
   floor: FloorId;
   room: string;
   row: number; // 0~5
-  index: number; // 0~23 (0~11 서쪽 블록, 12~23 동쪽 블록)
-  block: 0 | 1;
+  index: number; // 0~35 (0~11 서쪽 블록, 12~23 동쪽 블록, 24~35 증설 블록)
+  block: 0 | 1 | 2;
   pod: number; // 안쪽 통로를 공유하는 두 열 묶음 0~2
   x: number;
   y: number;
@@ -78,41 +78,53 @@ function fill(kind: RowKind, empty: boolean, rnd: () => number): Device[] {
   return out;
 }
 
+function makeRack(sr: ServerRoomLayout, r: number, block: 0 | 1 | 2, bi: number, devices: Device[], feed: Rack['feed']): Rack {
+  const i = block * RACKS_PER_BLOCK + bi;
+  const id = `${sr.label}-${r + 1}-${String(i + 1).padStart(2, '0')}`;
+  return {
+    id,
+    name: `랙 ${id}`,
+    serverRoom: sr.label,
+    floor: sr.floor,
+    room: sr.roomId,
+    row: r,
+    index: i,
+    block,
+    pod: Math.floor(r / 2),
+    x: rackX(sr, block, bi),
+    y: RAISED_H,
+    z: sr.cz + ROW_OFFSETS[r].dz,
+    facing: rowFacing(sr, r),
+    devices,
+    uUsed: devices.reduce((s, d) => s + d.h, 0),
+    designKw: ROW_DESIGN_KW[r],
+    feed,
+  };
+}
+
 function build(): Rack[] {
   const rnd = mulberry32(20261031);
   const racks: Rack[] = [];
+  // 개소분 두 블록
   for (const sr of SERVER_ROOMS) {
-    ROW_OFFSETS.forEach((row, r) => {
-      for (let i = 0; i < RACKS_PER_ROW; i++) {
+    ROW_OFFSETS.forEach((_, r) => {
+      for (let i = 0; i < RACKS_PER_BLOCK * 2; i++) {
         const block = (i < RACKS_PER_BLOCK ? 0 : 1) as 0 | 1;
         const bi = i % RACKS_PER_BLOCK;
         // 1 · 3 · 5열에서 가운데 통로 쪽 끝 두 칸은 비워 둔 예약 랙 (공간 여유)
         const empty = r % 2 === 0 && (block === 0 ? bi >= RACKS_PER_BLOCK - 2 : bi < 2);
-        const devices = fill(ROW_KIND[r], empty, rnd);
-        const id = `${sr.label}-${r + 1}-${String(i + 1).padStart(2, '0')}`;
-        racks.push({
-          id,
-          name: `랙 ${id}`,
-          serverRoom: sr.label,
-          floor: sr.floor,
-          room: sr.roomId,
-          row: r,
-          index: i,
-          block,
-          pod: Math.floor(r / 2),
-          x: rackX(sr, block, bi),
-          y: RAISED_H,
-          z: sr.cz + row.dz,
-          facing: rowFacing(sr, r),
-          devices,
-          uUsed: devices.reduce((s, d) => s + d.h, 0),
-          designKw: ROW_DESIGN_KW[r],
-          // 6열 동쪽 블록 끝 두 랙은 단일전원 장비 → STS 경유
-          feed: r === 5 && i >= RACKS_PER_ROW - 2 ? 'STS' : 'AB',
-        });
+        // 6열 동쪽 블록 끝 두 랙은 단일전원 장비 → STS 경유
+        racks.push(makeRack(sr, r, block, bi, fill(ROW_KIND[r], empty, rnd), r === 5 && block === 1 && bi >= RACKS_PER_BLOCK - 2 ? 'STS' : 'AB'));
       }
     });
   }
+  // 증설 블록: 랙은 여섯 열 모두 세웠고, 장비는 1 · 2열(첫 포드)에만 들어왔다. 나머지는 장비 입고를 기다리는 빈 랙.
+  // 개소분 배치가 바뀌지 않도록 난수열을 따로 쓴다
+  const rndX = mulberry32(20261101);
+  for (const sr of SERVER_ROOMS)
+    ROW_OFFSETS.forEach((_, r) => {
+      for (let bi = 0; bi < RACKS_PER_BLOCK; bi++) racks.push(makeRack(sr, r, EXPANSION_BLOCK, bi, fill(ROW_KIND[r], r > 1, rndX), 'AB'));
+    });
   return racks;
 }
 

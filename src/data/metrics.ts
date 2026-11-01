@@ -5,7 +5,7 @@ import { RACK } from './building';
 import { RACKS } from './racks';
 import { rackKw, type AirCfg, type RoomLabel, type RoomTherm } from './thermal';
 
-export const UPS_KW = 1080; // UPS 1대 정격 출력 (1,200kVA)
+export const UPS_KW = 1350; // UPS 1대 정격 출력 (1,500kVA)
 export const RT_KW = 3.517; // 1 USRT
 
 export interface Part {
@@ -103,7 +103,7 @@ export function computeMetrics(load: number, outdoor: number, cfg: Record<RoomLa
 
   // 서버실 A: 공냉식 직팽 (압축기가 항온항습기 안, 실외기 팬)
   const copDx = clamp(4.2 - 0.07 * (outdoor - 15), 2, 5) * supplyK(cfg.A.supply);
-  const capA = { n1: 600, all: 720 };
+  const capA = { n1: 700, all: 840 };
   const partsA: Part[] = [
     { key: 'comp', name: '압축기', kw: it.A / copDx },
     { key: 'fan', name: '항온항습기 팬', kw: fanKw(6, it.A, capA.n1, therm.A.bypass) },
@@ -114,7 +114,7 @@ export function computeMetrics(load: number, outdoor: number, cfg: Record<RoomLa
   const shift = 0.5 * (cfg.B.supply - 20);
   const free = clamp((13 + shift - outdoor) / 8, 0, 1);
   const copCh = clamp(6.2 - 0.06 * (outdoor - 15), 3.5, 7) * supplyK(cfg.B.supply);
-  const capB = { n1: 650, all: 780 };
+  const capB = { n1: 750, all: 900 };
   const partsB: Part[] = [
     { key: 'chiller', name: '냉동기', kw: (it.B * (1 - free)) / copCh },
     { key: 'fan', name: '항온항습기 팬', kw: fanKw(5.5, it.B, capB.n1, therm.B.bypass) },
