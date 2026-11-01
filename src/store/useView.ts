@@ -133,7 +133,7 @@ export interface Highlight {
 }
 
 const computeTrace = (id: string | null, dir: TraceDir | null, cross: boolean) =>
-  id && dir && !id.startsWith('shaft:') ? traceFrom(id, dir, cross) : null;
+  id && dir && !id.startsWith('shaft:') && !id.startsWith('customer:') ? traceFrom(id, dir, cross) : null;
 
 export const useView = create<ViewState>((set, get) => ({
   layers: {

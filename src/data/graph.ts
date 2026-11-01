@@ -4,7 +4,8 @@ import { FLOOR_BY_ID, type FloorId } from './building';
 import { CONNECTIONS, HUB_BY_ID, type Conn } from './connections';
 import { EQUIP_BY_ID } from './equipment';
 import { TYPE_BY_ID, type Domain } from './equipTypes';
-import { RACK_BY_ID } from './racks';
+import { RACK_BY_ID, RACKS } from './racks';
+import { CUSTOMER_BY_ID, type CustomerId } from './customers';
 import { RACK } from './building';
 
 type V3 = [number, number, number];
@@ -37,6 +38,15 @@ export function nodeInfo(id: string): NodeInfo | null {
   if (id.startsWith('rack:')) {
     const r = RACK_BY_ID[id.slice(5)];
     if (r) n = { name: r.name, floor: r.floor, domain: 'it', pos: [r.x, r.y, r.z], size: [RACK.w, RACK.h, RACK.d], isRack: true };
+  } else if (id.startsWith('customer:')) {
+    // 고객사: 케이지(없으면 빌린 랙들)를 감싸는 상자
+    const c = CUSTOMER_BY_ID[id.slice(9) as CustomerId];
+    const racks = RACKS.filter((r) => r.customer === c?.id);
+    if (c && racks.length) {
+      const xs = c.cage ? c.cage.x : [Math.min(...racks.map((r) => r.x)) - RACK.w / 2, Math.max(...racks.map((r) => r.x)) + RACK.w / 2];
+      const zs = c.cage ? c.cage.z : [Math.min(...racks.map((r) => r.z)) - RACK.d / 2, Math.max(...racks.map((r) => r.z)) + RACK.d / 2];
+      n = { name: c.name, floor: c.floor, domain: 'it', pos: [(xs[0] + xs[1]) / 2, racks[0].y, (zs[0] + zs[1]) / 2], size: [xs[1] - xs[0], RACK.h, zs[1] - zs[0]] };
+    }
   } else if (id.startsWith('hub:')) {
     const h = HUB_BY_ID[id];
     if (h) n = { name: h.name, floor: h.floor, domain: h.domain, pos: [h.pos[0], h.pos[1] - h.size[1] / 2, h.pos[2]], size: h.size };

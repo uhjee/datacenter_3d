@@ -28,6 +28,29 @@ export interface Cage {
   reserved: Slot[]; // 케이지 안이라 랙을 두지 않는 칸
 }
 
+// 회로(브레이커) 규격: 연속 부하는 정격의 80%까지만 쓴다
+export type CircuitKind = '1P32' | '3P32';
+export const CIRCUIT: Record<CircuitKind, { name: string; kva: number; cont: number }> = {
+  '1P32': { name: '단상 220V 32A', kva: 7.0, cont: +((220 * 32 * 0.8) / 1000).toFixed(1) },
+  '3P32': { name: '3상 380V 32A', kva: 21.1, cont: +((Math.sqrt(3) * 380 * 32 * 0.8) / 1000).toFixed(1) },
+};
+
+// 코로케이션 계약 (예시 값)
+export interface Contract {
+  kw: number; // 계약 전력: 사업자가 확보해 두기로 약정한 전력
+  billing: string; // 과금 방식
+  circuit: CircuitKind; // 랙당 A · B 회로 각 1개
+  start: string; // 'YYYY-MM'
+  end: string;
+  autoRenew: boolean;
+  crossConnects: number; // 통신사 · 다른 고객과 잇는 회선
+  remoteHands: [number, number]; // 이번 달 사용 / 포함 시간
+  access: number; // 출입 인가자 수
+}
+
+// 계약 정보의 기준 시점 (예시 데이터가 날짜에 따라 바뀌지 않도록 고정)
+export const AS_OF = '2026-11';
+
 export interface Customer {
   id: CustomerId;
   name: string;
@@ -39,6 +62,7 @@ export interface Customer {
   kind: "server" | "gpu" | "mixed";
   designKw: number;
   cage?: Cage;
+  contract: Contract;
 }
 
 const SR = SERVER_ROOMS.find((s) => s.label === "B")!;
@@ -69,6 +93,17 @@ export const CUSTOMERS: Customer[] = [
       door: "east",
       reserved: range(2, 0, 11),
     },
+    contract: {
+      kw: 120,
+      billing: '약정 kW + 초과분 kWh 1.5배 단가',
+      circuit: '1P32',
+      start: '2024-03',
+      end: '2027-02',
+      autoRenew: true,
+      crossConnects: 6,
+      remoteHands: [3, 10],
+      access: 12,
+    },
   },
   {
     id: "B",
@@ -88,6 +123,17 @@ export const CUSTOMERS: Customer[] = [
       door: "east",
       reserved: range(4, 8, 11),
     },
+    contract: {
+      kw: 18,
+      billing: '약정 kW + 초과분 kWh 1.5배 단가',
+      circuit: '3P32',
+      start: '2025-09',
+      end: '2028-08',
+      autoRenew: true,
+      crossConnects: 4,
+      remoteHands: [7, 8],
+      access: 5,
+    },
   },
   {
     id: "C",
@@ -99,6 +145,17 @@ export const CUSTOMERS: Customer[] = [
     slots: [{ row: 3, bi: 3 }],
     kind: "server",
     designKw: 5,
+    contract: {
+      kw: 5,
+      billing: '랙당 월 고정 (5kW 포함)',
+      circuit: '1P32',
+      start: '2025-01',
+      end: '2026-12',
+      autoRenew: false,
+      crossConnects: 1,
+      remoteHands: [0, 2],
+      access: 2,
+    },
   },
   {
     id: "D",
@@ -110,6 +167,17 @@ export const CUSTOMERS: Customer[] = [
     slots: [{ row: 4, bi: 2 }],
     kind: "mixed",
     designKw: 4,
+    contract: {
+      kw: 6,
+      billing: '랙당 월 고정 (6kW 포함)',
+      circuit: '1P32',
+      start: '2026-06',
+      end: '2027-05',
+      autoRenew: true,
+      crossConnects: 2,
+      remoteHands: [1, 2],
+      access: 3,
+    },
   },
 ];
 

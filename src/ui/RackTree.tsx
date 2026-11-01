@@ -76,6 +76,16 @@ export function RackTree({ query }: { query: string }) {
                       {c.cage ? "케이지" : "랙 단위"}
                     </small>
                     <span className="count">{racks.length}</span>
+                    <button
+                      className={`tree-info${selectedId === `customer:${c.id}` ? " on" : ""}`}
+                      title={`${c.name} 계약 · 전력 정보`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        focusItem(`customer:${c.id}`);
+                      }}
+                    >
+                      정보
+                    </button>
                   </summary>
                   {racks.map((r) => (
                     <RackItem

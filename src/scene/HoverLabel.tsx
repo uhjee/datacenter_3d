@@ -32,7 +32,8 @@ export function LabelProjector() {
 
   function place(el: HTMLDivElement | null, id: string | null) {
     if (!el) return;
-    const a = id ? labelAnchor(id) : null;
+    // 고객사는 3D에 이름표(케이지 태그)가 늘 떠 있어 따로 띄우지 않는다
+    const a = id && !id.startsWith('customer:') ? labelAnchor(id) : null;
     if (!a) {
       el.style.display = 'none';
       return;

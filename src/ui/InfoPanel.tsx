@@ -5,7 +5,8 @@ import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
 import { DOMAIN_META, EQUIP_TYPES, TYPE_BY_ID, type Domain } from '../data/equipTypes';
 import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
 import { BLOCK_NAME, EXPANSION_BLOCK, RACK } from '../data/building';
-import { CUSTOMER_BY_ID } from '../data/customers';
+import { CIRCUIT, CUSTOMER_BY_ID, type CustomerId } from '../data/customers';
+import { CustomerCard } from './CustomerCard';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -56,6 +57,7 @@ function InfoBody({ id, groupId }: { id: string | null; groupId: string | null }
       {!id && groupId && <GroupCard id={groupId} />}
       {!id && !groupId && <Overview />}
       {id && id.startsWith('rack:') && <RackCard rack={RACK_BY_ID[id.slice(5)]} />}
+      {id && id.startsWith('customer:') && <CustomerCard id={id.slice(9) as CustomerId} />}
       {id && id.startsWith('shaft:') && <ShaftCard id={id.slice(6)} />}
       {id && HUB_BY_ID[id] && <HubCard h={HUB_BY_ID[id]} />}
       {id && EQUIP_BY_ID[id] && <EquipCard e={EQUIP_BY_ID[id]} />}
@@ -275,6 +277,8 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
   const maxIn = t && t.kw > 0 ? Math.max(...t.inlet) : null;
   const pw = kw / rack.designKw;
   const cust = rack.customer ? CUSTOMER_BY_ID[rack.customer] : null;
+  // 고객사 랙은 계약한 회로 규격, 그 밖에는 단상 7kVA
+  const circuit = cust && cust.contract.circuit === '3P32' ? `3상 ${CIRCUIT['3P32'].kva}kVA` : '단상 7kVA';
   return (
     <Card
       head={
@@ -286,10 +290,12 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
             <>
               <StatusPill id={`rack:${rack.id}`} />
               {cust && (
-                <Pill color={cust.color} title={cust.summary}>
-                  {cust.name}
-                  {cust.cage ? ' · 케이지' : ''}
-                </Pill>
+                <button className="pill-link" title="고객사 정보 보기" onClick={() => useView.getState().select(`customer:${cust.id}`)}>
+                  <Pill color={cust.color} title={cust.summary}>
+                    {cust.name}
+                    {cust.cage ? ' · 케이지' : ''} ›
+                  </Pill>
+                </button>
               )}
               {!cust && rack.serverRoom === 'B' && rack.block === EXPANSION_BLOCK && (
                 <Pill ghost color="var(--ink-3)" title="고객사 임대를 기다리는 빈 랙">
@@ -341,19 +347,19 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
               <div style={{ borderLeftColor: 'var(--a)' }}>
                 <b>rPDU-A</b>
                 <small>{from('upsA')} ← UPS-A</small>
-                <small className="num">단상 7kVA · {(kw / 2).toFixed(1)}kW</small>
+                <small className="num">{circuit} · {(kw / 2).toFixed(1)}kW</small>
               </div>
               <div style={{ borderLeftColor: 'var(--b)' }}>
                 <b>rPDU-B</b>
                 <small>{from('upsB')} ← UPS-B</small>
-                <small className="num">단상 7kVA · {(kw / 2).toFixed(1)}kW</small>
+                <small className="num">{circuit} · {(kw / 2).toFixed(1)}kW</small>
               </div>
             </>
           ) : (
             <div style={{ borderLeftColor: '#be4bdb' }} className="wide">
               <b>rPDU</b>
               <small>{from('sts')} ← UPS-A/B 중 택1</small>
-              <small className="num">단상 7kVA · {kw.toFixed(1)}kW</small>
+              <small className="num">{circuit} · {kw.toFixed(1)}kW</small>
             </div>
           )}
         </div>

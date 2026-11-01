@@ -169,12 +169,18 @@ export function RackRows({ roomId }: { roomId: string }) {
   };
   const sel = marked(selectedId);
   const hov = marked(hoveredId);
+  // 고객사를 고르면 그 고객사 랙 전부에 테두리
+  const custRacks = useMemo(
+    () => (selectedId?.startsWith('customer:') ? racks.filter((r) => `customer:${r.customer}` === selectedId) : []),
+    [racks, selectedId],
+  );
 
   return (
     <group ref={whole}>
       <instancedMesh
         ref={cabRef}
         args={[undefined, undefined, racks.length]}
+        userData={{ rackIds: racks.map((r) => r.id) }}
         onPointerMove={(e) => {
           e.stopPropagation();
           const id = idOf(e);
@@ -222,6 +228,11 @@ export function RackRows({ roomId }: { roomId: string }) {
         <boxGeometry args={[1, 1, 1]} />
         <meshStandardMaterial emissiveIntensity={0.3} />
       </instancedMesh>
+      {custRacks.map((r) => (
+        <group key={r.id} position={[r.x, r.y, r.z]}>
+          <SelectionFrame size={[RACK.w, RACK.h, RACK.d]} color="#ffd43b" />
+        </group>
+      ))}
       {[sel, hov].map((r, k) =>
         r && (k === 0 || r !== sel) ? (
           <group key={k} position={[r.x, r.y, r.z]}>

@@ -1,8 +1,9 @@
 // 고객사 케이지: 랙과 앞 · 뒤 통로를 두른 철망 울타리 + 출입문 + 이름표.
 // 케이지 없이 랙만 빌린 고객사는 바닥에 랙 테두리만 그린다.
 
-import { Html } from "@react-three/drei";
-import { useMemo } from "react";
+import { Html, useCursor } from "@react-three/drei";
+import { useMemo, useState, type ReactNode } from "react";
+import type { ThreeEvent } from "@react-three/fiber";
 import { CanvasTexture, DoubleSide, RepeatWrapping } from "three";
 import { RACK, RAISED_H, type FloorId } from "../data/building";
 import { CAGE_H, CUSTOMERS, type Customer } from "../data/customers";
@@ -39,11 +40,13 @@ function Fence({
   to,
   color,
   tex,
+  lit,
 }: {
   from: [number, number];
   to: [number, number];
   color: string;
   tex: CanvasTexture;
+  lit: boolean;
 }) {
   const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
   const h = CAGE_H - RAISED_H;
@@ -58,13 +61,14 @@ function Fence({
   const cz = (from[1] + to[1]) / 2;
   return (
     <group position={[cx, RAISED_H + h / 2, cz]} rotation={[0, rotY, 0]}>
-      <mesh raycast={() => null} renderOrder={4}>
+      {/* 철망 면은 누를 수 있다 (고객사 선택) */}
+      <mesh renderOrder={4}>
         <planeGeometry args={[len, h]} />
         <meshBasicMaterial
           color={color}
           alphaMap={map}
           transparent
-          opacity={0.55}
+          opacity={lit ? 0.95 : 0.55}
           side={DoubleSide}
           depthWrite={false}
         />
@@ -90,7 +94,7 @@ function Fence({
   );
 }
 
-function CageMesh({ c }: { c: Customer }) {
+function CageMesh({ c, lit }: { c: Customer; lit: boolean }) {
   const tex = useMeshTexture();
   const cage = c.cage!;
   const [x0, x1] = cage.x;
@@ -101,25 +105,28 @@ function CageMesh({ c }: { c: Customer }) {
   // 출입문이 난 면은 문 양옆 두 토막으로 나눈다
   return (
     <group>
-      <Fence from={[x0, z0]} to={[x1, z0]} color={c.color} tex={tex} />
-      <Fence from={[x0, z1]} to={[x1, z1]} color={c.color} tex={tex} />
+      <Fence from={[x0, z0]} to={[x1, z0]} color={c.color} tex={tex} lit={lit} />
+      <Fence from={[x0, z1]} to={[x1, z1]} color={c.color} tex={tex} lit={lit} />
       <Fence
         from={[cage.door === "east" ? x0 : x1, z0]}
         to={[cage.door === "east" ? x0 : x1, z1]}
         color={c.color}
         tex={tex}
+        lit={lit}
       />
       <Fence
         from={[dx, z0]}
         to={[dx, zm - DOOR_W / 2]}
         color={c.color}
         tex={tex}
+        lit={lit}
       />
       <Fence
         from={[dx, zm + DOOR_W / 2]}
         to={[dx, z1]}
         color={c.color}
         tex={tex}
+        lit={lit}
       />
       {/* 출입문: 조금 열린 문짝 */}
       <group
@@ -149,14 +156,14 @@ function CageMesh({ c }: { c: Customer }) {
 }
 
 // 케이지 없는 고객사: 랙 둘레를 바닥에 표시
-function RackOutline({ c }: { c: Customer }) {
+function RackOutline({ c, lit }: { c: Customer; lit: boolean }) {
   const racks = useMemo(() => RACKS.filter((r) => r.customer === c.id), [c.id]);
   return (
     <group>
       {racks.flatMap((r) => {
-        const w = RACK.w + 0.16;
-        const d = RACK.d + 0.16;
-        const t = 0.05;
+        const w = RACK.w + 0.2;
+        const d = RACK.d + 0.2;
+        const t = lit ? 0.09 : 0.06;
         // 테두리 네 변: [중심 x, 중심 z, 폭, 깊이]
         const sides: [number, number, number, number][] = [
           [0, -d / 2, w, t],
@@ -169,7 +176,6 @@ function RackOutline({ c }: { c: Customer }) {
             key={`${r.id}-${i}`}
             position={[r.x + sx, RAISED_H + 0.012, r.z + sz]}
             rotation={[-Math.PI / 2, 0, 0]}
-            raycast={() => null}
           >
             <planeGeometry args={[sw, sd]} />
             <meshBasicMaterial color={c.color} />
@@ -180,7 +186,7 @@ function RackOutline({ c }: { c: Customer }) {
   );
 }
 
-function CustomerTag({ c, hidden }: { c: Customer; hidden: boolean }) {
+function CustomerTag({ c, hidden, lit }: { c: Customer; hidden: boolean; lit: boolean }) {
   const racks = RACKS.filter((r) => r.customer === c.id);
   const pos: [number, number, number] = c.cage
     ? [
@@ -195,11 +201,14 @@ function CustomerTag({ c, hidden }: { c: Customer; hidden: boolean }) {
       position={pos}
       center
       zIndexRange={[5, 0]}
-      style={{ pointerEvents: "none" }}
     >
       <div
-        className="cage-tag"
+        className={`cage-tag${lit ? " on" : ""}`}
         style={{ display: hidden ? "none" : undefined, borderColor: c.color }}
+        title={`${c.name} 정보 보기`}
+        onClick={() => useView.getState().select(`customer:${c.id}`)}
+        onMouseEnter={() => useView.getState().hover(`customer:${c.id}`)}
+        onMouseLeave={() => useView.getState().hover(null)}
       >
         <i style={{ background: c.color }} />
         {c.name}
@@ -209,9 +218,51 @@ function CustomerTag({ c, hidden }: { c: Customer; hidden: boolean }) {
   );
 }
 
+// 철망 너머로 랙이 겹쳐 보이면 랙을 고르게 둔다 (이벤트를 막지 않으면 뒤의 랙이 받는다)
+// 철망 뒤에 보이는 첫 랙 (없으면 null). 랙 묶음 메시의 userData.rackIds로 인스턴스 → 랙 번호
+const rackBehind = (e: ThreeEvent<PointerEvent | MouseEvent>) => {
+  const h = e.intersections.find((k) => k.object.userData.rackIds && k.distance > e.distance);
+  return h && h.instanceId != null ? `rack:${h.object.userData.rackIds[h.instanceId]}` : null;
+};
+
+function CustomerPick({ c, children }: { c: Customer; children: ReactNode }) {
+  const id = `customer:${c.id}`;
+  const [over, setOver] = useState(false);
+  useCursor(over);
+  return (
+    <group
+      onPointerMove={(e) => {
+        // 철망을 이미 가리키던 중이면 R3F가 뒤 물체로 이동 이벤트를 넘기지 않으므로 뒤 랙의 강조를 여기서 건다
+        const rack = rackBehind(e);
+        e.stopPropagation();
+        if (!over) setOver(true);
+        if (rack) {
+          if (useView.getState().hoveredId !== rack) useView.getState().hover(rack);
+          return;
+        }
+        if (useView.getState().hoveredId !== id) useView.getState().hover(id);
+      }}
+      onPointerOut={() => {
+        setOver(false);
+        const h = useView.getState().hoveredId;
+        if (h === id || h?.startsWith('rack:')) useView.getState().hover(null);
+      }}
+      onClick={(e) => {
+        if (rackBehind(e)) return;
+        e.stopPropagation();
+        useView.getState().select(id);
+      }}
+    >
+      {children}
+    </group>
+  );
+}
+
 export function Cages({ floor }: { floor: FloorId }) {
   const shown = useView((s) => s.layers.cages);
   const focus = useView((s) => s.floorFocus);
+  const selectedId = useView((s) => s.selectedId);
+  const hoveredId = useView((s) => s.hoveredId);
   const customers = useMemo(
     () => CUSTOMERS.filter((c) => c.floor === floor),
     [floor],
@@ -221,12 +272,15 @@ export function Cages({ floor }: { floor: FloorId }) {
   const tagHidden = !shown || focus !== floor;
   return (
     <group visible={shown}>
-      {customers.map((c) => (
-        <group key={c.id}>
-          {c.cage ? <CageMesh c={c} /> : <RackOutline c={c} />}
-          <CustomerTag c={c} hidden={tagHidden} />
-        </group>
-      ))}
+      {customers.map((c) => {
+        const lit = selectedId === `customer:${c.id}` || hoveredId === `customer:${c.id}`;
+        return (
+          <group key={c.id}>
+            <CustomerPick c={c}>{c.cage ? <CageMesh c={c} lit={lit} /> : <RackOutline c={c} lit={lit} />}</CustomerPick>
+            <CustomerTag c={c} hidden={tagHidden} lit={lit} />
+          </group>
+        );
+      })}
     </group>
   );
 }
