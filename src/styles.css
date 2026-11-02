@@ -3389,12 +3389,37 @@ button.co-tr:hover {
 }
 .plan-unit-s.down {
   fill: var(--crit);
-}/* ── 온도 카드: 단면 높이 · 온도 바 ───────────────── */
-.heat-h {
-  display: flex;
+}/* ── 온도 카드: 단면 높이 막대 · 온도 바 ───────────────── */
+/* 단면 높이 막대: 온도 카드(왼쪽 60px + 폭 340px) 오른쪽에 붙은 세로 막대, 위에서부터 상 · 중 · 하 */
+.heat-hbar {
+  position: absolute;
+  top: 10px;
+  left: 408px;
+  z-index: 7;
 }
-.heat-h button {
-  flex: 1;
+.heat-hbar .vc-floor {
+  position: relative;
+  width: 32px;
+}
+/* 마우스를 올리면 어느 높이 온도계 기준인지 바로 보여 준다 (title보다 빠르게) */
+.heat-hbar .vc-floor:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  color: var(--ink-2);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre;
+  pointer-events: none;
 }
 .heat-bar {
   margin-top: 10px;
@@ -3666,13 +3691,6 @@ button.co-tr:hover {
   margin-bottom: 8px;
 }
 .th-row .grow {
-  flex: 1;
-}
-.thermal-panel .heat-h {
-  display: flex;
-  margin-bottom: 2px;
-}
-.thermal-panel .heat-h button {
   flex: 1;
 }
 /* 급기 · 수치 카드 (3D 오른쪽 아래). 왼쪽 위 온도 카드와 같은 모양 */
