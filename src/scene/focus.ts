@@ -210,7 +210,7 @@ export function viewRoom(room: RoomLabel) {
   s.flyTo([cx, y + 9, L.cz + 11], [L.rcx + (fromEast ? -3 : 3), y + 1.2, L.cz]);
 }
 
-// 온도 카드 · 층 이동의 서버실 전환: 켜 둔 표시(히트맵 · 기류 입자)와 시점을 그대로 두고 서버실만 바꾼다
+// 온도 카드 · 층 이동의 서버실 전환: 켜 둔 표시(히트맵 · 에어 플로우)와 시점을 그대로 두고 서버실만 바꾼다
 export function switchRoom(room: RoomLabel, force = false) {
   const s = useView.getState();
   if (!force && s.airRoom === room) return;
@@ -253,7 +253,7 @@ export function heatView(room: RoomLabel) {
 }
 
 // 층 이동 버튼: 온도 보기(기류 · 히트맵) 중이면 서버실 층은 그 서버실 시점으로, 다른 층은 온도 보기를 끄고 이동한다.
-// (일반 층 시점은 멀어서 기류 입자가 거의 안 보이고, 기류 패널만 떠 있게 된다)
+// (일반 층 시점은 멀어서 에어 플로우가 거의 안 보이고, 기류 패널만 떠 있게 된다)
 export function goFloor(id: FloorId) {
   const s = useView.getState();
   if (thermalOn(s)) {

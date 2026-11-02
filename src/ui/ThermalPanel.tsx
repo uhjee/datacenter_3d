@@ -1,6 +1,6 @@
 // 온도 카드 (3D 위 왼쪽 위, 상단 [온도]를 켰을 때). 서버실 온도에 관한 보기 · 조건을 한 곳에 모은다.
 // 서버실 전환은 왼쪽 층 이동 막대(3F · 4F · 5F)가 맡고, 카드 머리글에는 지금 서버실 이름만 둔다
-//   보기: 히트맵 · 기류 입자 (둘 중 하나는 켜 둔다) · 시점(위에서 / 통로 단면) · 단면 높이 · 온도 바 · 요약 한 줄
+//   보기: 히트맵 · 에어 플로우 (둘 중 하나는 켜 둔다) · 시점(위에서 / 통로 단면) · 단면 높이 · 온도 바 · 요약 한 줄
 //   ⚙ 보기 옵션: 불투명도 · 넘는 곳만 · 랙 흡기 온도 색 · 이중마루 투시
 //   공조 조건 (펼침, 기본 접힘): 컨테인먼트 · 블랭킹 · 플레넘
 // 급기 온도 · 수치는 따로 떼어 3D 오른쪽 아래 카드(SupplyCard)에 둔다 → 급기를 바꾸며 히트맵과 수치를 함께 본다
@@ -48,7 +48,7 @@ const STAGES = ['급기(하부)', '이중마루 하부', '타공판', '냉복도
 const STAGES_FLOOD = ['전면 토출', '방을 건너며 섞임', '냉복도', '랙 앞', '랙 흡기', '랙 배기', '열복도', '실내 위쪽', '항온항습기 흡입', '코일에서 열 전달'];
 const stagesOf = (room: RoomLabel) => (SR_BY_LABEL[room].raised > 0 ? STAGES : STAGES_FLOOD);
 
-// 온도 척도 (히트맵 · 랙 색칠 · 기류 입자 공통)
+// 온도 척도 (히트맵 · 랙 색칠 · 에어 플로우 공통)
 const LO = 15;
 const HI = 40;
 const pos = (t: number) => `${((Math.min(HI, Math.max(LO, t)) - LO) / (HI - LO)) * 100}%`;
@@ -128,7 +128,7 @@ export function ThermalPanel() {
                   head={['표시', '보여 주는 것']}
                   rows={[
                     ['히트맵', '고른 높이 단면의 온도 분포를 바닥에 깔고, 하단 2D 상면도에 랙 온도를 그립니다. 바닥을 가리키면 그 지점 온도'],
-                    ['기류 입자', '찬 공기(파랑)가 랙을 지나며 데워져(빨강) 항온항습기로 돌아가는 길'],
+                    ['에어 플로우', '찬 공기(파랑)가 랙을 지나며 데워져(빨강) 항온항습기로 돌아가는 길'],
                     ['핫스팟', `고른 높이 흡기가 ${RECOMMENDED[1]}°C를 넘는 랙. 누르면 가장 뜨거운 랙으로 이동`],
                   ]}
                 />
@@ -179,7 +179,7 @@ export function ThermalPanel() {
         {/* 표시 · 시점 */}
         <div className="th-row">
           <ToggleTag on={heatOn} onToggle={toggleHeat} label="히트맵" color="#ff922b" />
-          <ToggleTag on={airOn} onToggle={toggleAir} label="기류 입자" color="#74c0fc" />
+          <ToggleTag on={airOn} onToggle={toggleAir} label="에어 플로우" color="#74c0fc" />
           <span className="grow" />
           <div className="seg small th-cam">
             <button className={cam === 'top' ? 'on' : ''} onClick={() => heatView(room)} title="위에서 내려다보기 (분포가 잘 보임)" aria-label="위에서">
@@ -222,7 +222,7 @@ export function ThermalPanel() {
           </div>
         )}
 
-        {/* 구간별 온도 바 (히트맵 · 랙 색 · 기류 입자 공통 척도) */}
+        {/* 구간별 온도 바 (히트맵 · 랙 색 · 에어 플로우 공통 척도) */}
         <div className="heat-bar">
           <div className="heat-bar-c" style={{ background: tempGradient(LO, HI) }}>
             {[18, 27, 32].map((t) => (
@@ -360,7 +360,7 @@ export function SupplyCard() {
                     ['열부하 / 냉각 용량', '1대를 예비로 뺀(N+1) 냉각 용량 대비 지금 열부하', '100% 이하'],
                   ]}
                 />
-                <p>기류 입자가 지나는 길</p>
+                <p>에어 플로우가 지나는 길</p>
                 <TipTable rows={stagesOf(room).slice(0, 5).map((a, i) => [`${'①②③④⑤'[i]} ${a}`, `${'⑥⑦⑧⑨⑩'[i]} ${stagesOf(room)[i + 5]}`])} />
               </>
             }

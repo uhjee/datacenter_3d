@@ -71,7 +71,7 @@ export function App() {
             className={thermal ? 'on' : ''}
             aria-pressed={thermal}
             onClick={() => (thermal ? exitThermal() : enterHeat(heatRoom()))}
-            title="서버실 온도 보기: 히트맵 · 기류 입자 (하단에 2D 상면도)"
+            title="서버실 온도 보기: 히트맵 · 에어 플로우 (하단에 2D 상면도)"
           >
             <Thermometer size={15} /> 온도
           </button>

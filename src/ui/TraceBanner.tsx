@@ -59,7 +59,7 @@ export function TraceBanner() {
     );
   }
   if (thermal) {
-    const what = [heatOn && '히트맵', airOn && '기류 입자'].filter(Boolean).join(' · ');
+    const what = [heatOn && '히트맵', airOn && '에어 플로우'].filter(Boolean).join(' · ');
     chips.push(
       <Chip key="thermal" icon={Thermometer} color="#ff922b" off={() => exitThermal()} offLabel="온도 보기 끄기">
         <b>온도</b>
