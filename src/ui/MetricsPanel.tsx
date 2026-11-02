@@ -1,7 +1,8 @@
 // 지표 탭: 운전 조건 → PUE · 서버실별 남은 용량 · UPS 2N (docs/PLAN.md §6)
 
 import { useState } from 'react';
-import { PART_COLOR, RT_KW, type Metrics, type RoomMetrics } from '../data/metrics';
+import { PART_COLOR, RT_KW, UPS_KW, upsId, type Metrics, type RoomMetrics } from '../data/metrics';
+import { ROOM_LABELS, SR_BY_LABEL } from '../data/building';
 import { type RoomLabel } from '../data/thermal';
 import { activateGroup, enterHeat } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -45,7 +46,7 @@ export function MetricsPanel() {
             step={1}
             v={outdoor}
             onChange={(v) => useView.getState().setOutdoorT(v)}
-            help="실외기 · 냉동기 효율과 서버실 B의 프리쿨링을 바꿉니다."
+            help="실외기 · 냉동기 효율과 수냉식(3F · 4F)의 프리쿨링을 바꿉니다."
           />
         </div>
         <div className="rp-airlink">
@@ -57,7 +58,7 @@ export function MetricsPanel() {
                   <p>급기 온도 · 컨테인먼트는 온도 카드(상단 [온도])의 설정을 따릅니다.</p>
                   <TipTable
                     head={['', '급기', '컨테인먼트']}
-                    rows={(['A', 'B'] as const).map((r) => [`서버실 ${r}`, <span className="num">{cfg[r].supply}°C</span>, CONT_NAME[cfg[r].containment]])}
+                    rows={ROOM_LABELS.map((r) => [`서버실 ${r}`, <span className="num">{cfg[r].supply}°C</span>, CONT_NAME[cfg[r].containment]])}
                   />
                 </>
               }
@@ -71,14 +72,13 @@ export function MetricsPanel() {
         <Pue m={m} />
 
         <div className="seg small rp-room-seg">
-          <button className={room === 'A' ? 'on' : ''} onClick={() => setRoom('A')}>
-            A · 공냉식
-          </button>
-          <button className={room === 'B' ? 'on' : ''} onClick={() => setRoom('B')}>
-            B · 수냉식
-          </button>
+          {ROOM_LABELS.map((r) => (
+            <button key={r} className={room === r ? 'on' : ''} onClick={() => setRoom(r)} title={SR_BY_LABEL[r].coolName}>
+              {r} · {SR_BY_LABEL[r].floor}
+            </button>
+          ))}
           <button className={room === 'cmp' ? 'on' : ''} onClick={() => setRoom('cmp')}>
-            A · B 비교
+            비교
           </button>
         </div>
         {room === 'cmp' ? <RoomCompare m={m} /> : <RoomView m={m} r={room} />}
@@ -173,8 +173,8 @@ function Pue({ m }: { m: Metrics }) {
 // ── 서버실 한 곳: 핵심 수치 + 남은 용량(냉각 · 전력 · 공간) + 냉각 전력 내역 ──
 function RoomView({ m, r }: { m: Metrics; r: RoomLabel }) {
   const x: RoomMetrics = m.rooms[r];
-  const other = m.rooms[r === 'A' ? 'B' : 'A'];
-  const diff = x.partialPue - other.partialPue;
+  // 세 서버실 중 냉각 효율 순위 (부분 PUE가 낮을수록 위)
+  const rank = ROOM_LABELS.map((l) => m.rooms[l].partialPue).sort((a, b) => a - b).indexOf(x.partialPue) + 1;
   const st = x.stranded;
   const top = st.reduce((a, b) => (b.used > a.used ? b : a));
   const coolLevel = x.it <= x.capN1 ? 'ok' : x.it <= x.capAll ? 'warn' : 'crit';
@@ -187,8 +187,8 @@ function RoomView({ m, r }: { m: Metrics; r: RoomLabel }) {
     <>
       <KpiRow>
         <Kpi label="IT 부하" value={f0(x.it)} unit="kW" />
-        <Kpi label="냉각 전력" value={f0(x.cooling)} unit="kW" sub={`COP ${x.cop.toFixed(1)}${r === 'B' && x.freeCooling > 0 ? ` · 프리쿨링 ${pct(x.freeCooling)}` : ''}`} />
-        <Kpi label="부분 PUE" value={x.partialPue.toFixed(2)} sub={`${r === 'A' ? 'B' : 'A'}보다 ${diff >= 0 ? '+' : ''}${diff.toFixed(2)}`} />
+        <Kpi label="냉각 전력" value={f0(x.cooling)} unit="kW" sub={`IT의 ${pct(x.cooling / x.it)}${x.freeCooling > 0 ? ` · 프리쿨링 ${pct(x.freeCooling)}` : ''}`} />
+        <Kpi label="부분 PUE" value={x.partialPue.toFixed(2)} sub={`${SR_BY_LABEL[r].coolName} · 세 서버실 중 ${rank}위`} />
       </KpiRow>
 
       <Section
@@ -251,8 +251,16 @@ function RoomView({ m, r }: { m: Metrics; r: RoomLabel }) {
 }
 
 function RoomCompare({ m }: { m: Metrics }) {
-  const { A, B } = m.rooms;
-  const better = A.partialPue < B.partialPue ? 'A' : 'B';
+  const rooms = ROOM_LABELS.map((l) => m.rooms[l]);
+  const best = rooms.reduce((x, y) => (y.partialPue < x.partialPue ? y : x)).label;
+  const rows: [string, (x: RoomMetrics) => string][] = [
+    ['IT 부하', (x) => `${f0(x.it)}kW`],
+    ['냉각 전력', (x) => `${f0(x.cooling)}kW`],
+    ['냉각 ÷ IT', (x) => pct(x.cooling / x.it)],
+    ['냉각 COP', (x) => x.cop.toFixed(1)],
+    ['프리쿨링', (x) => (x.freeCooling > 0 ? pct(x.freeCooling) : '안 함')],
+    ['냉각 (N+1)', (x) => pct(x.loadPct)],
+  ];
   return (
     <>
       <table className="specs compare">
@@ -266,47 +274,37 @@ function RoomCompare({ m }: { m: Metrics }) {
                     head={['지표', '계산']}
                     rows={[
                       ['부분 PUE', '(서버실 IT + 그 서버실 냉각 + 공용 손실 몫) ÷ 서버실 IT'],
+                      ['냉각 ÷ IT', '서버실 냉각 전력 ÷ IT 전력 (작을수록 효율 좋음)'],
                       ['냉각 COP', '옮긴 열 ÷ 냉각에 쓴 전력 (클수록 효율 좋음)'],
-                      ['프리쿨링', '외기가 차가우면 서버실 B가 냉동기 대신 판형 열교환기로 냉수를 만드는 비율 (냉각 전력이 크게 줄어듦)'],
+                      ['프리쿨링', '외기가 차가우면 수냉식 몫을 냉동기 대신 판형 열교환기로 식히는 비율'],
                     ]}
                   />
                 }
               />
             </th>
-            <td>A · 공냉식</td>
-            <td>B · 수냉식</td>
+            {rooms.map((x) => (
+              <td key={x.label}>
+                {x.label} · {SR_BY_LABEL[x.label].coolName}
+              </td>
+            ))}
           </tr>
         </thead>
         <tbody className="num">
-          <tr>
-            <th>IT 부하</th>
-            <td>{f0(A.it)}kW</td>
-            <td>{f0(B.it)}kW</td>
-          </tr>
-          <tr>
-            <th>냉각 전력</th>
-            <td>{f0(A.cooling)}kW</td>
-            <td>{f0(B.cooling)}kW</td>
-          </tr>
-          <tr>
-            <th>냉각 COP</th>
-            <td>{A.cop.toFixed(1)}</td>
-            <td>{B.cop.toFixed(1)}</td>
-          </tr>
-          <tr>
-            <th>프리쿨링</th>
-            <td>없음</td>
-            <td>{B.freeCooling > 0 ? pct(B.freeCooling) : '안 함'}</td>
-          </tr>
-          <tr>
-            <th>냉각 (N+1)</th>
-            <td>{pct(A.loadPct)}</td>
-            <td>{pct(B.loadPct)}</td>
-          </tr>
+          {rows.map(([k, f]) => (
+            <tr key={k}>
+              <th>{k}</th>
+              {rooms.map((x) => (
+                <td key={x.label}>{f(x)}</td>
+              ))}
+            </tr>
+          ))}
           <tr>
             <th>부분 PUE</th>
-            <td className={better === 'A' ? 'best' : ''}>{A.partialPue.toFixed(2)}</td>
-            <td className={better === 'B' ? 'best' : ''}>{B.partialPue.toFixed(2)}</td>
+            {rooms.map((x) => (
+              <td key={x.label} className={best === x.label ? 'best' : ''}>
+                {x.partialPue.toFixed(2)}
+              </td>
+            ))}
           </tr>
         </tbody>
       </table>
@@ -316,7 +314,7 @@ function RoomCompare({ m }: { m: Metrics }) {
 
 // ── UPS 2N: 두 대 부하율 + 50% 기준선 ──
 function Ups({ m }: { m: Metrics }) {
-  const fail = m.upsFailPct;
+  const fail = Math.max(...ROOM_LABELS.map((l) => m.upsFail[l]));
   return (
     <Section
       id="ups-2n"
@@ -328,28 +326,31 @@ function Ups({ m }: { m: Metrics }) {
             head={['상태', 'UPS 부하']}
             rows={[
               ['평상시 (두 대 운전)', '각 50% 이하 권장'],
-              ['한 대 고장', '남은 한 대가 전부 (100% 이하여야 2N 유지)'],
-              ['단일전원 랙 (STS)', '평상시 UPS-A로 받음'],
+              ['한 대 고장', '남은 한 대가 그 서버실 전부 (100% 이하여야 2N 유지)'],
+              ['단일전원 랙 (STS)', '평상시 그 서버실 A계통 UPS로 받음'],
+              ['구성', `서버실마다 한 쌍 (UPS-A1 · B1 = 서버실 A …), 대당 ${UPS_KW.toLocaleString('ko-KR')}kW`],
             ]}
           />
           <p>손실은 열이 되어 UPS실 공조가 다시 식힙니다.</p>
         </>
       }
-      aside={fail <= 1 ? <Status tone="ok">한 대 고장 시 {pct(fail)}로 감당</Status> : <Status tone="crit">한 대 고장 시 {pct(fail)} · 2N 깨짐</Status>}
+      aside={fail <= 1 ? <Status tone="ok">한 대 고장 시 최대 {pct(fail)}로 감당</Status> : <Status tone="crit">한 대 고장 시 {pct(fail)} · 2N 깨짐</Status>}
     >
       <div className="rp-caps">
-        {(['A', 'B'] as const).map((k) => {
-          const u = m.ups[k];
+        {ROOM_LABELS.flatMap((l) => (['a', 'b'] as const).map((sys) => [l, sys] as const)).map(([l, sys]) => {
+          const id = upsId(sys, l);
+          const u = m.ups[id];
           return (
-            <div key={k} className="rp-cap">
+            <div key={id} className="rp-cap">
               <div className="rp-cap-t">
-                <span className="grow" style={{ color: `var(--${k.toLowerCase()})` }}>
-                  UPS-{k}
+                <span className="grow" style={{ color: `var(--${sys})` }}>
+                  UPS-{sys.toUpperCase()}
+                  {SR_BY_LABEL[l].num} <small>서버실 {l}</small>
                 </span>
                 {u.pct > 0.5 && <span className="rp-flag warn">{u.pct > 1 ? '정격 초과' : '50% 초과'}</span>}
                 <b className="num">{pct(u.pct)}</b>
               </div>
-              <Meter v={u.pct} mark={0.5} markLabel="2N 권장 상한 50%" color={`var(--${k.toLowerCase()})`} size="md" />
+              <Meter v={u.pct} mark={0.5} markLabel="2N 권장 상한 50%" color={`var(--${sys})`} size="md" />
               <small className="num">
                 {f0(u.out)}kW · 효율 {(u.eff * 100).toFixed(1)}% · 손실 {f0(u.loss)}kW
               </small>

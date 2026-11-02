@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type MouseEvent } from 'react';
 import { Crosshair, Handshake, X } from 'lucide-react';
-import { RACK, ROOM_BY_ID } from '../data/building';
+import { RACK, ROOM_BY_ID, roomOfId } from '../data/building';
 import { AS_OF, CIRCUIT, CUSTOMER_BY_ID, type Customer, type CustomerId } from '../data/customers';
 import { TONE_TEXT, TREND_DAYS, WARN_RATIO, cageArea, coloStats, monthsBetween, rackPlace, type ColoStats } from '../data/colo';
 import { RECOMMENDED } from '../data/thermal';
@@ -17,7 +17,7 @@ const kw1 = (v: number) => v.toFixed(1);
 
 export function CustomerCard({ id }: { id: CustomerId }) {
   const c = CUSTOMER_BY_ID[id];
-  const therm = useRoomTherm('B');
+  const therm = useRoomTherm(roomOfId(c?.room ?? ''));
   const s = useMemo(() => (c ? coloStats(c, therm) : null), [c, therm]);
   if (!c || !s) return null;
   const left = monthsBetween(AS_OF, c.contract.end);
@@ -27,7 +27,7 @@ export function CustomerCard({ id }: { id: CustomerId }) {
       head={
         <PanelHead
           glyph={<Glyph icon={Handshake} color={c.color} />}
-          crumb={[c.floor, ROOM_BY_ID[c.room]?.name ?? c.room, '증설 블록', '고객사']}
+          crumb={[c.floor, ROOM_BY_ID[c.room]?.name ?? c.room, '고객사 케이지']}
           title={c.name}
           info="추이 · 계약 조건은 학습용 예시 값입니다. 유효 전력은 지표 탭의 IT 부하율을 따라 바뀝니다."
           pills={

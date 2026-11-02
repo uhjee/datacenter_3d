@@ -2,6 +2,7 @@
 
 import { RACK_BY_ID } from '../data/racks';
 import { sensorRack, STATUS_META, statusOf, tempColor, tempGradient, type RoomLabel, type TempStatus } from '../data/thermal';
+import { SR_BY_LABEL } from '../data/building';
 import { enterAir } from '../scene/focus';
 import { useView } from '../store/useView';
 import type { ReactNode } from 'react';
@@ -151,7 +152,7 @@ export function UnitTemps({ room }: { room: RoomLabel }) {
   return (
     <>
       <KpiRow>
-        <Kpi label="급기" value={cfg.supply} unit="°C" sub="이중마루 아래로" />
+        <Kpi label="급기" value={cfg.supply} unit="°C" sub={SR_BY_LABEL[room].raised > 0 ? '이중마루 아래로' : '정면으로 서버실에 바로'} />
         <Kpi label="환기" value={th.returnT} unit="°C" sub="천장 쪽 흡입" />
         <Kpi
           label={`서버실 ${room} 열부하`}

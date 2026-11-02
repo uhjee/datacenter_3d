@@ -127,6 +127,7 @@ export function Symbol({ type }: { type: DNode['type'] }) {
         </g>
       );
     case 'crac':
+    case 'cracFront':
     case 'crah':
       // 항온항습기: 함체 안 코일(물결). 수냉식은 물방울, 공냉식은 냉매 화살표
       return (

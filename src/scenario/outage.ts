@@ -2,18 +2,26 @@
 // 시간 t(초)에서 각 장비 · 연결이 어떤 전원으로 살아 있는지와, 배터리 · 발전기 · 온도 같은 연속값을 계산한다.
 // 실제 시간을 일부 줄였다(ATS 복귀 대기 5분 → 60초, 발전기 냉각 운전 5분 → 120초). 줄인 곳은 단계 설명에 적는다.
 
+import { ROOM_LABELS, SR_BY_LABEL, byRoom, type RoomLabel } from '../data/building';
 import { CONNECTIONS, HUBS, type Conn } from '../data/connections';
 import { EQUIPMENT } from '../data/equipment';
 import { RACKS } from '../data/racks';
 import { phaseAt, sigOf, SRC_META, STARTING_COLOR, type EdgeState, type LogItem, type NodeState, type NodeStatus, type Phase, type ScenarioDef, type Snapshot, type Src } from './core';
 
 export interface ScenarioParams {
-  upsOut: { A: number; B: number }; // UPS 출력 kW
+  upsOut: Record<string, number>; // UPS id → 출력 kW (ups-a1 …)
   facilityKw: number; // 정전 중 발전기가 감당할 전체 부하 (IT + 냉각 + 기타)
-  baseInlet: { A: number; B: number }; // 평상시 최고 흡기 °C
+  baseInlet: Record<RoomLabel, number>; // 평상시 최고 흡기 °C
   genFail: boolean; // 발전기-2 기동 실패 (N+1 확인)
   alts?: number; // 한전 1회선 정전: 본선 정전 후 ALTS가 예비선으로 절체하기까지 초 (없으면 완전 정전)
 }
+
+// UPS · 배터리 · 발전기 목록 (UPS는 서버실마다 A · B 한 쌍)
+export const UPS_IDS = EQUIPMENT.filter((e) => e.type === 'ups').map((e) => e.id);
+const GEN_IDS = EQUIPMENT.filter((e) => e.type === 'generator').map((e) => e.id);
+const GEN_KW = 2000;
+// 평상시 상태 계산용 (출력 · 온도 0): 다른 시나리오가 정상 운전 바탕으로 쓴다
+export const NORMAL_PARAMS: ScenarioParams = { upsOut: {}, facilityKw: 0, baseInlet: byRoom(() => 0), genFail: false };
 
 // ── 타임라인 (초) ──
 export const T = {
@@ -77,7 +85,7 @@ export const PHASES: Phase[] = [
   {
     t: T.genStart,
     title: '비상 발전기 기동',
-    body: '정전을 감지한 발전기 2대가 기동합니다. 엔진이 돌고 전압 · 주파수가 안정되기까지 10초 안팎이 걸리며, 그동안 배터리가 IT 부하를 받칩니다.',
+    body: '정전을 감지한 발전기 3대가 기동합니다. 엔진이 돌고 전압 · 주파수가 안정되기까지 10초 안팎이 걸리며, 그동안 배터리가 IT 부하를 받칩니다.',
   },
   {
     t: T.ats,
@@ -92,7 +100,7 @@ export const PHASES: Phase[] = [
   {
     t: T.ats + RESTART.chiller,
     title: '냉동기 재기동',
-    body: '냉동기는 재기동에 몇 분이 걸립니다. 그동안 서버실 B는 배관에 남은 냉수로 버티지만 냉수 온도가 올라 흡기 온도도 오릅니다. 냉동기를 UPS에 물리거나 축냉조를 두는 이유입니다.',
+    body: '냉동기는 재기동에 몇 분이 걸립니다. 그동안 수냉식(서버실 A 전부 · 서버실 B 절반)은 배관에 남은 냉수로 버티지만 냉수 온도가 올라 흡기 온도도 오릅니다. 냉동기를 UPS에 물리거나 축냉조를 두는 이유입니다.',
   },
   { t: 300, title: '발전기 운전 지속', body: '모든 부하가 발전기로 돌아갑니다. 연료 저장탱크로 약 40시간(2대 정격 운전 기준)을 버틸 수 있습니다.' },
   { t: T.back, title: '한전 복전', body: '한전 전원이 돌아왔습니다. ATS는 바로 넘어가지 않고 전압이 안정적인지 일정 시간(실제 약 5분, 여기서는 60초) 지켜봅니다.' },
@@ -109,7 +117,7 @@ export const phaseOf = (t: number) => phaseAt(PHASES, t);
 // ── 이산 상태 ──
 const utilityOn = (t: number, L: Timeline) => t < L.out || t >= L.back;
 type GenState = 'off' | 'starting' | 'rated' | 'cooldown';
-function genState(t: number, which: 1 | 2, p: ScenarioParams, L: Timeline): GenState {
+function genState(t: number, which: number, p: ScenarioParams, L: Timeline): GenState {
   if (which === 2 && p.genFail) return 'off';
   if (t < L.genStart || t >= L.genStop) return 'off';
   if (t < L.genRated) return 'starting';
@@ -136,10 +144,9 @@ export function snapshot(t: number, p: ScenarioParams): Snapshot {
   const L = tl(p);
   const single = p.alts != null;
   const util: Src = utilityOn(t, L) ? 'utility' : 'none';
-  const g1 = genState(t, 1, p, L);
-  const g2 = genState(t, 2, p, L);
+  const gens = GEN_IDS.map((_, i) => genState(t, i + 1, p, L));
   const genLive = (s: GenState) => s === 'rated' || s === 'cooldown';
-  const busLive = genLive(g1) || genLive(g2);
+  const busLive = gens.some(genLive);
   const mode = upsMode(t, L);
   const onGen = atsOnGen(t, L);
 
@@ -158,21 +165,23 @@ export function snapshot(t: number, p: ScenarioParams): Snapshot {
   set('lv-tie', 'none', 'standby');
   // 비상 전원
   const gNode = (s: GenState): NodeState => ({ src: genLive(s) ? 'gen' : 'none', status: s === 'off' ? 'standby' : s === 'starting' ? 'starting' : 'on' });
-  nodes['gen-1'] = gNode(g1);
-  nodes['gen-2'] = gNode(g2);
+  GEN_IDS.forEach((id, i) => {
+    nodes[id] = gNode(gens[i]);
+    nodes[`fuel-${i + 1}`] = { src: 'none', status: gens[i] !== 'off' ? 'on' : 'standby' };
+  });
   nodes['hub:gen-bus'] = { src: busLive ? 'gen' : 'none', status: busLive ? 'on' : 'standby' };
-  const fuelOn = g1 !== 'off' || g2 !== 'off';
-  for (const id of ['fuel-main', 'fuel-1', 'fuel-2']) nodes[id] = { src: 'none', status: fuelOn ? 'on' : 'standby' };
+  nodes['fuel-main'] = { src: 'none', status: gens.some((g) => g !== 'off') ? 'on' : 'standby' };
   // ATS · UPS
   const atsSrc: Src = onGen ? (busLive ? 'gen' : 'none') : util;
   for (const s of ['a', 'b']) {
     set(`ats-${s}`, atsSrc);
     set(`mcc-${s}`, atsSrc);
-    const upsSrc: Src = mode === 'battery' ? 'battery' : atsSrc;
-    set(`ups-${s}`, upsSrc);
-    nodes[`bat-${s}`] = { src: mode === 'battery' || mode === 'walkin' ? 'battery' : 'none', status: mode === 'battery' || mode === 'walkin' ? 'on' : 'standby' };
   }
-  const upsSrc = nodes['ups-a'].src;
+  const upsSrc: Src = mode === 'battery' ? 'battery' : atsSrc;
+  for (const id of UPS_IDS) {
+    set(id, upsSrc);
+    nodes[id.replace('ups', 'bat')] = { src: mode === 'battery' || mode === 'walkin' ? 'battery' : 'none', status: mode === 'battery' || mode === 'walkin' ? 'on' : 'standby' };
+  }
   for (const e of EQUIPMENT) if (e.type === 'pdu' || e.type === 'sts') set(e.id, upsSrc);
   for (const r of RACKS) set(`rack:${r.id}`, upsSrc);
 
@@ -189,7 +198,7 @@ export function snapshot(t: number, p: ScenarioParams): Snapshot {
     nodes[c.to] = { src: status === 'off' ? 'none' : src, status };
   }
   // 냉수 헤더: 냉수 펌프가 하나라도 돌면 흐름
-  const pumpsOn = ['pump-chw-1', 'pump-chw-2', 'pump-chw-3'].some((id) => nodes[id].status === 'on');
+  const pumpsOn = EQUIPMENT.some((e) => e.id.startsWith('pump-chw-') && nodes[e.id].status === 'on');
   for (const h of HUBS) if (h.id === 'hub:chw') nodes[h.id] = { src: 'none', status: pumpsOn ? 'on' : 'off' };
   nodes['hx-1'] = { src: 'none', status: 'standby' };
 
@@ -237,71 +246,72 @@ export function snapshot(t: number, p: ScenarioParams): Snapshot {
 export interface Values {
   t: number;
   utility: boolean;
-  gen: [GenState, GenState];
+  gen: GenState[];
   genLoadPct: number; // 운전 중인 발전기 정격 대비
   ats: '상용' | '발전기';
   ups: UpsMode;
-  soc: { A: number; B: number }; // 0~1
-  batteryMin: number; // 지금 잔량으로 배터리만으로 버틸 시간
-  inlet: { A: number; B: number }; // 최고 흡기 °C
+  soc: Record<string, number>; // UPS id → 배터리 잔량 0~1
+  batteryMin: number; // 지금 잔량으로 배터리만으로 버틸 시간 (가장 먼저 바닥나는 배터리)
+  inlet: Record<RoomLabel, number>; // 최고 흡기 °C
   chwT: number; // 냉수 공급 온도
   coolingOn: number;
   coolingTotal: number;
 }
 
 export interface Series {
-  socA: number[];
-  socB: number[];
-  dA: number[];
-  dB: number[];
+  soc: Record<string, number[]>; // UPS id → 초마다 잔량
+  d: Record<RoomLabel, number[]>; // 서버실 → 초마다 흡기 상승분
   chw: number[];
   coolingOn: number[];
 }
 
-const BAT_KWH = 300;
+export const BAT_KWH = 200; // 배터리 1조 용량 (UPS마다 1조)
 const UPS_EFF = 0.95;
 const HEAT_RATE = 0.05; // 냉각이 완전히 멈췄을 때 흡기 상승 속도 °C/초 (약 3°C/분)
 const COOL_IDS = CONNECTIONS.filter((c) => c.kind === 'mech').map((c) => c.to);
-const CRAC_IDS = EQUIPMENT.filter((e) => e.type === 'crac').map((e) => e.id);
-const CRAH_IDS = EQUIPMENT.filter((e) => e.type === 'crah').map((e) => e.id);
+// 서버실별 항온항습기: 수냉식(냉수 · 팬이 있어야 냉각)과 공냉식(압축기가 돌아야 냉각)
+const UNITS = byRoom((l) => {
+  const us = EQUIPMENT.filter((e) => e.room === SR_BY_LABEL[l].roomId && (e.type === 'crah' || e.type === 'crac' || e.type === 'cracFront'));
+  return { water: us.filter((e) => e.type === 'crah').map((e) => e.id), air: us.filter((e) => e.type !== 'crah').map((e) => e.id) };
+});
+const CHILLER_IDS = EQUIPMENT.filter((e) => e.type === 'chiller').map((e) => e.id);
 
 export function prepare(p: ScenarioParams): Series {
-  const out: Series = { socA: [], socB: [], dA: [], dB: [], chw: [], coolingOn: [] };
-  let socA = 1;
-  let socB = 1;
-  let dA = 0;
-  let dB = 0;
+  const out: Series = { soc: Object.fromEntries(UPS_IDS.map((id) => [id, []])), d: byRoom(() => []), chw: [], coolingOn: [] };
+  const soc: Record<string, number> = Object.fromEntries(UPS_IDS.map((id) => [id, 1]));
+  const d = byRoom(() => 0);
   let chw = 7;
   const L = tl(p);
   for (let s = 0; s <= L.end; s++) {
     const snap = snapshot(s, p);
-    out.socA.push(socA);
-    out.socB.push(socB);
-    out.dA.push(dA);
-    out.dB.push(dB);
+    for (const id of UPS_IDS) out.soc[id].push(soc[id]);
+    for (const l of ROOM_LABELS) out.d[l].push(d[l]);
     out.chw.push(chw);
     out.coolingOn.push(COOL_IDS.filter((id) => snap.nodes[id].status === 'on').length);
     // 배터리: 배터리 운전 중엔 전부, 부하 인수(walk-in) 중엔 점점 줄여 방전, 그 뒤 약 0.1C로 재충전
     const mode = upsMode(s, L);
     const share = mode === 'battery' ? 1 : mode === 'walkin' ? 1 - (s - L.ats) / L.walkIn : 0;
-    socA -= (share * p.upsOut.A) / UPS_EFF / 3600 / BAT_KWH;
-    socB -= (share * p.upsOut.B) / UPS_EFF / 3600 / BAT_KWH;
-    if (share === 0) {
-      socA = Math.min(1, socA + 20 / 3600 / BAT_KWH);
-      socB = Math.min(1, socB + 20 / 3600 / BAT_KWH);
+    for (const id of UPS_IDS) {
+      soc[id] -= (share * (p.upsOut[id] ?? 0)) / UPS_EFF / 3600 / BAT_KWH;
+      if (share === 0) soc[id] = Math.min(1, soc[id] + 20 / 3600 / BAT_KWH);
     }
-    // 서버실 A: 압축기(항온항습기 공냉식)가 돌아야 냉각
-    const cracOn = CRAC_IDS.filter((id) => snap.nodes[id].status === 'on').length;
-    const cA = Math.min(1, cracOn / (CRAC_IDS.length - 1));
-    dA += HEAT_RATE * (1 - cA) - (dA * cA) / 60;
-    // 서버실 B: 냉동기가 서면 냉수가 데워지고, 팬 · 펌프가 서면 코일로 열을 못 옮김
-    const chillerOn = ['chiller-1', 'chiller-2', 'chiller-3'].some((id) => snap.nodes[id].status === 'on');
+    // 냉수: 냉동기가 서면 냉수가 데워지고, 팬 · 펌프가 서면 코일로 열을 못 옮김
+    const chillerOn = CHILLER_IDS.some((id) => snap.nodes[id].status === 'on');
     const pumpOn = snap.nodes['hub:chw'].status === 'on';
-    const fanOn = CRAH_IDS.filter((id) => snap.nodes[id].status === 'on').length;
     if (chillerOn) chw += (7 - chw) / 120;
     else if (pumpOn) chw += 1 / 60; // 냉수 루프 열용량: 약 1°C/분
-    const cB = pumpOn && fanOn > 0 ? Math.max(0, Math.min(1, 1 - (chw - 7) / 10)) * Math.min(1, fanOn / (CRAH_IDS.length - 1)) : 0;
-    dB += HEAT_RATE * (1 - cB) - (dB * cB) / 60;
+    const chwK = Math.max(0, Math.min(1, 1 - (chw - 7) / 10));
+    // 서버실마다 수냉식 몫 · 공냉식 몫의 냉각 회복 정도를 대수 비율로 섞는다 (N+1이라 1대 빠져도 100%)
+    for (const l of ROOM_LABELS) {
+      const { water, air } = UNITS[l];
+      const on = (ids: string[]) => ids.filter((id) => snap.nodes[id].status === 'on').length;
+      const need = (ids: string[]) => Math.max(1, ids.length - 1);
+      const cW = water.length && pumpOn ? chwK * Math.min(1, on(water) / need(water)) : 0;
+      const cA = air.length ? Math.min(1, on(air) / need(air)) : 0;
+      const w = water.length / (water.length + air.length);
+      const c = w * cW + (1 - w) * cA;
+      d[l] += HEAT_RATE * (1 - c) - (d[l] * c) / 60;
+    }
   }
   return out;
 }
@@ -309,20 +319,22 @@ export function prepare(p: ScenarioParams): Series {
 export function values(t: number, p: ScenarioParams, ser: Series): Values {
   const L = tl(p);
   const i = Math.max(0, Math.min(L.end, Math.floor(t)));
-  const g: [GenState, GenState] = [genState(t, 1, p, L), genState(t, 2, p, L)];
+  const g = GEN_IDS.map((_, k) => genState(t, k + 1, p, L));
   const running = g.filter((s) => s === 'rated').length;
   const onGen = atsOnGen(t, L);
-  const soc = Math.min(ser.socA[i], ser.socB[i]);
+  const soc = Object.fromEntries(UPS_IDS.map((id) => [id, ser.soc[id][i]]));
+  // 배터리만으로 버틸 시간: 가장 먼저 바닥나는 배터리 기준
+  const mins = UPS_IDS.filter((id) => (p.upsOut[id] ?? 0) > 0).map((id) => ((soc[id] * BAT_KWH * UPS_EFF) / p.upsOut[id]) * 60);
   return {
     t,
     utility: utilityOn(t, L),
     gen: g,
-    genLoadPct: onGen && running ? p.facilityKw / (running * 2000) : 0,
+    genLoadPct: onGen && running ? p.facilityKw / (running * GEN_KW) : 0,
     ats: onGen ? '발전기' : '상용',
     ups: upsMode(t, L),
-    soc: { A: ser.socA[i], B: ser.socB[i] },
-    batteryMin: ((soc * BAT_KWH * 2 * UPS_EFF) / (p.upsOut.A + p.upsOut.B)) * 60,
-    inlet: { A: +(p.baseInlet.A + ser.dA[i]).toFixed(1), B: +(p.baseInlet.B + ser.dB[i]).toFixed(1) },
+    soc,
+    batteryMin: mins.length ? Math.min(...mins) : 0,
+    inlet: byRoom((l) => +(p.baseInlet[l] + ser.d[l][i]).toFixed(1)),
     chwT: +ser.chw[i].toFixed(1),
     coolingOn: ser.coolingOn[i],
     coolingTotal: COOL_IDS.length,
@@ -333,16 +345,16 @@ export function values(t: number, p: ScenarioParams, ser: Series): Values {
 export function eventLog(p: ScenarioParams): LogItem[] {
   const items: LogItem[] = [
     { t: T.out, text: '한전 본선 · 예비선 정전 (ALTS 절체 불가)' },
-    { t: T.out, text: 'UPS-A · B 배터리 운전 전환 (0초, 랙 무정전)' },
+    { t: T.out, text: 'UPS 6대(서버실마다 A · B) 배터리 운전 전환 (0초, 랙 무정전)' },
     { t: T.out, text: '공조 동력반 정전 → 항온항습기 · 냉동기 · 펌프 · 냉각탑 정지' },
-    { t: T.genStart, text: p.genFail ? '발전기-1 기동, 발전기-2 기동 실패' : '발전기-1 · 2 기동 신호' },
-    { t: T.genRated, text: p.genFail ? '발전기-1 단독 정격 도달 (N+1로 감당)' : '발전기 정격 도달, 병렬 운전' },
+    { t: T.genStart, text: p.genFail ? '발전기-1 · 3 기동, 발전기-2 기동 실패' : '발전기-1 · 2 · 3 기동 신호' },
+    { t: T.genRated, text: p.genFail ? '발전기-1 · 3 정격 도달, 2대로 감당 (N+1)' : '발전기 3대 정격 도달, 병렬 운전' },
     { t: T.ats, text: 'ATS-A · B 발전기로 절체' },
     { t: T.ats + T.walkIn, text: 'UPS 정류기가 부하 인수 완료, 배터리 방전 종료' },
     { t: T.ats + RESTART.crah, text: '항온항습기(수냉식) 팬 재기동' },
     { t: T.ats + RESTART.pump, text: '냉수 · 냉각수 펌프 재기동' },
     { t: T.ats + RESTART.coolingTower, text: '냉각탑 팬 재기동' },
-    { t: T.ats + RESTART.crac, text: '항온항습기(공냉식) 압축기 · 실외기 재기동' },
+    { t: T.ats + RESTART.crac, text: '항온항습기(공냉식 · 전면 토출) 압축기 · 실외기 재기동' },
     { t: T.ats + RESTART.chiller, text: '냉동기 재기동, 냉수 온도 회복 시작' },
     { t: T.back, text: '한전 복전, ATS 복귀 대기' },
     { t: T.retransfer, text: 'ATS-A · B 상용 복귀 (폐쇄 전환)' },

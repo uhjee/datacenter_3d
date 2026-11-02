@@ -1,7 +1,7 @@
 // 빌딩형 데이터센터 배치. 단위 m. x=동서(동쪽 +), z=남북(남쪽 +), y=높이.
 // 각 층의 장비 좌표는 "그 층 바닥면" 기준 로컬 좌표다.
 
-export type FloorId = 'B1' | '1F' | '2F' | '3F' | '4F' | 'PH';
+export type FloorId = 'B1' | '1F' | '2F' | '3F' | '4F' | '5F' | 'PH';
 
 export interface Floor {
   id: FloorId;
@@ -16,9 +16,10 @@ export const FLOORS: Floor[] = [
   { id: 'B1', name: '지하 1층', index: 0, y: -5.5, height: 5.5, summary: '한전 수전, TR, 저압 배전, 비상 발전기, 냉동기 등 무거운 설비' },
   { id: '1F', name: '1층', index: 1, y: 0, height: 4.5, summary: '로비, 출입통제, 통합관제실' },
   { id: '2F', name: '2층', index: 2, y: 4.5, height: 4.5, summary: 'UPS실 A/B, 배터리실 A/B, 소화약제실' },
-  { id: '3F', name: '3층', index: 3, y: 9, height: 5, summary: '서버실 A (공냉식 항온항습기)' },
-  { id: '4F', name: '4층', index: 4, y: 14, height: 5, summary: '서버실 B (수냉식 항온항습기)' },
-  { id: 'PH', name: '옥상 · 옥탑', index: 5, y: 19, height: 3.5, summary: '실외기, 냉각탑' },
+  { id: '3F', name: '3층', index: 3, y: 9, height: 5, summary: '서버실 A (수냉식 항온항습기, 열복도 봉쇄)' },
+  { id: '4F', name: '4층', index: 4, y: 14, height: 5, summary: '서버실 B (수냉식 · 공냉식 항온항습기 반반, 봉쇄 없음)' },
+  { id: '5F', name: '5층', index: 5, y: 19, height: 5, summary: '서버실 C (공냉식 전면 토출, 이중마루 · 봉쇄 없음, 전 구역 고객사 케이지)' },
+  { id: 'PH', name: '옥상 · 옥탑', index: 6, y: 24, height: 3.5, summary: '실외기, 냉각탑' },
 ];
 
 export const FLOOR_BY_ID = Object.fromEntries(FLOORS.map((f) => [f.id, f])) as Record<FloorId, Floor>;
@@ -57,25 +58,28 @@ export const ROOMS: Room[] = [
   // B1
   R('b1-hv', 'B1', '특고압 수전실', [-20, -6], [-10, 0], '#3b3424', '한전 22.9kV를 받아 특고압 수배전반과 TR로 380/220V까지 낮춥니다.'),
   R('b1-lv', 'B1', '저압 전기실', [-6, 6], [-10, 0], '#3b3424', '저압 배전반 A/B, ATS A/B, 공조 동력반 A/B가 있습니다.'),
-  R('b1-gen', 'B1', '발전기실', [-20, 6], [0, 12], '#2f3a25', '비상 발전기 2대(N+1)와 연료 탱크가 있습니다.'),
+  R('b1-gen', 'B1', '발전기실', [-20, 6], [0, 12], '#2f3a25', '비상 발전기 3대(N+1)와 연료 탱크가 있습니다.'),
   R('b1-chiller', 'B1', '냉동기실', [6, 20], [-10, 12], '#24343d', '서버실 B(수냉식)에 보낼 냉수를 만드는 냉동기, 펌프, 판형 열교환기가 있습니다.'),
   // 1F
   R('1f-lobby', '1F', '로비 · 출입통제', [-20, 2], [-10, 12], '#30303a', '방문자 출입과 1차 출입통제가 이뤄지는 공간입니다.'),
   R('1f-noc', '1F', '통합관제실', [2, 20], [-10, 4], '#2c2a3d', '전력·공조·방재 상태를 24시간 감시합니다. 소화 수신반이 있습니다.'),
   R('1f-dock', '1F', '반입실', [2, 20], [4, 12], '#30303a', '장비 반입·하역 공간입니다.', 'corridor'),
   // 2F
-  R('2f-ups-a', '2F', 'UPS실 A', [-20, -4], [-10, 1], '#26313d', 'A계통 UPS가 있습니다. 서버실 A·B의 A계통 전원을 모두 담당합니다.'),
+  R('2f-ups-a', '2F', 'UPS실 A', [-20, -4], [-10, 1], '#26313d', 'A계통 UPS 3대가 있습니다. 서버실마다 한 대씩(UPS-A1 · A2 · A3) A계통 전원을 맡습니다.'),
   R('2f-bat-a', '2F', '배터리실 A', [-20, -4], [1, 12], '#233a35', 'UPS-A용 리튬이온 배터리. UPS실·서버실과 방화구획으로 분리합니다.'),
   R('2f-corr', '2F', '복도', [-4, 4], [-10, 2], '#2a2a2f', '복도', 'corridor'),
   R('2f-agent', '2F', '소화약제실', [-4, 4], [2, 12], '#3a2626', '가스 소화설비의 저장용기가 있습니다. 2F~4F 방호구역을 담당합니다.'),
-  R('2f-ups-b', '2F', 'UPS실 B', [4, 20], [-10, 1], '#3d3126', 'B계통 UPS가 있습니다. 서버실 A·B의 B계통 전원을 모두 담당합니다.'),
+  R('2f-ups-b', '2F', 'UPS실 B', [4, 20], [-10, 1], '#3d3126', 'B계통 UPS 3대가 있습니다. 서버실마다 한 대씩(UPS-B1 · B2 · B3) B계통 전원을 맡습니다.'),
   R('2f-bat-b', '2F', '배터리실 B', [4, 20], [1, 12], '#233a35', 'UPS-B용 리튬이온 배터리. A와 다른 방화구획입니다.'),
   // 3F
-  R('3f-sr-a', '3F', '서버실 A (공냉식)', [-20, 14], [-10, 12], '#1d2833', '공냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도를 막은 열복도 봉쇄(HAC) 3개 포드, 랙 216대. 열은 냉매 배관으로 옥상 실외기에 버립니다. 동쪽은 나중에 들인 증설 블록(25~36번)입니다.', 'server'),
+  R('3f-sr-a', '3F', '서버실 A (수냉식)', [-20, 14], [-10, 12], '#1d2833', '수냉식 항온항습기로 냉각하는 서버실. 이중마루로 급기하고, 랙이 등을 맞댄 열복도를 막은 열복도 봉쇄(HAC) 3개 포드, 랙 216대. 열은 냉수로 지하 냉동기에 보냅니다. 세 서버실 중 냉각 효율이 가장 좋습니다. 동쪽은 증설 블록(25~36번)입니다.', 'server'),
   R('3f-ante', '3F', '전실 · 출입통제', [14, 20], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
   // 4F
   R('4f-ante', '4F', '전실 · 출입통제', [-20, -14], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다.', 'corridor'),
-  R('4f-sr-b', '4F', '서버실 B (수냉식)', [-14, 20], [-10, 12], '#1d2c33', '수냉식 항온항습기로 냉각하는 서버실. 랙이 등을 맞댄 열복도와 포드 사이 · 바깥 냉복도의 봉쇄 없는 배치, 랙 200대. 열은 냉수로 지하 냉동기에 보냅니다. 서쪽은 나중에 들인 증설 블록(25~36번)으로, 고객사 A~D에 임대했습니다(케이지 2곳).', 'server'),
+  R('4f-sr-b', '4F', '서버실 B (수냉식 · 공냉식)', [-14, 20], [-10, 12], '#1d2c33', '수냉식 항온항습기 3대와 공냉식 항온항습기 3대로 냉각하는 서버실. 이중마루로 급기하지만 냉복도 · 열복도를 봉쇄하지 않아 섞임이 큽니다. 랙 216대. 서쪽 증설 블록(25~36번)은 임대를 기다리는 빈 랙입니다.', 'server'),
+  // 5F
+  R('5f-ante', '5F', '전실 · 출입통제', [-20, -14], [-10, 12], '#30303a', '서버실 출입 전 인증 공간입니다. 고객사 출입 인가를 여기서 확인합니다.', 'corridor'),
+  R('5f-sr-c', '5F', '서버실 C (공냉식 · 이중마루 없음)', [-14, 20], [-10, 12], '#2a2733', '이중마루 없이 슬래브 바닥에 랙을 세우고, 벽면의 공냉식 항온항습기가 서버실로 냉기를 바로 불어 넣는 서버실. 냉복도 · 열복도를 봉쇄하지 않아 세 서버실 중 냉각 효율이 가장 낮습니다. 전 구역을 고객사 케이지로 임대했습니다.', 'server'),
   // PH
   R('ph-roof', 'PH', '옥상', [-20, 20], [-10, 12], '#2e3236', '실외기와 냉각탑이 있는 옥상 기계 공간입니다.', 'roof'),
 ];
@@ -93,7 +97,7 @@ export interface Shaft {
   summary: string;
 }
 
-const ALL: FloorId[] = ['B1', '1F', '2F', '3F', '4F', 'PH'];
+const ALL: FloorId[] = ['B1', '1F', '2F', '3F', '4F', '5F', 'PH'];
 
 export const SHAFTS: Shaft[] = [
   {
@@ -108,11 +112,11 @@ export const SHAFTS: Shaft[] = [
   {
     id: 'ref',
     name: '냉매 배관 샤프트',
-    x: [-14, -12],
+    x: [8.5, 10.5],
     z: [-12, -10],
-    floors: ['3F', '4F', 'PH'],
+    floors: ['4F', '5F', 'PH'],
     color: '#c77dff',
-    summary: '3F 공냉식 항온항습기와 옥상 실외기를 잇는 냉매 배관이 지납니다.',
+    summary: '4F · 5F 공냉식 항온항습기와 옥상 실외기를 잇는 냉매 배관이 지납니다.',
   },
   {
     id: 'core',
@@ -130,7 +134,7 @@ export const SHAFTS: Shaft[] = [
     z: [-12, -10],
     floors: ALL,
     color: '#22b8cf',
-    summary: '냉수(B1 냉동기 ↔ 4F 서버실 B)와 냉각수(B1 냉동기 ↔ 옥상 냉각탑) 배관이 지납니다.',
+    summary: '냉수(B1 냉동기 ↔ 3F 서버실 A · 4F 서버실 B)와 냉각수(B1 냉동기 ↔ 옥상 냉각탑) 배관이 지납니다.',
   },
   {
     id: 'eps-b',
@@ -146,19 +150,25 @@ export const SHAFTS: Shaft[] = [
 // ── 서버실 랙 배치 ──
 // 상면 배치 근거: 바닥 타일 0.6m, 통로 2장(1.2m) · 랙 깊이 1.2m · 통로 1.2m의 표준 피치.
 // 안쪽 통로를 사이에 둔 두 열이 한 묶음(포드)이고 피치는 4.8m. 서버실마다 포드 3개 = 6열.
-// 두 서버실 모두 안쪽 통로가 열복도(두 열이 등을 맞댐)이고, 포드 사이 · 바깥 통로가 냉복도(타공판)다.
+// 세 서버실 모두 안쪽 통로가 열복도(두 열이 등을 맞댐)이고, 포드 사이 · 바깥 통로가 냉복도(타공판)다.
 // 서버실 A는 그 열복도를 봉쇄(HAC)하고, 서버실 B는 봉쇄 없이 둔다.
 // 각 열은 12랙 블록으로 나뉘고, 블록 바깥 끝에 PDU가 선다(블록 사이는 이동 통로).
 // 처음 두 블록(1~24번)이 개소 때 설치분이고, 항온항습기 반대쪽 빈 바닥에 세 번째 블록(25~36번)을 증설했다.
 // 랙 번호를 바꾸지 않으려고 증설 블록은 위치와 관계없이 블록 2(25~36번)로 둔다.
+export type RoomLabel = 'A' | 'B' | 'C';
+
 export interface ServerRoomLayout {
   roomId: string;
   floor: FloorId;
   cz: number; // 포드 중심 z
   blocks: number[]; // 블록마다 서쪽 끝 x (0 · 1 = 개소분, 2 = 증설분)
   pduSide: (1 | -1)[]; // 블록마다 PDU가 서는 끝 (-1 서쪽, 1 동쪽)
-  label: 'A' | 'B';
+  label: RoomLabel;
+  num: 1 | 2 | 3; // 장비 이름의 서버실 번호 (UPS-A1 · PDU-A1-n · STS-1 = 서버실 A)
   hotInner?: boolean; // 포드 안쪽 통로가 열복도 (랙이 등을 맞댐)
+  raised: number; // 이중마루 높이 (0 = 이중마루 없이 슬래브 바닥)
+  unitWall: 1 | -1; // 항온항습기가 선 벽 (-1 서쪽, 1 동쪽)
+  coolName: string; // 냉각 방식 짧은 이름
 }
 
 export const RACK = { w: 0.6, d: 1.2, h: 2.2, U: 42 };
@@ -168,10 +178,21 @@ export const EXPANSION_BLOCK = 2;
 
 export const SERVER_ROOMS: ServerRoomLayout[] = [
   // 서버실 A: 항온항습기가 서쪽 벽, 증설 블록은 동쪽 (PDU는 벽 쪽 끝)
-  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4, 5.0], pduSide: [-1, 1, 1], label: 'A', hotInner: true },
+  { roomId: '3f-sr-a', floor: '3F', cz: 1, blocks: [-15.0, -5.4, 5.0], pduSide: [-1, 1, 1], label: 'A', num: 1, hotInner: true, raised: RAISED_H, unitWall: -1, coolName: '수냉식 · 열복도 봉쇄' },
   // 서버실 B: 항온항습기가 동쪽 벽, 증설 블록은 서쪽 (A와 좌우 대칭)
-  { roomId: '4f-sr-b', floor: '4F', cz: 1, blocks: [-1.8, 7.8, -12.2], pduSide: [-1, 1, -1], label: 'B', hotInner: true },
+  { roomId: '4f-sr-b', floor: '4F', cz: 1, blocks: [-1.8, 7.8, -12.2], pduSide: [-1, 1, -1], label: 'B', num: 2, hotInner: true, raised: RAISED_H, unitWall: 1, coolName: '수냉 · 공냉 반반 · 봉쇄 없음' },
+  // 서버실 C: B와 같은 상면이지만 이중마루가 없다 (항온항습기가 서버실로 바로 불어 넣는 방식)
+  { roomId: '5f-sr-c', floor: '5F', cz: 1, blocks: [-1.8, 7.8, -12.2], pduSide: [-1, 1, -1], label: 'C', num: 3, hotInner: true, raised: 0, unitWall: 1, coolName: '공냉식 · 이중마루 없음 · 봉쇄 없음' },
 ];
+
+export const ROOM_LABELS: RoomLabel[] = SERVER_ROOMS.map((s) => s.label);
+export const SR_BY_LABEL = Object.fromEntries(SERVER_ROOMS.map((s) => [s.label, s])) as Record<RoomLabel, ServerRoomLayout>;
+// 서버실마다 값 하나씩 만든다 (예: byRoom((l) => computeRoom(l, cfg[l])))
+export const byRoom = <T,>(f: (l: RoomLabel) => T) => Object.fromEntries(ROOM_LABELS.map((l) => [l, f(l)])) as Record<RoomLabel, T>;
+// 층 바닥 기준 이중마루 윗면 높이 (방 id로)
+export const raisedOf = (roomId: string) => SERVER_ROOMS.find((s) => s.roomId === roomId)?.raised ?? 0;
+// 방 id → 서버실 이름 (서버실이 아니면 A로 본다)
+export const roomOfId = (roomId: string): RoomLabel => SERVER_ROOMS.find((s) => s.roomId === roomId)?.label ?? 'A';
 
 export const POD_PITCH = 4.8;
 export const AISLE_W = 1.2;

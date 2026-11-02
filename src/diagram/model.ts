@@ -7,7 +7,7 @@ import { EQUIP_BY_ID, EQUIPMENT } from '../data/equipment';
 import { TYPE_BY_ID, type TypeId } from '../data/equipTypes';
 import { nodeInfo } from '../data/graph';
 import { RACK_BY_ID, RACKS } from '../data/racks';
-import type { FloorId } from '../data/building';
+import { SERVER_ROOMS, type FloorId, type RoomLabel } from '../data/building';
 
 export type DiagramId = 'power' | 'cooling';
 export type Flow = 'down' | 'right'; // 위→아래(단선도) / 왼쪽→오른쪽(공조)
@@ -145,6 +145,9 @@ function buildEdges(nodeOf: (graphId: string, kind: ConnKind) => string | null, 
 const PC = 156; // 열 간격
 const PR = 92; // 행 간격
 
+// 서버실 구역 가운데 열 (서버실마다 UPS 한 쌍 · PDU · 랙이 이 구역 안에 모인다)
+const ROOM_COL: Record<RoomLabel, number> = { A: -4.5, B: 0, C: 4.5 };
+
 const POWER_POS: Record<string, [number, number]> = {
   'kepco-main': [-1, 0],
   'kepco-standby': [1, 0],
@@ -156,39 +159,46 @@ const POWER_POS: Record<string, [number, number]> = {
   'lv-a': [-2, 4],
   'lv-tie': [0, 4],
   'lv-b': [2, 4],
-  'fuel-main': [5, 1],
-  'fuel-1': [4.5, 2],
-  'fuel-2': [5.5, 2],
-  'gen-1': [4.5, 3],
-  'gen-2': [5.5, 3],
-  'hub:gen-bus': [5, 4],
+  'fuel-main': [6.5, 1],
+  'fuel-1': [5.5, 2],
+  'fuel-2': [6.5, 2],
+  'fuel-3': [7.5, 2],
+  'gen-1': [5.5, 3],
+  'gen-2': [6.5, 3],
+  'gen-3': [7.5, 3],
+  'hub:gen-bus': [6.5, 4],
   'ats-a': [-2, 5],
   'ats-b': [2, 5],
-  'bat-a': [-3.2, 6],
-  'ups-a': [-2, 6],
-  'mcc-a': [-0.6, 6],
-  'mcc-b': [0.6, 6],
-  'ups-b': [2, 6],
-  'bat-b': [3.2, 6],
-  'sts-1': [-1.5, 7],
-  'sts-2': [1.5, 7],
-  'pdu-s1': [-1.5, 8],
-  'pdu-s2': [1.5, 8],
+  'mcc-a': [-7.4, 6],
+  'mcc-b': [7.4, 6],
+  // 서버실마다: 배터리 A · UPS-A · UPS-B · 배터리 B, 그 아래 STS → PDU-S
+  ...Object.fromEntries(
+    SERVER_ROOMS.flatMap((sr) => {
+      const c = ROOM_COL[sr.label];
+      const n = sr.num;
+      const out: [string, [number, number]][] = [
+        [`bat-a${n}`, [c - 1.5, 6]],
+        [`ups-a${n}`, [c - 0.5, 6]],
+        [`ups-b${n}`, [c + 0.5, 6]],
+        [`bat-b${n}`, [c + 1.5, 6]],
+      ];
+      if (EQUIP_BY_ID[`sts-${n}`]) out.push([`sts-${n}`, [c, 7]], [`pdu-s${n}`, [c, 8]]);
+      return out;
+    }),
+  ),
 };
 
 // PDU는 서버실 · 계통마다 9대씩이라 흐름도에서는 한 묶음 노드로 보여준다
-const PDU_GROUPS: { id: string; sys: 'A' | 'B'; room: 'A' | 'B'; col: number }[] = [
-  { id: 'pdus:a1', sys: 'A', room: 'A', col: -3.5 },
-  { id: 'pdus:b1', sys: 'B', room: 'A', col: -2.5 },
-  { id: 'pdus:a2', sys: 'A', room: 'B', col: 2.5 },
-  { id: 'pdus:b2', sys: 'B', room: 'B', col: 3.5 },
-];
+const PDU_GROUPS: { id: string; sys: 'A' | 'B'; room: RoomLabel; col: number }[] = SERVER_ROOMS.flatMap((sr) => [
+  { id: `pdus:a${sr.num}`, sys: 'A' as const, room: sr.label, col: ROOM_COL[sr.label] - 1.1 },
+  { id: `pdus:b${sr.num}`, sys: 'B' as const, room: sr.label, col: ROOM_COL[sr.label] + 1.1 },
+]);
 const pduGroupOf = (id: string) => {
-  const m = id.match(/^pdu-([ab])([12])-\d+$/);
+  const m = id.match(/^pdu-([ab])([123])-\d+$/);
   return m ? `pdus:${m[1]}${m[2]}` : null;
 };
 
-const POWER_ROWS = ['한전 수전', '수전 · 절체 (ALTS)', '특고압 차단 (VCB)', '변압 (TR)', '저압 배전', '상용 ⇄ 발전기 절체 (ATS)', '무정전 (UPS)', '분배 (PDU) · 절체 (STS)', '단일전원 분배 (PDU-S)', '랙 (rPDU)'];
+const POWER_ROWS = ['한전 수전', '수전 · 절체 (ALTS)', '특고압 차단 (VCB)', '변압 (TR)', '저압 배전', '상용 ⇄ 발전기 절체 (ATS)', '무정전 (UPS, 서버실별 2N)', '분배 (PDU) · 절체 (STS)', '단일전원 분배 (PDU-S)', '랙 (rPDU)'];
 
 function buildPower(): Diagram {
   const nodes: DNode[] = Object.entries(POWER_POS).map(([id, [c, r]]) => equipNode(id, c * PC, r * PR));
@@ -196,13 +206,14 @@ function buildPower(): Diagram {
   for (const g of PDU_GROUPS) {
     const ids = EQUIPMENT.filter((e) => e.type === 'pdu' && pduGroupOf(e.id) === g.id).map((e) => e.id);
     const racks = CONNECTIONS.filter((c) => ids.includes(c.from) && c.to.startsWith('rack:')).length;
+    const sr = SERVER_ROOMS.find((s) => s.label === g.room)!;
     nodes.push({
       id: g.id,
       ref: null,
       members: ids,
-      name: `PDU-${g.sys}${g.room === 'A' ? 1 : 2}-1~${ids.length}`,
+      name: `PDU-${g.sys}${sr.num}-1~${ids.length}`,
       sub: `${ids.length}대 · 랙 ${racks}대`,
-      floor: g.room === 'A' ? '3F' : '4F',
+      floor: sr.floor,
       type: 'pdu',
       sys: g.sys,
       x: g.col * PC,
@@ -213,27 +224,26 @@ function buildPower(): Diagram {
   }
 
   // 랙 묶음: 서버실별 이중전원 / 단일전원
-  const groups: { id: string; room: 'A' | 'B'; feed: 'AB' | 'STS'; col: number }[] = [
-    { id: 'grp:A-AB', room: 'A', feed: 'AB', col: -3 },
-    { id: 'grp:A-STS', room: 'A', feed: 'STS', col: -1.5 },
-    { id: 'grp:B-STS', room: 'B', feed: 'STS', col: 1.5 },
-    { id: 'grp:B-AB', room: 'B', feed: 'AB', col: 3 },
-  ];
-  for (const g of groups) {
-    const racks = RACKS.filter((r) => r.serverRoom === g.room && r.feed === g.feed);
-    nodes.push({
-      id: g.id,
-      ref: null,
-      members: racks.map((r) => `rack:${r.id}`),
-      name: `서버실 ${g.room} 랙 ${racks.length}대`,
-      sub: g.feed === 'AB' ? '이중전원 (rPDU-A·B)' : '단일전원 (STS · PDU-S 경유)',
-      floor: racks[0].floor,
-      type: 'group',
-      x: g.col * PC,
-      y: 9 * PR,
-      w: g.feed === 'AB' ? 150 : NODE_W,
-      h: NODE_H,
-    });
+  for (const sr of SERVER_ROOMS) {
+    const c = ROOM_COL[sr.label];
+    for (const feed of ['AB', 'STS'] as const) {
+      const racks = RACKS.filter((r) => r.serverRoom === sr.label && r.feed === feed);
+      if (racks.length === 0) continue;
+      const hasSts = RACKS.some((r) => r.serverRoom === sr.label && r.feed === 'STS');
+      nodes.push({
+        id: `grp:${sr.label}-${feed}`,
+        ref: null,
+        members: racks.map((r) => `rack:${r.id}`),
+        name: `서버실 ${sr.label} 랙 ${racks.length}대`,
+        sub: feed === 'AB' ? '이중전원 (rPDU-A·B)' : '단일전원 (STS · PDU-S 경유)',
+        floor: sr.floor,
+        type: 'group',
+        x: (feed === 'STS' ? c + 1.1 : hasSts ? c - 1.1 : c) * PC,
+        y: 9 * PR,
+        w: feed === 'AB' ? 150 : NODE_W,
+        h: NODE_H,
+      });
+    }
   }
 
   // 공조 동력 부하 묶음
@@ -248,8 +258,8 @@ function buildPower(): Diagram {
       floor: '여러 층',
       type: 'mech',
       sys: s,
-      x: (s === 'A' ? -0.5 : 0.5) * PC,
-      y: 7 * PR + 4,
+      x: (s === 'A' ? -7.4 : 7.4) * PC,
+      y: 7 * PR,
       w: 112,
       h: NODE_H,
       goto: 'cooling',
@@ -266,12 +276,17 @@ function buildPower(): Diagram {
   };
   const edges = buildEdges(nodeOf, ['hv', 'lv', 'gen', 'fuel', 'dc', 'upsA', 'upsB', 'sts', 'mech']);
 
-  const left = -4.85 * PC;
+  const left = -8.4 * PC;
   const labels: Label[] = POWER_ROWS.map((t, r) => ({ text: t, x: left, y: r * PR, anchor: 'start' }));
   const bands: Band[] = [
-    { x: 4.0 * PC - 4, y: 0.55 * PR, w: 2 * PC + 8, h: 3.9 * PR, text: '비상 전원 (정전 시)' },
-    { x: -4.15 * PC, y: 6.55 * PR, w: 3.55 * PC, h: 3.0 * PR, text: '서버실 A (3F)' },
-    { x: 0.95 * PC, y: 6.55 * PR, w: 3.6 * PC, h: 3.0 * PR, text: '서버실 B (4F)' },
+    { x: 4.95 * PC, y: 0.55 * PR, w: 3.1 * PC, h: 3.9 * PR, text: '비상 전원 (정전 시)' },
+    ...SERVER_ROOMS.map((sr) => ({
+      x: (ROOM_COL[sr.label] - 2.05) * PC,
+      y: 5.55 * PR,
+      w: 4.1 * PC,
+      h: 4.0 * PR,
+      text: `서버실 ${sr.label} (${sr.floor}) · UPS-A${sr.num} · B${sr.num}`,
+    })),
   ];
   return { id: 'power', flow: 'down', nodes, edges, labels, bands };
 }
@@ -280,24 +295,33 @@ function buildPower(): Diagram {
 const CC = 178;
 const CR = 62;
 
-// 서버실 A(공냉식): 0~5행, 서버실 B(수냉식): 7~12행. B의 냉동기 조 3개는 항온항습기 6대 사이에 고르게
-const B0 = 7;
+// 위: 냉수 계통 (냉동기 4조 → 냉수 헤더 → 항온항습기(수냉식) 3F 6대 · 4F 3대)
+// 아래: 공냉식 (실외기 ↔ 항온항습기 1:1, 4F 3쌍 · 5F 6쌍)
+const WATER_UNITS = EQUIPMENT.filter((e) => e.type === 'crah').map((e) => e.id);
+const AIR_UNITS = EQUIPMENT.filter((e) => e.type === 'crac' || e.type === 'cracFront').map((e) => e.id);
+const CHILLERS = EQUIPMENT.filter((e) => e.type === 'chiller').length;
+const W_ROWS = WATER_UNITS.length; // 9
+const A0 = W_ROWS + 1.6; // 공냉식 구역 첫 행
 const COOL_POS: Record<string, [number, number]> = {
-  ...Object.fromEntries([1, 2, 3, 4, 5, 6].flatMap((n) => [
-    [`cond-${n}`, [0, n - 1]],
-    [`crac-${n}`, [5, n - 1]],
-    [`crah-${n}`, [5, B0 + n - 1]],
-  ])),
-  ...Object.fromEntries([1, 2, 3].flatMap((n) => {
-    const r = B0 + 0.75 + (n - 1) * 1.75;
-    return [
-      [`ct-${n}`, [0, r]],
-      [`pump-cw-${n}`, [1, r]],
-      [`chiller-${n}`, [2, r]],
-      [`pump-chw-${n}`, [3, r]],
-    ];
-  })),
-  'hx-1': [2, B0 + 5.6],
+  ...Object.fromEntries(WATER_UNITS.map((id, i) => [id, [5, i]])),
+  ...Object.fromEntries(
+    Array.from({ length: CHILLERS }, (_, k) => k + 1).flatMap((n) => {
+      const r = 0.4 + (n - 1) * ((W_ROWS - 1.8) / (CHILLERS - 1));
+      return [
+        [`ct-${n}`, [0, r]],
+        [`pump-cw-${n}`, [1, r]],
+        [`chiller-${n}`, [2, r]],
+        [`pump-chw-${n}`, [3, r]],
+      ];
+    }),
+  ),
+  'hx-1': [2, W_ROWS - 0.2],
+  ...Object.fromEntries(
+    AIR_UNITS.flatMap((id, i) => [
+      [id.replace(/^crac/, 'cond'), [0, A0 + i]],
+      [id, [5, A0 + i]],
+    ]),
+  ),
 };
 
 function mechOf(id: string) {
@@ -311,34 +335,41 @@ function buildCooling(): Diagram {
     const t = TYPE_BY_ID[EQUIP_BY_ID[id].type];
     n.sub = `${n.sub}${mechOf(id)}`;
     n.sys = undefined;
-    if (t.id === 'crac' || t.id === 'crah') n.w = 150;
+    if (t.id === 'crac' || t.id === 'crah' || t.id === 'cracFront') n.w = 170;
     return n;
   });
   const hub = HUB_BY_ID['hub:chw'];
-  nodes.push(equipNode(hub.id, 4 * CC, (B0 + 2.5) * CR, { w: 40, h: 5.6 * CR, sub: '' }));
+  nodes.push(equipNode(hub.id, 4 * CC, ((W_ROWS - 1) / 2) * CR, { w: 40, h: (W_ROWS - 0.4) * CR, sub: '' }));
 
   const edges = buildEdges((id) => (COOL_POS[id] || id === 'hub:chw' ? id : null), ['refrig', 'chw', 'cw']);
 
   const top = -0.6 * CR;
+  const airTop = (A0 - 0.6) * CR;
   const labels: Label[] = [
-    { text: '옥상 (PH) · 열 방출', x: 0, y: top, anchor: 'middle' },
-    { text: '냉각수 펌프 (B1)', x: CC, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '냉동기 (B1)', x: 2 * CC, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '냉수 펌프 (B1)', x: 3 * CC, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '냉수 헤더', x: 4 * CC, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '서버실 · 항온항습기', x: 5 * CC, y: top, anchor: 'middle' },
-    { text: '냉각탑 (PH)', x: 0, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '항온항습기(수냉식) (4F)', x: 5 * CC, y: (B0 - 0.6) * CR, anchor: 'middle' },
-    { text: '← 열이 나가는 방향 · 냉각이 오는 방향 →', x: 2.5 * CC, y: top, anchor: 'middle' },
+    { text: '냉각탑 (PH)', x: 0, y: top, anchor: 'middle' },
+    { text: '냉각수 펌프 (B1)', x: CC, y: top, anchor: 'middle' },
+    { text: '냉동기 (B1)', x: 2 * CC, y: top, anchor: 'middle' },
+    { text: '냉수 펌프 (B1)', x: 3 * CC, y: top, anchor: 'middle' },
+    { text: '냉수 헤더', x: 4 * CC, y: top, anchor: 'middle' },
+    { text: '항온항습기(수냉식) 3F · 4F', x: 5 * CC, y: top, anchor: 'middle' },
+    { text: '실외기 (PH)', x: 0, y: airTop, anchor: 'middle' },
+    { text: '← 열이 나가는 방향 · 냉각이 오는 방향 →', x: 2.5 * CC, y: airTop, anchor: 'middle' },
+    { text: '항온항습기(공냉식) 4F · 5F', x: 5 * CC, y: airTop, anchor: 'middle' },
   ];
   const bands: Band[] = [
-    { x: -0.55 * CC, y: -0.95 * CR, w: 6.1 * CC, h: 6.5 * CR, text: '서버실 A (3F) · 공냉식 — 실외기와 항온항습기가 냉매 배관으로 1:1' },
     {
       x: -0.55 * CC,
-      y: (B0 - 0.95) * CR,
-      w: 6.1 * CC,
-      h: 6.9 * CR,
-      text: '서버실 B (4F) · 수냉식 — 냉각탑 · 펌프 · 냉동기 1:1:1, 냉수 헤더에서 다대다',
+      y: -0.95 * CR,
+      w: 6.2 * CC,
+      h: (W_ROWS + 0.6) * CR,
+      text: '수냉식 — 냉각탑 · 펌프 · 냉동기 1:1:1, 냉수 헤더에서 서버실 A(3F) 6대 · 서버실 B(4F) 3대로 다대다',
+    },
+    {
+      x: -0.55 * CC,
+      y: (A0 - 0.95) * CR,
+      w: 6.2 * CC,
+      h: (AIR_UNITS.length + 0.6) * CR,
+      text: '공냉식 — 실외기와 항온항습기가 냉매 배관으로 1:1 (서버실 B(4F) 3쌍 · 서버실 C(5F) 6쌍)',
     },
   ];
   return { id: 'cooling', flow: 'right', nodes, edges, labels, bands };

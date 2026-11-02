@@ -3,13 +3,13 @@
 //   장면(주소 #): 층 · 선택 · 온도 보기 서버실 · 도면 탭. 주소를 그대로 보내면 같은 장면이 열린다 (교육 자료 링크용)
 // 저장이 막힌 환경(사생활 보호 창 등)에서는 조용히 넘어간다
 
-import { FLOOR_BY_ID, type FloorId } from '../data/building';
+import { FLOOR_BY_ID, byRoom, type FloorId } from '../data/building';
 import { computeRoom, type RoomLabel } from '../data/thermal';
 import { nodeInfo } from '../data/graph';
 import { enterHeat, focusItem, goFloor } from '../scene/focus';
 import { useView, type PanelTab } from './useView';
 
-const KEY = 'dc3d.view.v1';
+const KEY = 'dc3d.view.v2'; // v2: 서버실 C 추가 · 냉각 방식 재배치 (v1 공조 조건은 버린다)
 const SAVED = ['layers', 'linkFilter', 'rackColor', 'viewMode', 'airCfg', 'itLoad', 'outdoorT', 'heatHeight', 'heatValue', 'heatOpacity', 'heatHotOnly'] as const;
 type SavedKey = (typeof SAVED)[number];
 
@@ -33,7 +33,7 @@ export function loadSettings() {
     useView.setState(patch);
     // 공조 조건 · 부하가 바뀌었으면 온도를 다시 계산
     const v = useView.getState();
-    useView.setState({ therm: { A: computeRoom('A', v.airCfg.A, v.itLoad), B: computeRoom('B', v.airCfg.B, v.itLoad) } });
+    useView.setState({ therm: byRoom((l) => computeRoom(l, v.airCfg[l], v.itLoad)) });
   } catch {
     // 저장소를 못 쓰면 기본값으로
   }
@@ -103,7 +103,7 @@ export function applyHash() {
   const temp = p.get('temp');
   const sel = p.get('sel');
   const floor = p.get('floor') as FloorId | null;
-  if (temp === 'A' || temp === 'B') {
+  if (temp === 'A' || temp === 'B' || temp === 'C') {
     enterHeat(temp as RoomLabel);
     if (sel && (nodeInfo(sel) || sel.startsWith('customer:'))) s.select(sel);
     return;

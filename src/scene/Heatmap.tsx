@@ -4,7 +4,7 @@
 import { useEffect, useMemo } from 'react';
 import { DataTexture, DoubleSide, LinearFilter, PlaneGeometry, RGBAFormat, SRGBColorSpace } from 'three';
 import { HEAT_RES, heatAlpha, sampleField } from '../data/heatField';
-import { RAISED_H } from '../data/building';
+import { SR_BY_LABEL } from '../data/building';
 import { tempRGB, type RoomLabel } from '../data/thermal';
 import { useView } from '../store/useView';
 import { useHeatField } from '../ui/useStatus';
@@ -44,7 +44,7 @@ export function Heatmap({ label }: { label: RoomLabel }) {
   return (
     <mesh
       geometry={UNIT_PLANE}
-      position={[f.x0 + w / 2, RAISED_H + 0.02, f.z0 + d / 2]}
+      position={[f.x0 + w / 2, SR_BY_LABEL[label].raised + 0.02, f.z0 + d / 2]}
       rotation={[-Math.PI / 2, 0, 0]}
       scale={[w, -d, 1]}
       renderOrder={1}

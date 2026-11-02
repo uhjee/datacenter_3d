@@ -256,7 +256,7 @@ export function goFloor(id: FloorId) {
     const room = (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === id);
     if (room) return switchRoom(room, true);
     exitThermal(false);
-    s.showToast(`온도는 서버실 층(3F · 4F)에서만 봅니다. 온도 보기를 끄고 ${id}로 이동합니다.`);
+    s.showToast(`온도는 서버실 층(3F · 4F · 5F)에서만 봅니다. 온도 보기를 끄고 ${id}로 이동합니다.`);
     // 흐름도 패널이 돌아와 3D 영역 크기가 바뀐 뒤 계산
     requestAnimationFrame(() => focusFloor(id));
     return;

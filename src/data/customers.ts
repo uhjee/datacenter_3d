@@ -1,24 +1,25 @@
-// 고객사 (코로케이션 임대). 서버실 B(4F) 증설 블록을 고객사에 빌려준다.
+// 고객사 (코로케이션 임대). 5F 서버실 C 전 구역을 고객사 케이지로 빌려준다.
 // 케이지는 랙과 그 앞 · 뒤 통로까지 철망으로 두른 전용 구역이다. 통로를 이웃 열과 함께 쓰는 배치에서는
-// 케이지 안으로 앞면이 들어오는 이웃 열 칸에 랙을 둘 수 없다 → 케이지가 랙 수보다 넓은 면적을 차지한다.
+// 케이지 안으로 앞면 · 뒷면이 들어오는 이웃 열 칸에 랙을 둘 수 없다 → 케이지가 랙 수보다 넓은 면적을 차지한다.
+// 블록 바깥 끝에는 사업자 PDU가 줄지어 서므로, 케이지 출입문은 PDU 반대쪽(블록 사이 이동 통로) 끝에 낸다.
 
 import {
   AISLE_W,
-  BLOCK_LEN,
   EXPANSION_BLOCK,
   RACK,
-  RAISED_H,
+  RACKS_PER_BLOCK,
   ROW_OFFSETS,
-  SERVER_ROOMS,
+  SR_BY_LABEL,
   rackX,
   type FloorId,
 } from "./building";
 
-export type CustomerId = "A" | "B" | "C" | "D";
+export type CustomerId = "A" | "B" | "C" | "D" | "E";
 
 export interface Slot {
   row: number; // 0~5
-  bi: number; // 증설 블록 안 칸 0~11 (서쪽부터)
+  block: number; // 0 서쪽 · 1 동쪽 · 2 증설 블록
+  bi: number; // 블록 안 칸 0~11 (서쪽부터)
 }
 
 export interface Cage {
@@ -59,20 +60,36 @@ export interface Customer {
   room: string;
   summary: string;
   slots: Slot[];
-  kind: "server" | "gpu" | "mixed";
+  kind: "server" | "gpu" | "mixed" | "storage";
   designKw: number;
   cage?: Cage;
   contract: Contract;
 }
 
-const SR = SERVER_ROOMS.find((s) => s.label === "B")!;
-const X0 = SR.blocks[EXPANSION_BLOCK];
-const X1 = X0 + BLOCK_LEN;
+const SR = SR_BY_LABEL.C;
 const rowZ = (r: number) => SR.cz + ROW_OFFSETS[r].dz;
-const range = (row: number, from: number, to: number): Slot[] =>
-  Array.from({ length: to - from + 1 }, (_, i) => ({ row, bi: from + i }));
-// 케이지 동쪽 끝은 블록 끝에서 한 칸(0.6m) 더 나가 출입문 앞 여유를 둔다
+// 케이지 출입문 앞 여유 (블록 끝에서 한 칸 더)
 const DOOR_GAP = 0.6;
+
+// 블록 하나의 열 r0~r1 · 칸 bi0~bi1을 두르는 케이지.
+// 위아래 통로(냉복도 또는 열복도)까지 케이지 안이므로, 그 통로를 함께 쓰는 바로 위 · 아래 열의 같은 칸은 비운다(reserved).
+function cageOf(block: number, r0: number, r1: number, bi0 = 0, bi1 = RACKS_PER_BLOCK - 1): { slots: Slot[]; cage: Cage } {
+  const slots: Slot[] = [];
+  for (let row = r0; row <= r1; row++) for (let bi = bi0; bi <= bi1; bi++) slots.push({ row, block, bi });
+  const reserved: Slot[] = [];
+  for (const row of [r0 - 1, r1 + 1]) if (row >= 0 && row <= 5) for (let bi = bi0; bi <= bi1; bi++) reserved.push({ row, block, bi });
+  // 출입문은 PDU 반대쪽 끝
+  const door = SR.pduSide[block] === 1 ? "west" : "east";
+  const xa = rackX(SR, block, bi0) - RACK.w / 2 - 0.05;
+  const xb = rackX(SR, block, bi1) + RACK.w / 2 + 0.05;
+  const x: [number, number] = door === "east" ? [xa, xb + DOOR_GAP] : [xa - DOOR_GAP, xb];
+  const z: [number, number] = [rowZ(r0) - RACK.d / 2 - AISLE_W, rowZ(r1) + RACK.d / 2 + AISLE_W];
+  return { slots, cage: { x, z, door, reserved } };
+}
+
+const W = 0; // 서쪽 블록
+const E = 1; // 동쪽 블록 (항온항습기 쪽)
+const X = EXPANSION_BLOCK; // 증설 블록 (서쪽 끝)
 
 export const CUSTOMERS: Customer[] = [
   {
@@ -82,27 +99,20 @@ export const CUSTOMERS: Customer[] = [
     floor: SR.floor,
     room: SR.roomId,
     summary:
-      "1·2열(첫 포드) 두 줄 24대를 한 케이지로 씁니다. 2열 앞 냉복도까지 케이지 안이라, 같은 통로를 바라보는 3열 칸은 비워 둡니다.",
-    slots: [...range(0, 0, 11), ...range(1, 0, 11)],
+      "클라우드 사업자. 서쪽 블록 여섯 열 72대를 케이지 하나로 씁니다. 블록 전체를 두르므로 비우는 칸이 없습니다.",
+    ...cageOf(W, 0, 5),
     kind: "server",
     designKw: 5,
-    cage: {
-      // 1열 앞 바깥 냉복도부터 2열 앞 냉복도까지
-      x: [X0 - 0.05, X1 + DOOR_GAP],
-      z: [rowZ(0) - RACK.d / 2 - AISLE_W, rowZ(1) + RACK.d / 2 + AISLE_W],
-      door: "east",
-      reserved: range(2, 0, 11),
-    },
     contract: {
-      kw: 120,
+      kw: 400,
       billing: '약정 kW + 초과분 kWh 1.5배 단가',
       circuit: '1P32',
-      start: '2024-03',
-      end: '2027-02',
+      start: '2024-01',
+      end: '2029-12',
       autoRenew: true,
-      crossConnects: 6,
-      remoteHands: [3, 10],
-      access: 12,
+      crossConnects: 24,
+      remoteHands: [12, 40],
+      access: 30,
     },
   },
   {
@@ -112,27 +122,20 @@ export const CUSTOMERS: Customer[] = [
     floor: SR.floor,
     room: SR.roomId,
     summary:
-      "6열 동쪽 끝 랙 4대(GPU 고밀도)를 작은 케이지로 씁니다. 뒷면 열복도까지 케이지 안이라, 맞은편 5열 네 칸은 비워 둡니다.",
-    slots: range(5, 8, 11),
+      "AI · GPU 서비스. 항온항습기와 가까운 동쪽 블록 1·2열 24대(고밀도)를 씁니다. 2열 앞 냉복도까지 케이지 안이라 같은 통로를 바라보는 3열은 비워 둡니다.",
+    ...cageOf(E, 0, 1),
     kind: "gpu",
     designKw: 10,
-    cage: {
-      // 6열 뒤 열복도부터 앞 바깥 냉복도까지
-      x: [rackX(SR, EXPANSION_BLOCK, 8) - RACK.w / 2 - 0.05, X1 + DOOR_GAP],
-      z: [rowZ(4) + RACK.d / 2, rowZ(5) + RACK.d / 2 + AISLE_W],
-      door: "east",
-      reserved: range(4, 8, 11),
-    },
     contract: {
-      kw: 18,
+      kw: 260,
       billing: '약정 kW + 초과분 kWh 1.5배 단가',
       circuit: '3P32',
       start: '2025-09',
       end: '2028-08',
       autoRenew: true,
-      crossConnects: 4,
-      remoteHands: [7, 8],
-      access: 5,
+      crossConnects: 8,
+      remoteHands: [7, 10],
+      access: 8,
     },
   },
   {
@@ -141,20 +144,21 @@ export const CUSTOMERS: Customer[] = [
     color: "#a9e34b",
     floor: SR.floor,
     room: SR.roomId,
-    summary: "랙 1대만 빌려 씁니다. 케이지 없이 잠금 랙 문으로만 구분합니다.",
-    slots: [{ row: 3, bi: 3 }],
+    summary:
+      "금융사 재해복구 센터. 동쪽 블록 4~6열 36대를 씁니다. 4열 뒤 열복도까지 케이지 안이라 맞은편 3열은 비워 둡니다(B와 사이에 빈 줄).",
+    ...cageOf(E, 3, 5),
     kind: "server",
     designKw: 5,
     contract: {
-      kw: 5,
-      billing: '랙당 월 고정 (5kW 포함)',
+      kw: 180,
+      billing: '랙당 월 고정 + 약정 kW',
       circuit: '1P32',
-      start: '2025-01',
-      end: '2026-12',
-      autoRenew: false,
-      crossConnects: 1,
-      remoteHands: [0, 2],
-      access: 2,
+      start: '2024-06',
+      end: '2027-05',
+      autoRenew: true,
+      crossConnects: 10,
+      remoteHands: [2, 10],
+      access: 12,
     },
   },
   {
@@ -163,20 +167,42 @@ export const CUSTOMERS: Customer[] = [
     color: "#ffa8a8",
     floor: SR.floor,
     room: SR.roomId,
-    summary: "랙 1대만 빌려 씁니다. 케이지 없이 잠금 랙 문으로만 구분합니다.",
-    slots: [{ row: 4, bi: 2 }],
+    summary: "게임 서비스. 증설 블록 1·2열 24대(서버 · 네트워크 혼합)를 씁니다. 같은 통로를 바라보는 3열은 비워 둡니다.",
+    ...cageOf(X, 0, 1),
     kind: "mixed",
     designKw: 4,
     contract: {
-      kw: 6,
-      billing: '랙당 월 고정 (6kW 포함)',
+      kw: 100,
+      billing: '약정 kW + 초과분 kWh 1.5배 단가',
       circuit: '1P32',
-      start: '2026-06',
-      end: '2027-05',
+      start: '2025-03',
+      end: '2027-02',
+      autoRenew: false,
+      crossConnects: 6,
+      remoteHands: [3, 5],
+      access: 10,
+    },
+  },
+  {
+    id: "E",
+    name: "고객사 E",
+    color: "#91a7ff",
+    floor: SR.floor,
+    room: SR.roomId,
+    summary: "공공 SI · 백업. 증설 블록 4~6열 36대(스토리지 위주)를 씁니다. 맞은편 3열은 비워 둡니다(D와 사이에 빈 줄).",
+    ...cageOf(X, 3, 5),
+    kind: "storage",
+    designKw: 5,
+    contract: {
+      kw: 180,
+      billing: '랙당 월 고정 (5kW 포함)',
+      circuit: '1P32',
+      start: '2026-01',
+      end: '2028-12',
       autoRenew: true,
-      crossConnects: 2,
-      remoteHands: [1, 2],
-      access: 3,
+      crossConnects: 4,
+      remoteHands: [1, 5],
+      access: 6,
     },
   },
 ];
@@ -185,20 +211,25 @@ export const CUSTOMER_BY_ID = Object.fromEntries(
   CUSTOMERS.map((c) => [c.id, c]),
 ) as Record<CustomerId, Customer>;
 
-// 서버실 B 증설 블록 칸 → 고객사 / 케이지 예약 여부
+// 서버실 칸 → 고객사 / 케이지 예약 여부
 export function slotOwner(
   room: string,
   row: number,
+  block: number,
   bi: number,
 ): { customer?: Customer; reserved?: Customer } {
+  const hit = (s: Slot) => s.row === row && s.block === block && s.bi === bi;
   for (const c of CUSTOMERS) {
     if (c.room !== room) continue;
-    if (c.slots.some((s) => s.row === row && s.bi === bi))
-      return { customer: c };
-    if (c.cage?.reserved.some((s) => s.row === row && s.bi === bi))
-      return { reserved: c };
+    if (c.slots.some(hit)) return { customer: c };
+  }
+  for (const c of CUSTOMERS) {
+    if (c.room !== room) continue;
+    if (c.cage?.reserved.some(hit)) return { reserved: c };
   }
   return {};
 }
 
-export const CAGE_H = RAISED_H + 2.6; // 케이지 철망 꼭대기 (층 바닥 기준)
+// 케이지 철망 꼭대기 (층 바닥 기준). 서버실 C는 이중마루가 없어 바닥부터 잰다
+export const CAGE_H = SR.raised + 2.6;
+export const CAGE_BASE = SR.raised;

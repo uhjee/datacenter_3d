@@ -5,13 +5,13 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Building2, Handshake, Layers, Search, Server, Siren, Thermometer, Workflow } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { FLOORS, ROOM_BY_ID } from '../data/building';
+import { FLOORS, ROOM_BY_ID, ROOM_LABELS } from '../data/building';
 import { CUSTOMERS } from '../data/customers';
 import { EQUIPMENT } from '../data/equipment';
 import { DOMAIN_META, TYPE_BY_ID } from '../data/equipTypes';
 import { GROUPS } from '../data/groups';
 import { RACKS } from '../data/racks';
-import { AIR_LAYOUT, type RoomLabel } from '../data/thermal';
+import { AIR_LAYOUT } from '../data/thermal';
 import { SCENARIO_ITEMS } from '../scenario/ScenarioPanel';
 import { activateGroup, enterHeat, focusItem, goFloor } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -53,7 +53,7 @@ function buildItems(): Item[] {
   for (const f of FLOORS) add({ key: `fl-${f.id}`, kind: '층', icon: Building2, name: `${f.id} ${f.name}`, sub: f.summary, run: () => goFloor(f.id) });
   for (const [icon, name, desc, start] of SCENARIO_ITEMS)
     if (start) add({ key: `sc-${name}`, kind: '시나리오 시작', icon: icon ?? Siren, color: 'var(--crit)', name, sub: desc, run: start }, '시나리오 사고');
-  for (const r of ['A', 'B'] as RoomLabel[])
+  for (const r of ROOM_LABELS)
     add({ key: `th-${r}`, kind: '보기', icon: Thermometer, color: '#ff922b', name: `온도 보기 · 서버실 ${r}`, sub: `${AIR_LAYOUT[r].floor} 히트맵 · 기류 입자 · 2D 상면도`, run: () => enterHeat(r) }, '히트맵 기류 온도');
   add({ key: 'dg-power', kind: '보기', icon: Workflow, name: '전력 단선도 열기', sub: '하단 도면', run: () => openDiagram('power') }, '흐름도 도면 단선도');
   add({ key: 'dg-cool', kind: '보기', icon: Workflow, name: '공조 흐름도 열기', sub: '하단 도면', run: () => openDiagram('cooling') }, '흐름도 도면 냉수 냉매');

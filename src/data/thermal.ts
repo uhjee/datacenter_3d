@@ -3,12 +3,12 @@
 //   흡기 온도 = 급기 온도 + 재순환 비율 r × 배기 온도 상승분 / (1 − r)
 //   재순환 r: 봉쇄 없음일 때 크고, 랙 위쪽 · 열 끝에서 더 크다(계수는 경향을 보이기 위한 값). 블랭킹 패널이 없으면 랙 내부 역류가 더해진다.
 
-import { BLOCK_LEN, coldAisleDZ, hotAisleDZ, RACK, RAISED_H, SERVER_ROOMS, type FloorId } from './building';
-import { EQUIPMENT } from './equipment';
+import { BLOCK_LEN, byRoom, coldAisleDZ, hotAisleDZ, RACK, SR_BY_LABEL, type FloorId, type RoomLabel } from './building';
+import { EQUIPMENT, SUPPLY_BY_ROOM, UNIT_KW } from './equipment';
 import { RACKS, type Rack } from './racks';
 
 export type Containment = 'none' | 'CAC' | 'HAC';
-export type RoomLabel = 'A' | 'B';
+export type { RoomLabel };
 
 export interface AirCfg {
   containment: Containment;
@@ -19,9 +19,13 @@ export interface AirCfg {
 }
 
 export const DEFAULT_AIR: AirCfg = { containment: 'CAC', blanking: true, supply: 20, xray: true, plenum: false }; // 이중마루 아래 냉기 흐름이 보이도록 투시를 켜 둔다
-// 두 서버실 모두 랙이 등을 맞댄 안쪽 통로가 열복도, 포드 사이 · 바깥 통로가 냉복도. 서버실 A(3F)는 열복도를 봉쇄(천장 리턴으로 배출), 서버실 B(4F)는 봉쇄 없음.
-// 봉쇄가 없으면 섞이는 열기만큼 급기를 낮춰 운전하는 것이 보통이라 B는 18°C
-export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = { A: { ...DEFAULT_AIR, containment: 'HAC' }, B: { ...DEFAULT_AIR, containment: 'none', supply: 18 } };
+// 세 서버실 모두 랙이 등을 맞댄 안쪽 통로가 열복도, 포드 사이 · 바깥 통로가 냉복도. 서버실 A(3F)는 열복도를 봉쇄(천장 리턴으로 배출), B(4F) · C(5F)는 봉쇄 없음.
+// 봉쇄가 없으면 섞이는 열기만큼 급기를 낮춰 운전하는 것이 보통이라 B는 18°C, 이중마루도 없는 C는 16°C
+export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = {
+  A: { ...DEFAULT_AIR, containment: 'HAC', supply: SUPPLY_BY_ROOM.A },
+  B: { ...DEFAULT_AIR, containment: 'none', supply: SUPPLY_BY_ROOM.B },
+  C: { ...DEFAULT_AIR, containment: 'none', supply: SUPPLY_BY_ROOM.C, xray: false },
+};
 
 export type TempStatus = 'cold' | 'ok' | 'warn' | 'hot';
 
@@ -109,6 +113,10 @@ export const TEMP_BANDS: { lo: number; hi: number; name: string; color: string }
   { lo: 32, hi: Infinity, name: '위험 (흡기) · 열복도는 정상 배기', color: tempColor(36) },
 ];
 
+// 서버실의 항온항습기 (수냉식 · 공냉식 · 전면 토출 모두)
+export const COOLING_UNIT_TYPES = ['crah', 'crac', 'cracFront'];
+export const roomUnits = (roomId: string) => EQUIPMENT.filter((e) => e.room === roomId && COOLING_UNIT_TYPES.includes(e.type));
+
 // ── 서버실 기하 (기류 경로 · 봉쇄 형상 공용) ──
 export interface AirLayout {
   label: RoomLabel;
@@ -127,11 +135,10 @@ export interface AirLayout {
 }
 
 export function airLayout(label: RoomLabel): AirLayout {
-  const sr = SERVER_ROOMS.find((s) => s.label === label)!;
+  const sr = SR_BY_LABEL[label];
   const blocks = sr.blocks.map((x) => [x, x + BLOCK_LEN] as [number, number]);
   const x0 = Math.min(...blocks.map((b) => b[0]));
   const x1 = Math.max(...blocks.map((b) => b[1]));
-  const type = label === 'A' ? 'crac' : 'crah';
   return {
     label,
     roomId: sr.roomId,
@@ -143,18 +150,23 @@ export function airLayout(label: RoomLabel): AirLayout {
     cz: sr.cz,
     coldZ: coldAisleDZ(sr).map((dz) => sr.cz + dz),
     hotZ: hotAisleDZ(sr).map((dz) => sr.cz + dz),
-    rackTop: RAISED_H + RACK.h,
+    rackTop: sr.raised + RACK.h,
     ceiling: 3.8,
-    units: EQUIPMENT.filter((e) => e.type === type).map((e) => ({ id: e.id, x: e.pos[0], z: e.pos[2], dir: label === 'A' ? 1 : -1 })),
+    units: roomUnits(sr.roomId).map((e) => ({ id: e.id, x: e.pos[0], z: e.pos[2], dir: (-sr.unitWall) as 1 | -1 })),
   };
 }
 
-export const AIR_LAYOUT: Record<RoomLabel, AirLayout> = { A: airLayout('A'), B: airLayout('B') };
+export const AIR_LAYOUT: Record<RoomLabel, AirLayout> = byRoom(airLayout);
 
 // ── 온도 계산 ──
 const BASE_RECIRC: Record<Containment, number> = { none: 0.18, CAC: 0.03, HAC: 0.04 };
 const BYPASS: Record<Containment, number> = { none: 0.3, CAC: 0.05, HAC: 0.03 };
 const HEIGHT_K = [0.3, 0.8, 1.6];
+// 이중마루 없이 서버실로 바로 불어 넣는 방식(서버실 C): 냉기가 방 전체에 퍼진 뒤 랙에 닿아 섞임이 크고,
+// 항온항습기 벽에서 먼 랙일수록 더 섞인다. 위쪽 흡기는 천장 쪽 더운 공기를 더 빨아들인다
+const FLOOD_K = 1.0; // 재순환 배수 (가까운 쪽)
+const FLOOD_FAR = 0.4; // 서버실 반대편 끝에서 더해지는 배수
+const FLOOD_HEIGHT = [1, 1.05, 1.1];
 
 const emptyFrac = (r: Rack) => (r.devices.length === 0 ? 1 : 1 - r.uUsed / RACK.U);
 // 랙 실제 소비전력. load = IT 부하율(지표 패널 슬라이더, 1 = 기준)
@@ -163,6 +175,10 @@ const deltaT = (kw: number) => (kw > 0 ? 11 + kw * 0.3 : 0);
 
 export function computeRoom(label: RoomLabel, cfg: AirCfg, itLoad = 1): RoomTherm {
   const racks = RACKS.filter((r) => r.serverRoom === label);
+  const sr = SR_BY_LABEL[label];
+  const flooded = sr.raised === 0;
+  const unitX = sr.unitWall * 19;
+  const span = Math.max(1, Math.max(...racks.map((r) => Math.abs(r.x - unitX))));
   const plenumK = cfg.plenum || cfg.containment === 'HAC' ? 0.8 : 1;
   const out: Record<string, RackTherm> = {};
   let sum = 0;
@@ -183,8 +199,9 @@ export function computeRoom(label: RoomLabel, cfg: AirCfg, itLoad = 1): RoomTher
     const atEnd = r.index === Math.min(...loadedIdx) || r.index === Math.max(...loadedIdx);
     const endK = cfg.containment === 'none' && atEnd ? 1.4 : 1;
     const ri = cfg.blanking ? 0 : 0.15 * emptyFrac(r) * (kw > 0 ? 1 : 0);
-    const inlet = HEIGHT_K.map((hk) => {
-      const rh = BASE_RECIRC[cfg.containment] * hk * endK * plenumK;
+    const floodK = flooded ? FLOOD_K + FLOOD_FAR * (Math.abs(r.x - unitX) / span) : 1;
+    const inlet = HEIGHT_K.map((hk, h) => {
+      const rh = Math.min(0.5, BASE_RECIRC[cfg.containment] * hk * endK * plenumK * floodK * (flooded ? FLOOD_HEIGHT[h] : 1));
       return +(cfg.supply + (rh * dTl + ri * dT) / (1 - rh - ri)).toFixed(1);
     }) as [number, number, number];
     const exhaust = inlet.map((t) => +(t + dT).toFixed(1)) as [number, number, number];
@@ -197,13 +214,15 @@ export function computeRoom(label: RoomLabel, cfg: AirCfg, itLoad = 1): RoomTher
       max = Math.max(max, top);
       if (top > RECOMMENDED[1]) over++;
       exSum += exhaust[1] * kw;
-      rSum += BASE_RECIRC[cfg.containment] * endK * plenumK + ri;
+      rSum += BASE_RECIRC[cfg.containment] * endK * plenumK * floodK + ri;
     }
   }
-  const b = BYPASS[cfg.containment];
+  const b = Math.min(0.5, BYPASS[cfg.containment] * (flooded ? 1.4 : 1));
   const avgExhaust = exSum / Math.max(load, 1);
-  const units = 6;
-  const unitKw = label === 'A' ? 140 : 150;
+  const unitList = roomUnits(sr.roomId);
+  const units = unitList.length;
+  // 섞여 있는 서버실(B)은 평균 용량으로 본다
+  const unitKw = Math.round(unitList.reduce((s, e) => s + UNIT_KW[e.type], 0) / units);
   return {
     racks: out,
     avgInlet: +(sum / Math.max(loaded, 1)).toFixed(1),

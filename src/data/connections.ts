@@ -5,7 +5,7 @@
 import type { FloorId } from './building';
 import type { Domain } from './equipTypes';
 import { SERVER_ROOMS } from './building';
-import { EQUIPMENT, pduId, pduIndex } from './equipment';
+import { EQUIPMENT, mccOf, pduId, pduIndex } from './equipment';
 import { RACKS } from './racks';
 
 export type ConnKind =
@@ -112,8 +112,8 @@ export const HUBS: Hub[] = [
     room: 'b1-gen',
     domain: 'power',
     pos: [-8.6, 3.4, 6.3],
-    size: [0.3, 0.3, 6.0],
-    summary: '발전기 2대의 출력을 하나로 모아(병렬 운전) ATS-A·ATS-B로 보내는 모선입니다. 한 대가 고장 나도 나머지 한 대가 모선을 유지합니다(N+1).',
+    size: [0.3, 0.3, 8.0],
+    summary: '발전기 3대의 출력을 하나로 모아(병렬 운전) ATS-A·ATS-B로 보내는 모선입니다. 한 대가 고장 나도 나머지 두 대가 모선을 유지합니다(N+1).',
   },
   {
     id: 'hub:chw',
@@ -121,9 +121,9 @@ export const HUBS: Hub[] = [
     floor: 'B1',
     room: 'b1-chiller',
     domain: 'cooling',
-    pos: [7.2, 3.2, -0.6],
-    size: [0.4, 0.4, 13.0],
-    summary: '냉동기 3대가 만든 냉수를 한 배관에 모았다가 4F 항온항습기(수냉식) 6대로 나눠 보냅니다. 어느 냉동기가 멈춰도 모든 항온항습기가 냉수를 받습니다(다대다 연결).',
+    pos: [7.2, 3.2, -0.75],
+    size: [0.4, 0.4, 15.0],
+    summary: '냉동기 4대가 만든 냉수를 한 배관에 모았다가 항온항습기(수냉식) 9대(3F 6대 · 4F 3대)로 나눠 보냅니다. 어느 냉동기가 멈춰도 모든 항온항습기가 냉수를 받습니다(다대다 연결).',
   },
 ];
 
@@ -151,35 +151,40 @@ C('lv-a', 'ats-a', 'lv', { sys: 'A', note: 'ATS 상용 입력' });
 C('lv-b', 'ats-b', 'lv', { sys: 'B', note: 'ATS 상용 입력' });
 
 // 비상 전원
-C('fuel-main', 'fuel-1', 'fuel');
-C('fuel-main', 'fuel-2', 'fuel');
-C('fuel-1', 'gen-1', 'fuel');
-C('fuel-2', 'gen-2', 'fuel');
-C('gen-1', 'hub:gen-bus', 'gen');
-C('gen-2', 'hub:gen-bus', 'gen');
+for (const n of [1, 2, 3]) {
+  C('fuel-main', `fuel-${n}`, 'fuel');
+  C(`fuel-${n}`, `gen-${n}`, 'fuel');
+  C(`gen-${n}`, 'hub:gen-bus', 'gen');
+}
 C('hub:gen-bus', 'ats-a', 'gen', { standby: true, note: '상용 정전 시 ATS가 발전기 쪽으로 절체' });
 C('hub:gen-bus', 'ats-b', 'gen', { standby: true, note: '상용 정전 시 ATS가 발전기 쪽으로 절체' });
 
-// ATS 하류
-C('ats-a', 'ups-a', 'lv', { sys: 'A', note: 'UPS 입력' });
-C('ats-b', 'ups-b', 'lv', { sys: 'B', note: 'UPS 입력' });
+// ATS 하류: 서버실마다 UPS 한 쌍 (UPS-A1 · B1 = 서버실 A …)
+for (const sr of SERVER_ROOMS) {
+  C('ats-a', `ups-a${sr.num}`, 'lv', { sys: 'A', note: 'UPS 입력' });
+  C('ats-b', `ups-b${sr.num}`, 'lv', { sys: 'B', note: 'UPS 입력' });
+}
 C('ats-a', 'mcc-a', 'lv', { sys: 'A' });
 C('ats-b', 'mcc-b', 'lv', { sys: 'B' });
 
-// UPS · 배터리
-C('bat-a', 'ups-a', 'dc', { sys: 'A', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
-C('bat-b', 'ups-b', 'dc', { sys: 'B', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
-// UPS → PDU (서버실마다 A · B 9대씩) · STS → PDU-S
+// UPS · 배터리 (UPS마다 1조)
+for (const sr of SERVER_ROOMS)
+  for (const sys of ['a', 'b'] as const)
+    C(`bat-${sys}${sr.num}`, `ups-${sys}${sr.num}`, 'dc', { sys: sys === 'a' ? 'A' : 'B', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
+// UPS → 그 서버실의 PDU (A · B 9대씩) · STS → PDU-S
 for (const e of EQUIPMENT) {
   // PDU-S는 UPS가 아니라 STS 출력을 받는다
   if (e.type !== 'pdu' || e.system === 'STS 출력') continue;
   const sys = e.system?.startsWith('A') ? 'A' : 'B';
-  C(`ups-${sys.toLowerCase()}`, e.id, sys === 'A' ? 'upsA' : 'upsB', { sys });
+  const num = SERVER_ROOMS.find((k) => k.roomId === e.room)!.num;
+  C(`ups-${sys.toLowerCase()}${num}`, e.id, sys === 'A' ? 'upsA' : 'upsB', { sys });
 }
-for (const n of [1, 2]) {
-  C('ups-a', `sts-${n}`, 'upsA', { sys: 'A', note: 'STS 우선 입력' });
-  C('ups-b', `sts-${n}`, 'upsB', { sys: 'B', note: 'STS 대체 입력' });
-  C(`sts-${n}`, `pdu-s${n}`, 'sts', { note: 'STS 출력 (단일 경로)' });
+for (const e of EQUIPMENT) {
+  if (e.type !== 'sts') continue;
+  const n = e.id.slice(4);
+  C(`ups-a${n}`, e.id, 'upsA', { sys: 'A', note: 'STS 우선 입력' });
+  C(`ups-b${n}`, e.id, 'upsB', { sys: 'B', note: 'STS 대체 입력' });
+  C(e.id, `pdu-s${n}`, 'sts', { note: 'STS 출력 (단일 경로)' });
 }
 
 // PDU → 랙 rPDU. 랙이 속한 포드 · 블록의 PDU-A · PDU-B에서 한 회로씩, 단일전원 랙은 PDU-S에서 한 회로
@@ -194,20 +199,20 @@ for (const r of RACKS) {
   }
 }
 
-// 공조 동력 (공조 동력반 → 공조 설비). 번호가 홀수면 A, 짝수면 B — 같은 역할의 설비를 두 동력반에 번갈아 물린다
-const MECH_TYPES = new Set(['crac', 'crah', 'condenser', 'chiller', 'pump', 'coolingTower']);
+// 공조 동력 (공조 동력반 → 공조 설비). 끝 번호가 홀수면 A, 짝수면 B — 같은 역할의 설비를 두 동력반에 번갈아 물린다
+const MECH_TYPES = new Set(['crac', 'cracFront', 'crah', 'condenser', 'chiller', 'pump', 'coolingTower']);
 for (const e of EQUIPMENT) {
   if (!MECH_TYPES.has(e.type)) continue;
-  const n = Number(e.id.split('-').pop());
-  if (n % 2 === 1) C('mcc-a', e.id, 'mech', { sys: 'A' });
+  if (mccOf(e.id) === 'a') C('mcc-a', e.id, 'mech', { sys: 'A' });
   else C('mcc-b', e.id, 'mech', { sys: 'B' });
 }
 
-// 공냉식: 실외기-n → 항온항습기(공냉식)-n (1:1)
-for (let i = 1; i <= 6; i++) C(`cond-${i}`, `crac-${i}`, 'refrig', { note: `냉매 쌍 ${i}` });
+// 공냉식: 실외기-B2 → 항온항습기(공냉식)-B2 (1:1, 4F 3쌍 · 5F 6쌍)
+for (const e of EQUIPMENT)
+  if (e.type === 'condenser') C(e.id, e.id.replace(/^cond/, 'crac'), 'refrig', { note: `냉매 쌍 ${e.id.slice(5).toUpperCase()}` });
 
-// 수냉식: 냉각탑-n → 냉각수 펌프-n → 냉동기-n → 냉수 펌프-n → 냉수 헤더 → 항온항습기(수냉식) ×6
-for (let i = 1; i <= 3; i++) {
+// 수냉식: 냉각탑-n → 냉각수 펌프-n → 냉동기-n → 냉수 펌프-n → 냉수 헤더 → 항온항습기(수냉식) ×9
+for (let i = 1; i <= 4; i++) {
   C(`ct-${i}`, `pump-cw-${i}`, 'cw', { note: `냉각수 조 ${i}` });
   C(`pump-cw-${i}`, `chiller-${i}`, 'cw', { note: `냉각수 조 ${i}` });
   C(`chiller-${i}`, `pump-chw-${i}`, 'chw');
@@ -215,7 +220,7 @@ for (let i = 1; i <= 3; i++) {
   C(`pump-cw-${i}`, 'hx-1', 'cw', { standby: true, note: '프리쿨링 시 냉동기 대신 판형 열교환기로' });
 }
 C('hx-1', 'hub:chw', 'chw', { standby: true, note: '프리쿨링 시 냉동기를 거치지 않고 냉수 생산' });
-for (let i = 1; i <= 6; i++) C('hub:chw', `crah-${i}`, 'chw');
+for (const e of EQUIPMENT) if (e.type === 'crah') C('hub:chw', e.id, 'chw');
 
 // 층을 넘는 연결의 샤프트 지정
 function defaultVia(c: Omit<Conn, 'id'>): string | undefined {

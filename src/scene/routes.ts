@@ -25,7 +25,7 @@ export interface LinkLine {
 }
 
 // 층별 케이블 트레이 · 배관 높이 (옥상은 바닥 위 배관)
-const TRAY: Record<FloorId, number> = { B1: 4.6, '1F': 3.7, '2F': 3.7, '3F': 4.2, '4F': 4.2, PH: 0.45 };
+const TRAY: Record<FloorId, number> = { B1: 4.6, '1F': 3.7, '2F': 3.7, '3F': 4.2, '4F': 4.2, '5F': 4.2, PH: 0.45 };
 const RET_OFFSET = 0.22;
 
 function anchor(id: string, toward: { x: number; z: number }): RP {

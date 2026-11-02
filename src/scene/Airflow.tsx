@@ -4,14 +4,15 @@
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import { BoxGeometry, BufferAttribute, BufferGeometry, CanvasTexture, EdgesGeometry, Points, PointsMaterial, Vector3 } from 'three';
-import { AISLE_W, RACK, RAISED_H } from '../data/building';
+import { AISLE_W, RACK, ROOM_BY_ID } from '../data/building';
 import { RACKS, type Rack } from '../data/racks';
 import { AIR_LAYOUT, tempRGB, type AirCfg, type AirLayout, type RoomLabel, type RoomTherm } from '../data/thermal';
 import { useView } from '../store/useView';
 import { useRoomTherm } from '../ui/useStatus';
 import { floorAnimY } from './floorAnim';
 
-const F = RAISED_H;
+// 랙이 서는 바닥 높이 (이중마루 윗면, 없으면 0)
+const floorOf = (L: AirLayout) => L.rackTop - RACK.h;
 const PANEL = { cold: '#4dabf7', hot: '#ff8787' };
 
 export function AirRoom({ label }: { label: RoomLabel }) {
@@ -65,6 +66,7 @@ function useRackSide(label: RoomLabel) {
 
 // 냉복도 봉쇄: 블록마다 냉복도 위 지붕 + 양 끝 문 (랙이 없는 쪽은 바닥부터 벽)
 function ColdContainment({ L }: { L: AirLayout }) {
+  const F = floorOf(L);
   const h = L.rackTop - F;
   const hasRack = useRackSide(L.label);
   return (
@@ -90,6 +92,7 @@ function ColdContainment({ L }: { L: AirLayout }) {
 
 // 열복도 봉쇄: 블록마다 열복도 양옆을 천장까지 막고(랙이 없는 바깥쪽은 바닥부터) 끝 문, 천장으로 이어지는 굴뚝
 function HotContainment({ L }: { L: AirLayout }) {
+  const F = floorOf(L);
   const top = L.ceiling;
   const hasRack = useRackSide(L.label);
   return (
@@ -125,7 +128,9 @@ function ductOf(L: AirLayout) {
 
 // 천장 리턴: 반투명 천장 + 열복도 위 리턴 그릴 + 덕트망(열복도 덕트 → 헤더 → 항온항습기 하강 덕트)
 function Ceiling({ L }: { L: AirLayout }) {
-  const sx = L.label === 'A' ? [-19.8, 13.8] : [-13.8, 19.8];
+  const rx = ROOM_BY_ID[L.roomId].x;
+  const sx = [rx[0] + 0.2, rx[1] - 0.2];
+  const F = floorOf(L);
   const d = ductOf(L);
   const dropH = d.y + DUCT_H / 2 - (F + 2.0);
   return (
@@ -177,6 +182,9 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     temps.push(t);
   };
   const Ts = cfg.supply;
+  const F = floorOf(L);
+  // 항온항습기 윗면(흡입구) 높이: 이중마루형은 마루 위 2.0m, 전면 토출형은 바닥에서 2.4m
+  const uTop = F > 0 ? F + 2.05 : 2.45;
   const plenum = cfg.plenum || cfg.containment === 'HAC';
   const yRet = 3.4;
   const u = L.units[Math.floor(rnd() * L.units.length)];
@@ -193,7 +201,7 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
       P(d.hx + j(0.4), d.y + j(0.3), hz + lane, t);
       const uz = u.z + j(1.0);
       P(d.hx + j(0.4), d.y + j(0.3), uz, th.returnT);
-      P(u.x + j(0.4), F + 2.05, uz, th.returnT); // ⑨
+      P(u.x + j(0.4), uTop, uz, th.returnT); // ⑨
       P(u.x, F + 1.0, u.z, (th.returnT + Ts) / 2); // ⑩
       P(u.x, F + 0.2, u.z, Ts);
       return;
@@ -201,7 +209,7 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
     // 천장 리턴이 없으면 실내 위쪽을 지나 항온항습기 윗면으로 돌아간다
     P(fromX, yRet, fromZ, t); // ⑧
     P(u.x + u.dir * 0.9, yRet, u.z + (rnd() - 0.5) * 0.6, th.returnT);
-    P(u.x, F + 2.05, u.z, th.returnT); // ⑨
+    P(u.x, uTop, u.z, th.returnT); // ⑨
     P(u.x, F + 1.0, u.z, (th.returnT + Ts) / 2); // ⑩
     P(u.x, F + 0.2, u.z, Ts);
   };
@@ -218,12 +226,21 @@ function makePath(L: AirLayout, cfg: AirCfg, th: RoomTherm, racks: Rack[], rnd: 
   const az = cz + (rnd() - 0.5) * 0.9;
   // ① 항온항습기 하부 토출 → ② 이중마루 아래: 벽을 따라 그 냉복도 줄까지 간 뒤 냉복도(타공판) 바로 밑을 따라간다.
   // 랙 밑을 대각선으로 가로지르면 타공판이 없는 곳에서 맴도는 것처럼 보이므로 통로를 따라가게 한다
-  const yUnder = 0.25 + rnd() * 0.12;
-  const wallX = u.x + u.dir * (1.4 + rnd() * 0.4);
-  P(u.x + u.dir * 0.7, yUnder, u.z + (rnd() - 0.5) * 0.6, Ts); // ①
-  P(wallX, yUnder, az, Ts + 0.1);
-  P(ax, yUnder, az, Ts + 0.2); // ②
-  P(ax, F + 0.05, az, Ts + 0.3); // ③ 타공판으로 올라옴
+  if (F > 0) {
+    const yUnder = 0.25 + rnd() * 0.12;
+    const wallX = u.x + u.dir * (1.4 + rnd() * 0.4);
+    P(u.x + u.dir * 0.7, yUnder, u.z + (rnd() - 0.5) * 0.6, Ts); // ①
+    P(wallX, yUnder, az, Ts + 0.1);
+    P(ax, yUnder, az, Ts + 0.2); // ②
+    P(ax, F + 0.05, az, Ts + 0.3); // ③ 타공판으로 올라옴
+  } else {
+    // 이중마루 없음(서버실 C): 기기 정면에서 수평으로 불어 낸 냉기가 방을 건너 냉복도를 따라 흘러 들어간다.
+    // 가는 동안 실내의 더운 공기와 섞여 랙 앞에 닿을 때는 이미 급기 온도보다 높다
+    const yS = 0.9 + rnd() * 0.9;
+    P(u.x + u.dir * 0.6, yS, u.z + (rnd() - 0.5) * 0.6, Ts); // ① 전면 토출
+    P(u.x + u.dir * 2.4, yS, az, Ts + 0.5);
+    P(ax, yS, az, Ts + 1.5); // ② 냉복도를 따라
+  }
 
   // 바이패스: 랙에 들어가지 않고 위로 빠져 바로 돌아감
   if (cfg.containment === 'none' && rnd() < th.bypass) {

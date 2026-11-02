@@ -3,12 +3,13 @@
 // 대기기까지 쓴 뒤 한 대가 더 멈추면 예비가 없어 용량이 열부하에 못 미치고 급기 · 흡기 온도가 오른다.
 // 근사 모델: 정상 상태 온도(thermal.ts) 위에 ① 운전 대수 부족에 따른 급기 상승 ② 고장 유닛 주변 국부 상승을 시간에 따라 더한다.
 
+import { SR_BY_LABEL } from '../data/building';
 import { CONNECTIONS } from '../data/connections';
 import { EQUIP_BY_ID } from '../data/equipment';
 import { RACK_BY_ID } from '../data/racks';
-import { RECOMMENDED, statusOf, type RoomLabel, type RoomTherm } from '../data/thermal';
+import { RECOMMENDED, roomUnits, statusOf, type RoomLabel, type RoomTherm } from '../data/thermal';
 import { FAULT_COLOR, phaseAt, sigOf, SRC_META, STARTING_COLOR, type EdgeState, type LogItem, type NodeState, type NodeStatus, type Phase, type ScenarioDef, type Snapshot } from './core';
-import { snapshot as outageSnapshot } from './outage';
+import { NORMAL_PARAMS, snapshot as outageSnapshot } from './outage';
 
 export interface CracFailParams {
   room: RoomLabel;
@@ -37,8 +38,11 @@ const TAU_LOCAL = 45; // 국부 온도 시정수(초)
 const HOT = 5; // 고장 유닛 바로 앞의 국부 상승 (°C). 이중마루 압력이 빠진 구역은 실제로 수 °C 이상 오른다
 const RESIDUAL = 0.3; // 대기기가 들어온 뒤 남는 국부 상승 비율 (대기기는 다른 자리에서 불어 넣는다)
 
-export const unitId = (room: RoomLabel, n: number) => `${room === 'A' ? 'crac' : 'crah'}-${n}`;
-export const unitName = (room: RoomLabel, n: number) => `항온항습기(${room === 'A' ? '공냉식' : '수냉식'})-${n}`;
+// 서버실의 n번째(1~6) 자리 항온항습기. B는 수냉식 · 공냉식이 번갈아 선다
+export const unitId = (room: RoomLabel, n: number) => roomUnits(SR_BY_LABEL[room].roomId)[n - 1].id;
+export const unitName = (room: RoomLabel, n: number) => EQUIP_BY_ID[unitId(room, n)].name;
+// 공냉식(압축기형)인지: 재기동 보호 시간 · 고장 원인 · 짝 실외기가 달라진다
+export const isAirUnit = (room: RoomLabel, n: number) => EQUIP_BY_ID[unitId(room, n)].type !== 'crah';
 export const standbyOf = (p: CracFailParams) => (p.unit === UNITS ? UNITS - 1 : UNITS);
 // 두 번째 고장: 첫 고장 유닛의 이웃(대기기 제외) → 같은 구역에 열이 몰리는 최악의 경우
 export function secondOf(p: CracFailParams) {
@@ -46,7 +50,8 @@ export function secondOf(p: CracFailParams) {
   const cand = [p.unit + 1, p.unit - 1, p.unit + 2, p.unit - 2].filter((n) => n >= 1 && n <= UNITS && n !== sb);
   return cand[0];
 }
-const onAt = (p: CracFailParams) => (p.room === 'A' ? CT.onA : CT.onB);
+const onAt = (p: CracFailParams) => (isAirUnit(p.room, standbyOf(p)) ? CT.onA : CT.onB);
+const flooded = (room: RoomLabel) => SR_BY_LABEL[room].raised === 0;
 
 export type UnitState = 'run' | 'standby' | 'starting' | 'fault';
 function unitStates(t: number, p: CracFailParams): UnitState[] {
@@ -74,14 +79,14 @@ export function phases(p: CracFailParams): Phase[] {
     {
       t: CT.fail,
       title: `${u} 고장`,
-      body: `${p.room === 'A' ? '압축기 과부하로 트립' : '송풍기 모터 고장'}되어 ${u}가 멈췄습니다. 남은 4대 용량은 ${4 * p.unitKw}kW로 열부하${4 * p.unitKw < p.loadKw ? '보다 작습니다' : '를 겨우 감당합니다'}. 무엇보다 이 유닛이 불어 넣던 이중마루 구역의 압력이 떨어져, 가까운 랙의 흡기 온도부터 오릅니다.`,
+      body: `${isAirUnit(p.room, p.unit) ? '압축기 과부하로 트립' : '송풍기 모터 고장'}되어 ${u}가 멈췄습니다. 남은 4대 용량은 ${4 * p.unitKw}kW로 열부하${4 * p.unitKw < p.loadKw ? '보다 작습니다' : '를 겨우 감당합니다'}. ${flooded(p.room) ? '이중마루가 없어 이 유닛이 정면으로 불어 넣던 냉복도 구역에 냉기가 끊기고, 가까운 랙의 흡기 온도부터 오릅니다.' : '무엇보다 이 유닛이 불어 넣던 이중마루 구역의 압력이 떨어져, 가까운 랙의 흡기 온도부터 오릅니다.'}`,
     },
     { t: CT.alarm, title: '경보', body: '항온항습기 고장 경보와 함께 주변 온습도 센서 값이 오르기 시작합니다. 통합관제실이 BMS 화면에서 확인합니다.' },
     {
       t: CT.cmd,
       title: '대기기 자동 기동',
       body:
-        p.room === 'A'
+        isAirUnit(p.room, standbyOf(p))
           ? `BMS가 ${sb}에 기동 명령을 보냅니다. 공냉식은 팬이 먼저 돌고, 압축기는 재기동 보호 시간이 지나야 냉각을 시작합니다(실제 3~5분, 여기서는 2분).`
           : `BMS가 ${sb}에 기동 명령을 보냅니다. 수냉식은 냉수 밸브를 열고 팬만 돌리면 되므로 30초 안팎에 냉각을 시작합니다. 냉수는 이미 헤더에 돌고 있습니다.`,
     },
@@ -139,8 +144,10 @@ export function integrateCooling(p: CracFailParams, end: number, statesAt: (t: n
   return out;
 }
 
-// 랙과 유닛 사이 거리에 따른 국부 영향 (유닛은 벽에 붙어 있고 이중마루로 앞쪽 구역에 바람을 보낸다)
-const reach = (rx: number, rz: number, ux: number, uz: number) => Math.exp(-(Math.abs(rz - uz) + 0.25 * Math.abs(rx - ux)) / 5);
+// 랙과 유닛 사이 거리에 따른 국부 영향 (유닛은 벽에 붙어 있고 이중마루로 앞쪽 구역에 바람을 보낸다).
+// 이중마루가 없으면 정면으로 멀리 불어 보내던 냉기가 끊겨 영향이 방 안쪽(x)까지 더 길게 미친다
+const reach = (rx: number, rz: number, ux: number, uz: number, flood: boolean) =>
+  Math.exp(-(Math.abs(rz - uz) + (flood ? 0.12 : 0.25) * Math.abs(rx - ux)) / (flood ? 6 : 5));
 
 // 정상 상태 온도에 시나리오 상승분을 더한 서버실 온도
 export function adjustTherm(base: RoomTherm, p: CracFailParams, ser: CracFailSeries, t: number): RoomTherm {
@@ -159,7 +166,7 @@ export function adjustTherm(base: RoomTherm, p: CracFailParams, ser: CracFailSer
       continue;
     }
     const r = RACK_BY_ID[id];
-    const local = hot.reduce((s, h, k) => s + h * reach(r.x, r.z, units[k][0], units[k][2]), 0);
+    const local = hot.reduce((s, h, k) => s + h * reach(r.x, r.z, units[k][0], units[k][2], flooded(p.room)), 0);
     // 위쪽일수록 섞인 열기를 더 받는다
     const inlet = rt.inlet.map((v, h) => +(v + dS + local * [0.8, 1, 1.25][h]).toFixed(1)) as [number, number, number];
     const exhaust = inlet.map((v) => +(v + rt.dT).toFixed(1)) as [number, number, number];
@@ -188,7 +195,6 @@ export function values(t: number, p: CracFailParams, ser: CracFailSeries): CracF
 }
 
 const NODE: Record<UnitState, NodeStatus> = { run: 'on', standby: 'standby', starting: 'starting', fault: 'fault' };
-const NORMAL_PARAMS = { upsOut: { A: 0, B: 0 }, facilityKw: 0, baseInlet: { A: 0, B: 0 }, genFail: false };
 
 export function snapshot(t: number, p: CracFailParams): Snapshot {
   const base = outageSnapshot(0, NORMAL_PARAMS);
@@ -198,13 +204,14 @@ export function snapshot(t: number, p: CracFailParams): Snapshot {
   st.forEach((x, k) => {
     const n = k + 1;
     const ns: NodeState = { src: x === 'fault' ? 'none' : 'utility', status: NODE[x] };
-    nodes[unitId(p.room, n)] = ns;
-    if (p.room === 'A') nodes[`cond-${n}`] = ns; // 실외기는 짝 항온항습기와 함께 서고 선다
+    const id = unitId(p.room, n);
+    nodes[id] = ns;
+    if (isAirUnit(p.room, n)) nodes[id.replace(/^crac/, 'cond')] = ns; // 실외기는 짝 항온항습기와 함께 서고 선다
   });
+  const pos = new Map(st.map((x, k) => [unitId(p.room, k + 1), x]));
   for (const c of CONNECTIONS) {
-    const m = /^(crac|crah)-(\d)$/.exec(c.to);
-    if (!m || (m[1] === 'crac') !== (p.room === 'A')) continue;
-    const x = st[+m[2] - 1];
+    const x = pos.get(c.to);
+    if (!x) continue;
     if (c.kind === 'refrig' || c.kind === 'chw') edges[c.id] = x === 'run' ? 'flow' : x === 'fault' ? 'none' : 'idle';
   }
   const phase = phaseAt(phases(p), t);
@@ -215,7 +222,7 @@ export function eventLog(p: CracFailParams): LogItem[] {
   const u = unitName(p.room, p.unit);
   const sb = unitName(p.room, standbyOf(p));
   const items: LogItem[] = [
-    { t: CT.fail, text: `${u} ${p.room === 'A' ? '압축기 트립' : '송풍기 정지'}, 운전 4대` },
+    { t: CT.fail, text: `${u} ${isAirUnit(p.room, p.unit) ? '압축기 트립' : '송풍기 정지'}, 운전 4대` },
     { t: CT.alarm, text: `경보: ${u} 고장, 주변 랙 흡기 상승 시작` },
     { t: CT.cmd, text: `BMS: ${sb} 기동 명령` },
     { t: onAt(p), text: `${sb} 냉각 시작, 운전 5대 (예비 없음)` },

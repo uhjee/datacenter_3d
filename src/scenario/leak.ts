@@ -8,12 +8,12 @@ import { EQUIP_BY_ID } from '../data/equipment';
 import { RACKS } from '../data/racks';
 import { integrateCooling, standbyOf, unitId, unitName, type CracFailParams, type CracFailSeries, type UnitState } from './cracFail';
 import { FAULT_COLOR, phaseAt, sigOf, SRC_META, STARTING_COLOR, type EdgeState, type LogItem, type NodeState, type NodeStatus, type Phase, type ScenarioDef, type Snapshot } from './core';
-import { snapshot as outageSnapshot } from './outage';
+import { NORMAL_PARAMS, snapshot as outageSnapshot } from './outage';
 
 export type LeakResponse = 'auto' | 'manual' | 'spot';
 
 export interface LeakParams {
-  unit: number; // 새는 분기: 항온항습기(수냉식) 1~6번
+  unit: number; // 새는 분기: 서버실 B의 항온항습기(수냉식) 자리 (1 · 3 · 5번, 나머지는 공냉식)
   response: LeakResponse;
   rate: number; // L/분
   loadKw: number;
@@ -165,7 +165,6 @@ export function values(t: number, p: LeakParams): LeakValues {
 }
 
 const NODE: Record<UnitState, NodeStatus> = { run: 'on', standby: 'standby', starting: 'starting', fault: 'fault' };
-const NORMAL_PARAMS = { upsOut: { A: 0, B: 0 }, facilityKw: 0, baseInlet: { A: 0, B: 0 }, genFail: false };
 
 export function snapshot(t: number, p: LeakParams): Snapshot {
   const base = outageSnapshot(0, NORMAL_PARAMS);
@@ -176,10 +175,10 @@ export function snapshot(t: number, p: LeakParams): Snapshot {
   st.forEach((x, k) => (nodes[unitId('B', k + 1)] = { src: x === 'fault' ? 'none' : 'utility', status: NODE[x] }));
   // 감지기: 감시 중 → 경보 (마를 때까지)
   nodes[DETECTOR] = { src: 'none', status: t >= L.detect && t < L.dry ? 'alarm' : 'on' };
+  const pos = new Map(st.map((x, k) => [unitId('B', k + 1), x]));
   for (const c of CONNECTIONS) {
-    const m = /^crah-(\d)$/.exec(c.to);
-    if (!m || c.kind !== 'chw') continue;
-    const x = st[+m[1] - 1];
+    const x = pos.get(c.to);
+    if (!x || c.kind !== 'chw') continue;
     edges[c.id] = x === 'run' ? 'flow' : x === 'fault' ? 'none' : 'idle';
   }
   const phase = phaseAt(phases(p), t);

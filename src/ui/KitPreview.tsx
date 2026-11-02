@@ -41,7 +41,7 @@ export function KitPreview() {
                 { k: '용량', v: '1,200kVA / 1,080kW' },
                 { k: '효율', v: '94~97%' },
                 { k: '권장 부하율', v: '≤ 50% (2N)' },
-                { k: '담당', v: '서버실 A·B의 A계통 · PDU 18대 · STS 2대', wide: true },
+                { k: '담당', v: '서버실 A의 A계통 · PDU 9대 · STS 1대', wide: true },
               ]}
             />
           </Section>
@@ -59,7 +59,7 @@ export function KitPreview() {
             <Meter v={0.58} mark={0.86} size="md" />
           </Section>
           <LearnBox title="알아보기 · 2N이란?" long>
-            <p>UPS-A·B가 평소 절반씩 맡고, 한쪽이 멈추면 다른 쪽이 전부 받습니다. 그래서 한 대를 50% 이하로 운영합니다.</p>
+            <p>서버실마다 UPS 한 쌍이 평소 절반씩 맡고, 한쪽이 멈추면 다른 쪽이 전부 받습니다. 그래서 한 대를 50% 이하로 운영합니다.</p>
             <p>온라인 이중변환 방식은 평소에도 AC→DC→AC로 변환해 공급하므로 정전 시 절체 시간이 0입니다.</p>
           </LearnBox>
           <Section title="상태 표기" count={4} defaultOpen={false}>

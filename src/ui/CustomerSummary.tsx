@@ -7,14 +7,15 @@ import { CUSTOMERS } from '../data/customers';
 import { focusItem } from '../scene/focus';
 import { useView } from '../store/useView';
 import { Section, Status, TipTable, type Tone } from './kit';
-import { useRoomTherm } from './useStatus';
+import { useAllRoomTherm } from './useStatus';
+import { roomOfId } from '../data/building';
 
 const TONE_VAR: Record<Tone, string> = { ok: 'var(--ink-2)', warn: 'var(--warn)', crit: 'var(--crit)', info: 'var(--info)', muted: 'var(--ink-3)' };
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 
 function useCustomerRows() {
-  const th = useRoomTherm('B');
-  return useMemo(() => CUSTOMERS.map((c) => ({ c, s: coloStats(c, th) })), [th]);
+  const th = useAllRoomTherm();
+  return useMemo(() => CUSTOMERS.map((c) => ({ c, s: coloStats(c, th[roomOfId(c.room)]) })), [th]);
 }
 
 // 목록에서 고르면 선택하고 그 자리로 이동 (3D · 2D 화면 클릭은 선택만)

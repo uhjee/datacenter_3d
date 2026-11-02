@@ -3,7 +3,8 @@
 import { useEffect, useMemo, type CSSProperties, type ReactNode } from 'react';
 import { Droplets, Fan, Flame, Pause, Play, PlugZap, RotateCcw, Server, Zap, type LucideIcon } from 'lucide-react';
 import { RACKS } from '../data/racks';
-import { computeMetrics, UPS_KW } from '../data/metrics';
+import { ROOM_LABELS, SR_BY_LABEL, byRoom } from '../data/building';
+import { computeMetrics, upsId, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
 import { enterHeat, exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
@@ -12,8 +13,8 @@ import { TEMP_TONE } from '../ui/ThermInfo';
 import { fmtT, scenEnd, SRC_META, STARTING_COLOR, FAULT_COLOR, type Src } from './core';
 import { tl, values, type Values } from './outage';
 import { defOf } from './registry';
-import { UPS_FAIL_COUNTS, UT, values as upsValues, type UpsFailValues } from './upsFail';
-import { CT, standbyOf, unitName, values as cracValues, type CracFailParams, type CracFailValues } from './cracFail';
+import { upsFailCounts, UT, values as upsValues, type UpsFailParams, type UpsFailValues } from './upsFail';
+import { CT, isAirUnit, standbyOf, unitName, values as cracValues, type CracFailParams, type CracFailValues } from './cracFail';
 import { lt, RESPONSE_NAME, values as leakValues, type LeakParams, type LeakValues } from './leak';
 import { bt, values as batValues, type BatFireParams, type BatFireValues } from './batFire';
 import { fireRack, st, values as srValues, type SrFireParams, type SrFireValues } from './srFire';
@@ -64,9 +65,9 @@ export function startOutage() {
   s.startScenario({
     id: 'outage',
     params: {
-      upsOut: { A: m.ups.A.out, B: m.ups.B.out },
+      upsOut: Object.fromEntries(Object.entries(m.ups).map(([id, u]) => [id, u.out])),
       facilityKw: m.total,
-      baseInlet: { A: s.therm.A.maxInlet, B: s.therm.B.maxInlet },
+      baseInlet: byRoom((l) => s.therm[l].maxInlet),
       genFail: false,
     },
   });
@@ -79,9 +80,9 @@ export function startLineOut() {
   s.startScenario({
     id: 'lineOut',
     params: {
-      upsOut: { A: m.ups.A.out, B: m.ups.B.out },
+      upsOut: Object.fromEntries(Object.entries(m.ups).map(([id, u]) => [id, u.out])),
       facilityKw: m.total,
-      baseInlet: { A: s.therm.A.maxInlet, B: s.therm.B.maxInlet },
+      baseInlet: byRoom((l) => s.therm[l].maxInlet),
       genFail: false,
       alts: 3,
     },
@@ -89,10 +90,17 @@ export function startLineOut() {
   afterStart();
 }
 
-// UPS-A 출력 = 이중전원 랙 절반 + 단일전원(STS) 랙, UPS-B 출력 = 이중전원 랙 절반
-export function startUpsFail() {
-  const { s, m } = beforeStart();
-  s.startScenario({ id: 'upsFail', params: { side: 'A', bypass: true, ab: 2 * m.ups.B.out, sts: m.ups.A.out - m.ups.B.out } });
+// 서버실 UPS 한 쌍의 출력으로 고장 조건을 만든다: A계통 = 이중전원 랙 절반 + 단일전원(STS) 랙, B계통 = 이중전원 랙 절반
+function upsFailParams(room: RoomLabel, side: 'A' | 'B', bypass: boolean): UpsFailParams {
+  const s = useView.getState();
+  const m = computeMetrics(s.itLoad, s.outdoorT, s.airCfg, s.therm);
+  const a = m.ups[upsId('a', room)].out;
+  const b = m.ups[upsId('b', room)].out;
+  return { room, side, bypass, ab: 2 * b, sts: a - b };
+}
+export function startUpsFail(room: RoomLabel = 'A') {
+  const { s } = beforeStart();
+  s.startScenario({ id: 'upsFail', params: upsFailParams(room, 'A', true) });
   afterStart();
 }
 
@@ -274,17 +282,29 @@ function ScenarioRun() {
     const v = upsValues(sc.t, p);
     const since = sc.t - UT.fail;
     clockSub = since < 0 ? '고장 직전' : v.mode === 'restored' ? '2N 회복' : `고장 후 ${Math.floor(since)}초`;
-    board = <UpsBoard v={v} side={p.side} />;
-    condSummary = `UPS-${p.side} 고장 · 바이패스 ${p.bypass ? '사용' : '안 씀'}`;
-    condNote = <>UPS-B가 고장 나면 STS는 원래 A로 받고 있어 절체가 일어나지 않습니다. 바이패스를 쓰면 예비 없는 시간이 줄지만 그쪽 계통은 UPS 보호를 잃습니다.</>;
+    const n = SR_BY_LABEL[p.room].num;
+    board = <UpsBoard v={v} side={p.side} room={p.room} />;
+    condSummary = `UPS-${p.side}${n} (서버실 ${p.room}) 고장 · 바이패스 ${p.bypass ? '사용' : '안 씀'}`;
+    condNote = <>UPS는 서버실마다 한 쌍이라 고장은 그 서버실에만 영향을 줍니다. B계통 UPS가 고장 나면 STS는 원래 A로 받고 있어 절체가 일어나지 않습니다(서버실 C는 STS 없음). 바이패스를 쓰면 예비 없는 시간이 줄지만 그쪽 계통은 UPS 보호를 잃습니다.</>;
     cond = (
       <div className="rp-cond">
+        <div className="rp-cond-row">
+          <span>서버실</span>
+          <div className="seg small">
+            {ROOM_LABELS.map((k) => (
+              <button key={k} className={p.room === k ? 'on' : ''} onClick={() => set.setScenParams(upsFailParams(k, p.side, p.bypass))}>
+                {k} · {SR_BY_LABEL[k].floor}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="rp-cond-row">
           <span>고장 나는 UPS</span>
           <div className="seg small">
             {(['A', 'B'] as const).map((k) => (
               <button key={k} className={p.side === k ? 'on' : ''} onClick={() => set.setScenParams({ side: k })}>
                 UPS-{k}
+                {n}
               </button>
             ))}
           </div>
@@ -299,15 +319,15 @@ function ScenarioRun() {
     clockSub = since < 0 ? '고장 직전' : `고장 후 ${Math.floor(since)}초`;
     board = <CracBoard v={v} p={p} t={sc.t} />;
     condSummary = `서버실 ${p.room} · ${p.unit}번 고장${p.second ? ' · 한 대 더' : ''}`;
-    condNote = <>대기기는 {standbyOf(p)}번입니다. 서버실 B는 봉쇄가 없어 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.</>;
+    condNote = <>대기기는 {standbyOf(p)}번입니다. 봉쇄가 없는 서버실 B · C는 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 이중마루가 없는 C는 고장 난 기기 앞 냉복도가 특히 빨리 데워집니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row">
           <span>서버실</span>
           <div className="seg small">
-            {(['A', 'B'] as const).map((k) => (
-              <button key={k} className={p.room === k ? 'on' : ''} onClick={() => restartCrac({ room: k })}>
-                {k} · {k === 'A' ? '공냉식' : '수냉식'}
+            {ROOM_LABELS.map((k) => (
+              <button key={k} className={p.room === k ? 'on' : ''} onClick={() => restartCrac({ room: k })} title={SR_BY_LABEL[k].coolName}>
+                {k} · {SR_BY_LABEL[k].floor}
               </button>
             ))}
           </div>
@@ -347,9 +367,9 @@ function ScenarioRun() {
           </div>
         </div>
         <div className="rp-cond-row">
-          <span>새는 분기</span>
+          <span>새는 분기 (수냉식 자리)</span>
           <div className="seg small">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
+            {[1, 3, 5].map((n) => (
               <button key={n} className={p.unit === n ? 'on' : ''} onClick={() => set.setScenParams({ unit: n })}>
                 {n}
               </button>
@@ -385,13 +405,13 @@ function ScenarioRun() {
         <div className="rp-cond-row">
           <span>서버실</span>
           <div className="seg small">
-            {(['A', 'B'] as const).map((k) => (
+            {ROOM_LABELS.map((k) => (
               <button
                 key={k}
                 className={p.room === k ? 'on' : ''}
                 onClick={() => {
                   set.setScenParams({ room: k });
-                  focusFloor(k === 'A' ? '3F' : '4F');
+                  focusFloor(SR_BY_LABEL[k].floor);
                 }}
               >
                 서버실 {k}
@@ -539,7 +559,7 @@ function CracBoard({ v, p, t }: { v: CracFailValues; p: CracFailParams; t: numbe
   const fState = v.states[p.unit - 1];
   const util = p.loadKw / Math.max(1, v.cap);
   const utilColor = util > 1 ? 'var(--crit)' : util > 0.9 ? 'var(--warn)' : 'var(--ok)';
-  const sbName = { run: '냉각 중', standby: '대기', starting: p.room === 'A' ? '기동 중 · 압축기 대기' : '기동 중', fault: '고장' }[v.standby];
+  const sbName = { run: '냉각 중', standby: '대기', starting: isAirUnit(p.room, standbyOf(p)) ? '기동 중 · 압축기 대기' : '기동 중', fault: '고장' }[v.standby];
   const sbColor = v.standby === 'run' ? 'var(--ok)' : v.standby === 'starting' ? STARTING_COLOR : SRC_META.utility.color;
   const tst = statusOf(th.maxInlet);
   const spare = 6 - v.running - v.states.filter((x) => x === 'fault').length - (v.standby === 'starting' ? 1 : 0);
@@ -573,14 +593,14 @@ function BatFireBoard({ v, p }: { v: BatFireValues; p: BatFireParams }) {
     <div className="rp-board">
       <Tile k="배터리실 A" v={stageName} c={stageColor} s={p.separated ? '방화구획 분리' : '배터리 · UPS · 전력선 한 공간'} />
       <Tile k="가장 뜨거운 셀" v={`${v.cell}°C`} c={cellColor} meter={{ v: Math.min(1, v.cell / 700), color: cellColor }} s="리튬인산철, 근사 곡선" />
-      <Tile k="배터리 연결" v={v.isolated ? '분리됨' : '연결'} c={v.isolated ? STARTING_COLOR : SRC_META.utility.color} s={v.isolated ? 'UPS-A 배터리 백업 없음' : 'UPS-A 직류 링크'} />
+      <Tile k="배터리 연결" v={v.isolated ? '분리됨' : '연결'} c={v.isolated ? STARTING_COLOR : SRC_META.utility.color} s={v.isolated ? 'UPS-A1~A3 배터리 백업 없음' : 'UPS-A1~A3 직류 링크'} />
       <Tile
         k="가스 소화"
         v={v.gas === 'standby' ? '대기' : v.gas === 'delay' ? `방출 지연 ${v.delayLeft}초` : '방출 완료'}
         c={v.gas === 'standby' ? SRC_META.utility.color : v.gas === 'delay' ? STARTING_COLOR : '#e9ecef'}
         s={v.gas === 'done' ? (v.stage === 'out' ? '약제 배기 · 재진입' : '불꽃만 잡고 셀 반응은 남음') : '교차회로 → 30초 지연'}
       />
-      <Tile k="UPS-A" v={v.cut ? (p.separated ? '비상 정지 (EPO)' : '정지 (전체 차단)') : '운전'} c={v.cut ? FAULT_COLOR : 'var(--ok)'} s={v.cut ? '소방 진입 전 전원 차단' : undefined} />
+      <Tile k="UPS-A1~A3" v={v.cut ? (p.separated ? '비상 정지 (EPO)' : '정지 (전체 차단)') : '운전'} c={v.cut ? FAULT_COLOR : 'var(--ok)'} s={v.cut ? '소방 진입 전 전원 차단' : undefined} />
       <Tile k="랙" v={`${on} / ${RACK_IDS.length}대 동작`} c={on === RACK_IDS.length ? 'var(--ok)' : FAULT_COLOR} s={on === RACK_IDS.length ? (v.cut ? 'B계통으로 유지 (2N → N)' : '영향 없음') : '서비스 중단'} />
     </div>
   );
@@ -649,35 +669,37 @@ function LeakBoard({ v, p, t }: { v: LeakValues; p: LeakParams; t: number }) {
 }
 
 // UPS 고장 상태판 6칸
-function UpsBoard({ v, side }: { v: UpsFailValues; side: 'A' | 'B' }) {
+function UpsBoard({ v, side, room }: { v: UpsFailValues; side: 'A' | 'B'; room: RoomLabel }) {
   const o = side === 'A' ? 'B' : 'A';
+  const n = SR_BY_LABEL[room].num;
+  const cnt = upsFailCounts(room);
   const fName = { normal: '정상 운전', fault: '고장 · 출력 차단', bypass: '고장 · 정비 바이패스', starting: '재기동 중', restored: '정상 운전' }[v.mode];
   const fColor = v.mode === 'fault' ? FAULT_COLOR : v.mode === 'bypass' ? SRC_META.bypass.color : v.mode === 'starting' ? STARTING_COLOR : 'var(--ok)';
   const oPct = v.pct[o];
   const oColor = oPct > 1 ? 'var(--crit)' : oPct > 0.5 ? 'var(--warn)' : 'var(--ok)';
   const nColor = v.redundancy === '2N' ? 'var(--ok)' : v.redundancy.startsWith('N ·') ? FAULT_COLOR : SRC_META.bypass.color;
-  const pduText = { utility: `UPS-${side} 출력`, bypass: '상용 직결 (UPS 보호 없음)', none: '정지' }[v.pduSrc];
+  const pduText = { utility: `UPS-${side}${n} 출력`, bypass: '상용 직결 (UPS 보호 없음)', none: '정지' }[v.pduSrc];
   const pduColor = v.pduSrc === 'utility' ? SRC_META.utility.color : v.pduSrc === 'bypass' ? SRC_META.bypass.color : SRC_META.none.color;
   const dualText = v.pduSrc === 'none' ? `rPDU-${o} 단독` : v.pduSrc === 'bypass' ? `${o} + ${side}(바이패스)` : '양쪽 rPDU';
   return (
     <div className="rp-board">
-      <Tile k={`고장 UPS · UPS-${side}`} v={fName} s={v.load[side] > 0 ? `출력 ${Math.round(v.load[side])}kW · ${Math.round(v.pct[side] * 100)}%` : '출력 0kW'} c={fColor} />
+      <Tile k={`고장 UPS · UPS-${side}${n}`} v={fName} s={v.load[side] > 0 ? `출력 ${Math.round(v.load[side])}kW · ${Math.round(v.pct[side] * 100)}%` : '출력 0kW'} c={fColor} />
       <Tile
-        k={`남은 UPS · UPS-${o}`}
+        k={`남은 UPS · UPS-${o}${n}`}
         v={`부하율 ${Math.round(oPct * 100)}%`}
         c={oColor}
         meter={{ v: oPct, color: oColor }}
         s={`${Math.round(v.load[o])}kW · 정격 ${UPS_KW.toLocaleString()}kW`}
       />
-      <Tile k="이중화" v={v.redundancy} c={nColor} s={v.redundancy === '2N' ? '한 대가 멈춰도 버팀' : v.redundancy.startsWith('N ·') ? `UPS-${o}가 멈추면 전체 정지` : `${side}계통은 보호 없음`} />
-      <Tile k={`이중전원 랙 ${UPS_FAIL_COUNTS.dual}대`} v={dualText} c={v.pduSrc === 'none' ? 'var(--warn)' : SRC_META.utility.color} s="끊김 없음" />
+      <Tile k="이중화" v={v.redundancy} c={nColor} s={v.redundancy === '2N' ? '한 대가 멈춰도 버팀' : v.redundancy.startsWith('N ·') ? `UPS-${o}${n}가 멈추면 서버실 ${room} 정지` : `${side}계통은 보호 없음`} />
+      <Tile k={`이중전원 랙 ${cnt.dual}대`} v={dualText} c={v.pduSrc === 'none' ? 'var(--warn)' : SRC_META.utility.color} s="끊김 없음" />
       <Tile
-        k={`단일전원 랙 ${UPS_FAIL_COUNTS.single}대 (STS)`}
-        v={v.stsOnB ? 'B 입력으로 절체' : 'A 우선 입력'}
-        c={v.stsOnB ? 'var(--warn)' : SRC_META.utility.color}
-        s={v.stsOnB ? '4~8ms, 서버 꺼지지 않음' : '평상시 입력'}
+        k={cnt.single ? `단일전원 랙 ${cnt.single}대 (STS-${n})` : '단일전원 랙'}
+        v={!cnt.single ? '없음 (STS 없음)' : v.stsOnB ? 'B 입력으로 절체' : 'A 우선 입력'}
+        c={!cnt.single ? 'var(--ink-3)' : v.stsOnB ? 'var(--warn)' : SRC_META.utility.color}
+        s={!cnt.single ? '전 구역 이중전원 계약' : v.stsOnB ? '4~8ms, 서버 꺼지지 않음' : '평상시 입력'}
       />
-      <Tile k={`${side}계통 PDU ${UPS_FAIL_COUNTS.pdu}대`} v={pduText} c={pduColor} s={v.pduSrc === 'none' ? '랙 rPDU-' + side + ' 꺼짐' : undefined} />
+      <Tile k={`${side}계통 PDU ${cnt.pdu}대`} v={pduText} c={pduColor} s={v.pduSrc === 'none' ? '랙 rPDU-' + side + ' 꺼짐' : undefined} />
     </div>
   );
 }
@@ -700,11 +722,13 @@ function Tile({ k, kr, v, s, c, meter }: { k: string; kr?: string; v: string; s?
 // line: 1회선 정전일 때 한전 수전 상태 (본선 수전 · ALTS 절체 중 · 예비선 수전)
 function Board({ v, line }: { v: Values; line?: 'main' | 'switching' | 'standby' }) {
   const running = v.gen.filter((g) => g !== 'off').length;
-  const genText = v.gen[0] === v.gen[1] ? GEN_NAME[v.gen[0]] : `1 ${GEN_NAME[v.gen[0]]} · 2 ${GEN_NAME[v.gen[1]]}`;
+  const genText = v.gen.every((g) => g === v.gen[0]) ? GEN_NAME[v.gen[0]] : v.gen.map((g, i) => `${i + 1} ${GEN_NAME[g]}`).join(' · ');
   const genColor = v.gen.some((g) => g === 'rated' || g === 'cooldown') ? SRC_META.gen.color : v.gen.some((g) => g === 'starting') ? STARTING_COLOR : SRC_META.none.color;
   const upsSrc: Src = v.ups === 'battery' ? 'battery' : v.ups === 'normal' ? 'utility' : 'gen';
-  const soc = Math.min(v.soc.A, v.soc.B);
-  const maxIn = Math.max(v.inlet.A, v.inlet.B);
+  const socs = Object.values(v.soc);
+  const soc = Math.min(...socs);
+  const socMax = Math.max(...socs);
+  const maxIn = Math.max(...ROOM_LABELS.map((l) => v.inlet[l]));
   const tst = statusOf(maxIn);
   const coolTone = v.coolingOn === v.coolingTotal ? 'var(--ok)' : v.coolingOn === 0 ? 'var(--crit)' : STARTING_COLOR;
   return (
@@ -721,19 +745,19 @@ function Board({ v, line }: { v: Values; line?: 'main' | 'switching' | 'standby'
       )}
       <Tile
         k="발전기"
-        kr={`${running}/2`}
+        kr={`${running}/${v.gen.length}`}
         v={genText}
         c={genColor}
         meter={v.genLoadPct > 0 ? { v: v.genLoadPct, color: SRC_META.gen.color } : undefined}
         s={v.genLoadPct > 0 ? `부하 ${Math.round(v.genLoadPct * 100)}%` : undefined}
       />
-      <Tile k="UPS A · B" v={UPS_NAME[v.ups]} s={`ATS ${v.ats} 쪽`} c={SRC_META[upsSrc].color} />
+      <Tile k={`UPS ${socs.length}대`} v={UPS_NAME[v.ups]} s={`ATS ${v.ats} 쪽`} c={SRC_META[upsSrc].color} />
       <Tile
         k="배터리"
         v={`${(soc * 100).toFixed(1)}%`}
         c={SRC_META.battery.color}
         meter={{ v: soc, color: SRC_META.battery.color }}
-        s={`A ${(v.soc.A * 100).toFixed(1)} · B ${(v.soc.B * 100).toFixed(1)} · 약 ${Math.round(v.batteryMin)}분`}
+        s={`가장 낮은 조 ${(soc * 100).toFixed(1)} ~ ${(socMax * 100).toFixed(1)}% · 약 ${Math.round(v.batteryMin)}분`}
       />
       <Tile k="공조 설비" v={`${v.coolingOn} / ${v.coolingTotal}대`} c={coolTone} s={v.coolingOn < v.coolingTotal ? '나머지 정지 · 재기동 대기' : '모두 운전'} />
       <div className="rp-tile" style={{ '--c': `var(--${TEMP_TONE[tst]})` } as CSSProperties}>
@@ -742,7 +766,7 @@ function Board({ v, line }: { v: Values; line?: 'main' | 'switching' | 'standby'
         </div>
         <div className="rp-tile-v num">{maxIn}°C</div>
         <div className="rp-tile-s num">
-          A {v.inlet.A} · B {v.inlet.B} · 냉수 {v.chwT}°C
+          {ROOM_LABELS.map((l) => `${l} ${v.inlet[l]}`).join(' · ')} · 냉수 {v.chwT}°C
         </div>
         {tst !== 'ok' && <Status tone={TEMP_TONE[tst]}>{STATUS_META[tst].name}</Status>}
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState, type MouseEvent } from 'react';
 import { ArrowUpDown, Building2, Crosshair, Network, X } from 'lucide-react';
-import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SHAFTS } from '../data/building';
+import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SERVER_ROOMS, SHAFTS, SR_BY_LABEL, roomOfId } from '../data/building';
 import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
 import { DOMAIN_META, EQUIP_TYPES, TYPE_BY_ID, type Domain } from '../data/equipTypes';
 import { RACK_BY_ID, RACKS, type DeviceKind, type Rack } from '../data/racks';
@@ -22,7 +22,7 @@ import { incoming, nodeName, outgoing } from '../data/graph';
 import { RackTempSection, SensorTemps, TEMP_TONE, UnitTemps } from './ThermInfo';
 import { Card, DOMAIN_ICON, Glyph, IconButton, Kpi, KpiRow, LearnBox, PanelHead, Pill, Props, Section } from './kit';
 import { useMetrics, useNodeStatus, useRoomTherm } from './useStatus';
-import { values } from '../scenario/outage';
+import { BAT_KWH, values } from '../scenario/outage';
 import { values as upsFailValues } from '../scenario/upsFail';
 import { upsLoad } from '../data/metrics';
 
@@ -135,7 +135,7 @@ function EquipCard({ e }: { e: Equip }) {
     >
       <EquipKpis e={e} />
       {e.type === 'sensor' && <SensorTemps sensorId={e.id} />}
-      {(e.type === 'crac' || e.type === 'crah') && <UnitTemps room={e.type === 'crac' ? 'A' : 'B'} />}
+      {(e.type === 'crac' || e.type === 'crah' || e.type === 'cracFront') && <UnitTemps room={roomOfId(e.room)} />}
       <p className="role">{t.role}</p>
       {t.domain === 'fire' && <FireFlow current={e.id} />}
       <ConnSection id={e.id} />
@@ -166,26 +166,30 @@ function EquipCard({ e }: { e: Equip }) {
 }
 
 // 장비 유형별 핵심 수치. 지표 모델 · 시나리오 값에서 바로 가져온다
-const BAT_KWH = 300;
 const GEN_KW = 2000;
 
 function EquipKpis({ e }: { e: Equip }) {
   const m = useMetrics();
   const itLoad = useView((s) => s.itLoad);
   const sc = useView((s) => s.scenario);
-  const soc = sc?.id === 'outage' || sc?.id === 'lineOut' ? values(sc.t, sc.params, sc.series).soc : { A: 1, B: 1 };
+  const soc: Record<string, number> = sc?.id === 'outage' || sc?.id === 'lineOut' ? values(sc.t, sc.params, sc.series).soc : {};
   // UPS 고장 시나리오 중에는 그 시각의 UPS 출력으로 다시 계산
   const upsNow = sc?.id === 'upsFail' ? upsFailValues(sc.t, sc.params).load : null;
-  const side = (e.id.endsWith('-a') ? 'A' : 'B') as 'A' | 'B';
+  // UPS · 배터리 id: ups-a1 / bat-b3 → 계통 · 서버실 번호
+  const upsKey = e.id.replace(/^bat/, 'ups');
+  const side = (e.id.split('-')[1]?.[0] === 'a' ? 'A' : 'B') as 'A' | 'B';
+  const upsRoom = SERVER_ROOMS.find((s) => upsKey.endsWith(String(s.num)))?.label ?? 'A';
+  const socOf = soc[upsKey] ?? 1;
 
   if (e.type === 'ups' || e.type === 'battery') {
-    const u = upsNow ? upsLoad(upsNow[side]) : m.ups[side];
-    const backup = u.out > 0 ? ((soc[side] * BAT_KWH * 0.95) / u.out) * 60 : 0;
+    // UPS 고장 시나리오는 그 서버실 UPS 한 쌍만 다시 계산
+    const u = upsNow && sc?.id === 'upsFail' && sc.params.room === upsRoom ? upsLoad(upsNow[side]) : m.ups[upsKey];
+    const backup = u.out > 0 ? ((socOf * BAT_KWH * 0.95) / u.out) * 60 : 0;
     if (e.type === 'battery')
       return (
         <KpiRow>
-          <Kpi label="잔량" value={(soc[side] * 100).toFixed(soc[side] < 1 ? 1 : 0)} unit="%" meter={{ v: soc[side], color: '#ffe066' }} />
-          <Kpi label="백업 시간" value={u.out > 0 ? Math.round(backup) : '—'} unit={u.out > 0 ? '분' : undefined} sub={u.out > 0 ? `UPS-${side} ${f0(u.out)}kW 기준` : `UPS-${side} 출력 없음`} />
+          <Kpi label="잔량" value={(socOf * 100).toFixed(socOf < 1 ? 1 : 0)} unit="%" meter={{ v: socOf, color: '#ffe066' }} />
+          <Kpi label="백업 시간" value={u.out > 0 ? Math.round(backup) : '—'} unit={u.out > 0 ? '분' : undefined} sub={u.out > 0 ? `${nodeName(upsKey)} ${f0(u.out)}kW 기준` : `${nodeName(upsKey)} 출력 없음`} />
           <Kpi label="용량" value={BAT_KWH} unit="kWh" />
         </KpiRow>
       );
@@ -199,7 +203,7 @@ function EquipKpis({ e }: { e: Equip }) {
           sub={`부하율 ${pctText(u.pct)}`}
         />
         <Kpi label="효율" value={u.out > 0 ? (u.eff * 100).toFixed(1) : '—'} unit={u.out > 0 ? '%' : undefined} sub={`손실 ${f0(u.loss)}kW`} />
-        <Kpi label="배터리" value={Math.round(soc[side] * 100)} unit="%" sub={u.out > 0 ? `약 ${Math.round(backup)}분 버팀` : '출력 없음'} />
+        <Kpi label="배터리" value={Math.round(socOf * 100)} unit="%" sub={u.out > 0 ? `약 ${Math.round(backup)}분 버팀` : '출력 없음'} />
       </KpiRow>
     );
   }
@@ -208,7 +212,7 @@ function EquipKpis({ e }: { e: Equip }) {
       <KpiRow>
         <Kpi label="정격 출력" value={f0(GEN_KW)} unit="kW" />
         <Kpi label="정전 시 부하" value={f0(m.total)} unit="kW" meter={{ v: m.total / GEN_KW, color: m.total > GEN_KW ? 'var(--crit)' : 'var(--ok)' }} sub="시설 전체" />
-        <Kpi label="부하율" value={pctText(m.total / (2 * GEN_KW))} sub={`1대만 돌면 ${pctText(m.total / GEN_KW)}`} />
+        <Kpi label="부하율" value={pctText(m.total / (3 * GEN_KW))} sub={`2대만 돌면 ${pctText(m.total / (2 * GEN_KW))}`} />
       </KpiRow>
     );
   }
@@ -325,7 +329,7 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
                   </Pill>
                 </button>
               )}
-              {!cust && rack.serverRoom === 'B' && rack.block === EXPANSION_BLOCK && (
+              {!cust && rack.serverRoom === 'B' && rack.block === EXPANSION_BLOCK && rack.devices.length === 0 && (
                 <Pill ghost color="var(--ink-3)" title="고객사 임대를 기다리는 빈 랙">
                   임대 대기
                 </Pill>
@@ -379,12 +383,12 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
             <>
               <div style={{ borderLeftColor: 'var(--a)' }}>
                 <b>rPDU-A</b>
-                <small>{from('upsA')} ← UPS-A</small>
+                <small>{from('upsA')} ← UPS-A{SR_BY_LABEL[rack.serverRoom].num}</small>
                 <small className="num">{circuit} · {(kw / 2).toFixed(1)}kW</small>
               </div>
               <div style={{ borderLeftColor: 'var(--b)' }}>
                 <b>rPDU-B</b>
-                <small>{from('upsB')} ← UPS-B</small>
+                <small>{from('upsB')} ← UPS-B{SR_BY_LABEL[rack.serverRoom].num}</small>
                 <small className="num">{circuit} · {(kw / 2).toFixed(1)}kW</small>
               </div>
             </>

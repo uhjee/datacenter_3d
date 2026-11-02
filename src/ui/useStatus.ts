@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { computeMetrics } from '../data/metrics';
 import { SRC_META, type NodeState } from '../scenario/core';
-import { snapshot } from '../scenario/outage';
+import { NORMAL_PARAMS, snapshot } from '../scenario/outage';
 import { adjustTherm } from '../scenario/cracFail';
 import type { AirCfg, RoomLabel, RoomTherm } from '../data/thermal';
 import { computeHeatField, type HeatField } from '../data/heatField';
@@ -11,7 +11,7 @@ import { useView } from '../store/useView';
 import type { Tone } from './kit';
 
 // 평상시 상태: 정전 시나리오의 0초(정상 운전) 상태를 그대로 쓴다. 발전기 · 연계 차단기는 대기
-const NORMAL = snapshot(0, { upsOut: { A: 0, B: 0 }, facilityKw: 0, baseInlet: { A: 0, B: 0 }, genFail: false });
+const NORMAL = snapshot(0, NORMAL_PARAMS);
 
 const STATUS_NAME = { on: '운전', off: '정지', starting: '재기동 중', standby: '대기', fault: '고장', alarm: '경보' } as const;
 
@@ -71,6 +71,14 @@ export function useRoomTherm(label: RoomLabel): RoomTherm {
     thermCache.set(label, { base, p: crac ?? leak, series, sec, th });
     return th;
   }, [base, crac, leak, series, sec, label]);
+}
+
+// 세 서버실 온도를 한 번에. 서버실 목록이 고정이라 훅 호출 순서가 바뀌지 않는다
+export function useAllRoomTherm(): Record<RoomLabel, RoomTherm> {
+  const a = useRoomTherm('A');
+  const b = useRoomTherm('B');
+  const c = useRoomTherm('C');
+  return useMemo(() => ({ A: a, B: b, C: c }), [a, b, c]);
 }
 
 // 서버실 온도 분포 (3D 히트맵 · 2D 상면도 · 히트맵 카드 공용). 꺼져 있으면 계산하지 않는다.

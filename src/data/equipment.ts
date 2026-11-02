@@ -2,7 +2,7 @@
 // pos는 해당 층 바닥면 기준 로컬 좌표, 장비 바닥 중심.
 // size = [폭, 높이, 깊이]는 장비 자체 기준(전면 = +z)이며 rotY로 회전한다.
 
-import { BLOCK_NAME, EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
+import { BLOCK_NAME, EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, blockOuterX, rackX, rowFacing, type FloorId, type RoomLabel, type ServerRoomLayout } from './building';
 import type { TypeId } from './equipTypes';
 import { RACKS } from './racks';
 
@@ -23,11 +23,11 @@ export interface Equip {
   area?: { x: [number, number]; z: [number, number] }; // 여러 지점에 걸친 장비(감지기 등)
 }
 
-const F = RAISED_H;
 const E = (e: Equip) => e;
 
 const SR_A = SERVER_ROOMS[0];
 const SR_B = SERVER_ROOMS[1];
+const SR_C = SERVER_ROOMS[2];
 // 항온항습기 · 실외기 6대 (N+1: 5대 운전 + 1대 예비)의 z 위치
 const COOL_Z = [-7, -3.6, -0.2, 3.2, 6.6, 10];
 
@@ -53,7 +53,7 @@ function sensors(room: ServerRoomLayout): Equip[] {
       name: `온습도 센서 ${room.label}-${n + 1}`,
       floor: room.floor,
       room: room.roomId,
-      pos: [rackX(room, block, i % RACKS_PER_BLOCK), F + 0.1, z],
+      pos: [rackX(room, block, i % RACKS_PER_BLOCK), room.raised + 0.1, z],
       size: [0.14, 2.0, 0.06],
       specs: [
         ['측정 위치', `${r + 1}열 ${i + 1}번 랙 전면 (상·중·하)`],
@@ -70,12 +70,12 @@ function sensors(room: ServerRoomLayout): Equip[] {
 // PDU 한 대 = 랙 22~24대. 랙 수는 차단기 극수가 아니라 전력이 정한다: 225kVA × 80%(연속 부하) × 역률 0.9 ≈ 162kW 안에
 // 담당 랙의 설계 전력 합이 들어가야 하고(GPU 열 포드는 180kW라 300kVA), 42극 분전반 2면(84극) 중 24회로만 써서 증설 여유를 둔다.
 // A는 앞열(1·3·5열) 끝, B는 뒷열(2·4·6열) 끝에 선다.
-export const pduId = (sys: 'a' | 'b', room: ServerRoomLayout, n: number) => `pdu-${sys}${room.label === 'A' ? 1 : 2}-${n}`;
+export const pduId = (sys: 'a' | 'b', room: ServerRoomLayout, n: number) => `pdu-${sys}${room.num}-${n}`;
 export const pduIndex = (pod: number, block: number) => (block === EXPANSION_BLOCK ? 7 + pod : pod * 2 + block + 1);
 
 function pdus(room: ServerRoomLayout): Equip[] {
   const out: Equip[] = [];
-  const rn = room.label === 'A' ? 1 : 2;
+  const rn = room.num;
   for (let pod = 0; pod < 3; pod++) {
     for (let block = 0; block < room.blocks.length; block++) {
       const n = pduIndex(pod, block);
@@ -85,7 +85,7 @@ function pdus(room: ServerRoomLayout): Equip[] {
       // 담당 랙의 설계 전력 합으로 PDU 용량을 고른다 (GPU 열이 있는 포드는 300kVA)
       const racks = RACKS.filter((r) => r.serverRoom === room.label && r.pod === pod && r.block === block && r.feed === 'AB');
       const design = racks.reduce((sum, r) => sum + r.designKw, 0);
-      const kva = design <= 162 ? 225 : 300;
+      const kva = [225, 300, 400].find((k) => k * 0.8 * 0.9 >= design) ?? 400;
       for (const sys of ['a', 'b'] as const) {
         const row = ROW_OFFSETS[pod * 2 + (sys === 'a' ? 0 : 1)];
         const S = sys.toUpperCase();
@@ -96,7 +96,7 @@ function pdus(room: ServerRoomLayout): Equip[] {
             name: `PDU-${S}${rn}-${n}`,
             floor: room.floor,
             room: room.roomId,
-            pos: [x, F, room.cz + row.dz],
+            pos: [x, room.raised, room.cz + row.dz],
             size: [0.8, 2.0, 0.9],
             rotY: side * (Math.PI / 2),
             system: `${S}계통`,
@@ -116,6 +116,8 @@ function pdus(room: ServerRoomLayout): Equip[] {
   // 블록 사이 이동 통로를 막지 않도록 6열 남쪽 냉복도 건너 남쪽 벽에 STS · PDU-S를 나란히 세운다(앞면이 북쪽, 앞 작업 공간 2m 이상).
   // STS 출력부터는 단일 경로라 STS · PDU-S · rPDU 어느 하나가 멈춰도 이 랙들은 꺼진다.
   const racksS = RACKS.filter((r) => r.serverRoom === room.label && r.feed === 'STS');
+  // 단일전원 랙이 없는 서버실(전 구역 코로케이션인 C)은 STS를 두지 않는다. 코로케이션은 이중전원 장비를 계약 조건으로 둔다
+  if (racksS.length === 0) return out;
   const sx = racksS.reduce((s, r) => s + r.x, 0) / racksS.length;
   const sz = 11.4;
   const kwS = racksS.reduce((s, r) => s + r.designKw, 0);
@@ -126,12 +128,12 @@ function pdus(room: ServerRoomLayout): Equip[] {
       name: `STS-${rn}`,
       floor: room.floor,
       room: room.roomId,
-      pos: [sx - 0.45, F, sz],
+      pos: [sx - 0.45, room.raised, sz],
       size: [0.8, 2.0, 0.8],
       rotY: Math.PI,
       system: 'A/B 선택',
       specs: [
-        ['입력', 'UPS-A 출력(우선) / UPS-B 출력(대체), 3상 380V'],
+        ['입력', `UPS-A${rn} 출력(우선) / UPS-B${rn} 출력(대체), 3상 380V`],
         ['절체 시간', '4~8ms (반도체, 두 입력 위상 동기 시)'],
         ['정격', '100A (바닥형 STS 최소 정격대, 단일전원 랙 증설 여유)'],
         ['공급', `PDU-S${rn} (단일 경로)`],
@@ -143,7 +145,7 @@ function pdus(room: ServerRoomLayout): Equip[] {
       name: `PDU-S${rn}`,
       floor: room.floor,
       room: room.roomId,
-      pos: [sx + 0.45, F, sz],
+      pos: [sx + 0.45, room.raised, sz],
       size: [0.8, 2.0, 0.6],
       rotY: Math.PI,
       system: 'STS 출력',
@@ -157,6 +159,60 @@ function pdus(room: ServerRoomLayout): Equip[] {
   );
   return out;
 }
+
+// 공조 동력반 배분: 같은 역할의 설비를 끝 번호의 홀짝으로 A · B 동력반에 번갈아 물린다 (crah-a3 → 3 → A)
+export const mccOf = (id: string): 'a' | 'b' => (Number(/(\d+)$/.exec(id)?.[1] ?? 1) % 2 === 1 ? 'a' : 'b');
+
+// 서버실별 항온항습기 구성 (벽을 따라 6자리, N+1). 위층으로 갈수록 냉각 효율이 낮은 방식이다.
+//   A(3F): 수냉식 6대 · 이중마루 · 열복도 봉쇄
+//   B(4F): 수냉식 3대 + 공냉식 3대를 번갈아 · 이중마루 · 봉쇄 없음
+//   C(5F): 공냉식 전면 토출 6대 · 이중마루 없음 · 봉쇄 없음 (기기가 서버실로 바로 불어 넣는다)
+const UNIT_PLAN: Record<RoomLabel, TypeId[]> = {
+  A: ['crah', 'crah', 'crah', 'crah', 'crah', 'crah'],
+  B: ['crah', 'crac', 'crah', 'crac', 'crah', 'crac'],
+  C: ['cracFront', 'cracFront', 'cracFront', 'cracFront', 'cracFront', 'cracFront'],
+};
+const UNIT_NAME: Record<string, string> = { crah: '항온항습기(수냉식)', crac: '항온항습기(공냉식)', cracFront: '항온항습기(공냉식 전면 토출)' };
+export const SUPPLY_BY_ROOM: Record<RoomLabel, number> = { A: 20, B: 18, C: 16 };
+// 항온항습기 1대 냉각 용량 (kW)
+export const UNIT_KW: Record<string, number> = { crah: 150, crac: 140, cracFront: 180 };
+
+function coolingUnits(sr: ServerRoomLayout): Equip[] {
+  return UNIT_PLAN[sr.label].map((type, i) => {
+    const tag = `${sr.label.toLowerCase()}${i + 1}`;
+    const id = `${type === 'crah' ? 'crah' : 'crac'}-${tag}`;
+    const front = type === 'cracFront';
+    const specs: [string, string][] =
+      type === 'crah'
+        ? [
+            ['냉각 용량', '150kW (≈43 USRT)'],
+            ['풍량', '37,500m³/h'],
+            ['급기 설정', `${SUPPLY_BY_ROOM[sr.label]}°C`],
+            ['취출', '하향 → 이중마루 하부'],
+            ['냉수', '공급 7°C / 환수 12°C (냉수 헤더)'],
+          ]
+        : [
+            ['냉각 용량', front ? '180kW (≈51 USRT)' : '140kW (≈40 USRT)'],
+            ['풍량', front ? '48,000m³/h' : '35,000m³/h'],
+            ['급기 설정', `${SUPPLY_BY_ROOM[sr.label]}°C`],
+            ['취출', front ? '전면 수평 토출 → 서버실로 바로 (이중마루 없음), 상부 흡입' : '하향 → 이중마루 하부'],
+            ['짝', `실외기-${tag.toUpperCase()} (냉매 배관, 1:1)`],
+          ];
+    return E({
+      id,
+      type,
+      name: `${UNIT_NAME[type]}-${tag.toUpperCase()}`,
+      floor: sr.floor,
+      room: sr.roomId,
+      pos: [sr.unitWall * 19.0, 0, COOL_Z[i]],
+      size: [2.0, sr.raised + (front ? 2.4 : 2.0), 1.0],
+      rotY: -sr.unitWall * (Math.PI / 2),
+      system: 'N+1',
+      specs: [...specs, ['동력', mccOf(id) === 'a' ? '공조 동력반 A' : '공조 동력반 B']],
+    });
+  });
+}
+const EQUIPMENT_COOL = SERVER_ROOMS.flatMap(coolingUnits);
 
 export const EQUIPMENT: Equip[] = [
   // ════════ B1 ════════
@@ -247,9 +303,9 @@ export const EQUIPMENT: Equip[] = [
     specs: [
       ['형식', '몰드형'],
       ['변압', '22.9kV → 380/220V'],
-      ['용량', '2,000kVA (전체 부하 단독 감당)'],
+      ['용량', '3,500kVA (시설 전체 부하 단독 감당)'],
       ['효율', '≈99%'],
-      ['무부하손', '≈3kW'],
+      ['무부하손', '≈4.5kW'],
     ],
   }),
   E({
@@ -264,9 +320,9 @@ export const EQUIPMENT: Equip[] = [
     specs: [
       ['형식', '몰드형'],
       ['변압', '22.9kV → 380/220V'],
-      ['용량', '2,000kVA (전체 부하 단독 감당)'],
+      ['용량', '3,500kVA (시설 전체 부하 단독 감당)'],
       ['효율', '≈99%'],
-      ['무부하손', '≈3kW'],
+      ['무부하손', '≈4.5kW'],
     ],
   }),
   E({
@@ -279,7 +335,7 @@ export const EQUIPMENT: Equip[] = [
     size: [4.0, 2.3, 1.0],
     system: 'A계통',
     specs: [
-      ['주차단기', 'ACB 4,000A'],
+      ['주차단기', 'ACB 6,300A'],
       ['전압', '3상 4선 380/220V'],
       ['분기', 'ATS-A'],
     ],
@@ -294,7 +350,7 @@ export const EQUIPMENT: Equip[] = [
     size: [1.2, 2.3, 1.0],
     system: 'A·B 연계',
     specs: [
-      ['차단기', '연계 ACB 4,000A'],
+      ['차단기', '연계 ACB 6,300A'],
       ['평상시', '개방'],
       ['용도', 'TR 한 대 정비 시 투입 → 다른 TR이 A·B 모두 공급'],
     ],
@@ -309,7 +365,7 @@ export const EQUIPMENT: Equip[] = [
     size: [4.0, 2.3, 1.0],
     system: 'B계통',
     specs: [
-      ['주차단기', 'ACB 4,000A'],
+      ['주차단기', 'ACB 6,300A'],
       ['전압', '3상 4선 380/220V'],
       ['분기', 'ATS-B'],
     ],
@@ -324,10 +380,10 @@ export const EQUIPMENT: Equip[] = [
     size: [1.4, 2.3, 1.0],
     system: 'A계통',
     specs: [
-      ['정격 전류', '2,500A'],
+      ['정격 전류', '5,000A'],
       ['절체', '상용(저압 배전반 A) ⇄ 발전기 모선'],
       ['절체 시간', '수 초 (기계식)'],
-      ['공급', 'UPS-A, 공조 동력반 A'],
+      ['공급', 'UPS-A1 · A2 · A3, 공조 동력반 A'],
     ],
   }),
   E({
@@ -340,8 +396,8 @@ export const EQUIPMENT: Equip[] = [
     size: [2.4, 2.1, 0.8],
     system: 'A계통',
     specs: [
-      ['정격', '1,200A'],
-      ['공급 대상', '항온항습기 1·3·5번, 실외기 1·3·5번, 냉동기-1·3, 펌프 1·3번, 냉각탑-1·3'],
+      ['정격', '1,600A'],
+      ['공급 대상', '서버실마다 홀수 자리 항온항습기 · 짝 실외기, 냉동기-1·3, 펌프 1·3번, 냉각탑-1·3'],
       ['특징', 'UPS 미경유 (ATS 하류)'],
     ],
   }),
@@ -355,8 +411,8 @@ export const EQUIPMENT: Equip[] = [
     size: [2.4, 2.1, 0.8],
     system: 'B계통',
     specs: [
-      ['정격', '1,200A'],
-      ['공급 대상', '항온항습기 2·4·6번, 실외기 2·4·6번, 냉동기-2, 펌프 2번, 냉각탑-2'],
+      ['정격', '1,600A'],
+      ['공급 대상', '서버실마다 짝수 자리 항온항습기 · 짝 실외기, 냉동기-2·4, 펌프 2·4번, 냉각탑-2·4'],
       ['특징', 'UPS 미경유 (ATS 하류)'],
     ],
   }),
@@ -370,72 +426,45 @@ export const EQUIPMENT: Equip[] = [
     size: [1.4, 2.3, 1.0],
     system: 'B계통',
     specs: [
-      ['정격 전류', '2,500A'],
+      ['정격 전류', '5,000A'],
       ['절체', '상용(저압 배전반 B) ⇄ 발전기 모선'],
       ['절체 시간', '수 초 (기계식)'],
-      ['공급', 'UPS-B, 공조 동력반 B'],
+      ['공급', 'UPS-B1 · B2 · B3, 공조 동력반 B'],
     ],
   }),
-  E({
-    id: 'gen-1',
-    type: 'generator',
-    name: '비상 발전기-1',
-    floor: 'B1',
-    room: 'b1-gen',
-    pos: [-13, 0, 3.8],
-    size: [6.0, 2.6, 2.2],
-    system: 'N+1',
-    specs: [
-      ['연료', '디젤(경유)'],
-      ['출력', '2,000kW (2,500kVA) 380V'],
-      ['기동 시간', '≤10초 (전압·주파수 확립)'],
-      ['운전', '발전기-2와 병렬'],
-    ],
-  }),
-  E({
-    id: 'gen-2',
-    type: 'generator',
-    name: '비상 발전기-2',
-    floor: 'B1',
-    room: 'b1-gen',
-    pos: [-13, 0, 8.8],
-    size: [6.0, 2.6, 2.2],
-    system: 'N+1',
-    specs: [
-      ['연료', '디젤(경유)'],
-      ['출력', '2,000kW (2,500kVA) 380V'],
-      ['기동 시간', '≤10초 (전압·주파수 확립)'],
-      ['운전', '발전기-1과 병렬'],
-    ],
-  }),
-  E({
-    id: 'fuel-1',
-    type: 'fuelTank',
-    name: '서비스 탱크-1',
-    floor: 'B1',
-    room: 'b1-gen',
-    pos: [-5.6, 0, 3.8],
-    size: [2.4, 1.6, 1.4],
-    specs: [
-      ['용량', '1,000L'],
-      ['운전 가능', '약 2시간 (발전기-1 정격)'],
-      ['보충', '연료 저장탱크에서 자동 이송'],
-    ],
-  }),
-  E({
-    id: 'fuel-2',
-    type: 'fuelTank',
-    name: '서비스 탱크-2',
-    floor: 'B1',
-    room: 'b1-gen',
-    pos: [-5.6, 0, 8.8],
-    size: [2.4, 1.6, 1.4],
-    specs: [
-      ['용량', '1,000L'],
-      ['운전 가능', '약 2시간 (발전기-2 정격)'],
-      ['보충', '연료 저장탱크에서 자동 이송'],
-    ],
-  }),
+  // 비상 발전기 3대 (N+1): 2대만으로 시설 전체 부하를 감당한다. 발전기마다 서비스 탱크 1개
+  ...[2.4, 6.0, 9.6].flatMap((z, i): Equip[] => [
+    E({
+      id: `gen-${i + 1}`,
+      type: 'generator',
+      name: `비상 발전기-${i + 1}`,
+      floor: 'B1',
+      room: 'b1-gen',
+      pos: [-13, 0, z],
+      size: [6.0, 2.6, 2.2],
+      system: 'N+1',
+      specs: [
+        ['연료', '디젤(경유)'],
+        ['출력', '2,000kW (2,500kVA) 380V'],
+        ['기동 시간', '≤10초 (전압·주파수 확립)'],
+        ['운전', '발전기 3대 병렬 (1대 예비분)'],
+      ],
+    }),
+    E({
+      id: `fuel-${i + 1}`,
+      type: 'fuelTank',
+      name: `서비스 탱크-${i + 1}`,
+      floor: 'B1',
+      room: 'b1-gen',
+      pos: [-5.6, 0, z],
+      size: [2.4, 1.6, 1.4],
+      specs: [
+        ['용량', '1,000L'],
+        ['운전 가능', `약 2시간 (발전기-${i + 1} 정격)`],
+        ['보충', '연료 저장탱크에서 자동 이송'],
+      ],
+    }),
+  ]),
   E({
     id: 'fuel-main',
     type: 'fuelTank',
@@ -447,11 +476,11 @@ export const EQUIPMENT: Equip[] = [
     system: '공용',
     specs: [
       ['용량', '40,000L'],
-      ['운전 가능', '약 40시간 (발전기 2대 정격), 실제 부하에서는 더 김'],
+      ['운전 가능', '약 40시간 (발전기 2대 정격 운전 기준), 실제 부하에서는 더 김'],
     ],
   }),
   // 냉동기실
-  ...[-6, -1, 4].flatMap((z, i): Equip[] => [
+  ...[-7.5, -3, 1.5, 6].flatMap((z, i): Equip[] => [
     E({
       id: `chiller-${i + 1}`,
       type: 'chiller',
@@ -506,7 +535,7 @@ export const EQUIPMENT: Equip[] = [
     name: '판형 열교환기',
     floor: 'B1',
     room: 'b1-chiller',
-    pos: [14, 0, 9.4],
+    pos: [14, 0, 10.2],
     size: [2.4, 2.2, 1.2],
     specs: [
       ['열교환 용량', '400kW'],
@@ -573,79 +602,58 @@ export const EQUIPMENT: Equip[] = [
       ['기동 로직', '교차회로 (감지기 A AND B)'],
       ['방출 지연', '20~30초'],
       ['하위 구성품', '방출표시등, 수동조작함·방출지연 스위치 (각 방호구역 출입문 외부)'],
-      ['담당', '2F UPS실·배터리실, 3F 서버실 A, 4F 서버실 B'],
+      ['담당', '2F UPS실·배터리실, 3F 서버실 A, 4F 서버실 B, 5F 서버실 C'],
     ],
   }),
 
   // ════════ 2F ════════
-  E({
-    id: 'ups-a',
-    type: 'ups',
-    name: 'UPS-A',
-    floor: '2F',
-    room: '2f-ups-a',
-    pos: [-12, 0, -9.1],
-    size: [5.0, 2.0, 1.0],
-    system: 'A계통 (2N)',
-    specs: [
-      ['방식', '온라인 이중변환'],
-      ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
-      ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 A계통 (PDU-A1-1~9, PDU-A2-1~9, STS-1·2 우선 입력)'],
-      ['출력 동기', 'UPS-B와 출력 위상 동기(LBS): STS가 위상 차이 없이 바로 절체하도록'],
-      ['권장 부하율', '≤50% (2N)'],
-    ],
-  }),
-  E({
-    id: 'ups-b',
-    type: 'ups',
-    name: 'UPS-B',
-    floor: '2F',
-    room: '2f-ups-b',
-    pos: [12, 0, -9.1],
-    size: [5.0, 2.0, 1.0],
-    system: 'B계통 (2N)',
-    specs: [
-      ['방식', '온라인 이중변환'],
-      ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
-      ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 B계통 (PDU-B1-1~9, PDU-B2-1~9, STS-1·2 대체 입력)'],
-      ['출력 동기', 'UPS-A와 출력 위상 동기(LBS): STS가 위상 차이 없이 바로 절체하도록'],
-      ['권장 부하율', '≤50% (2N)'],
-    ],
-  }),
-  E({
-    id: 'bat-a',
-    type: 'battery',
-    name: '리튬이온 배터리 A',
-    floor: '2F',
-    room: '2f-bat-a',
-    pos: [-12, 0, 6.5],
-    size: [9.0, 2.0, 4.4],
-    system: 'A계통',
-    specs: [
-      ['종류', '리튬인산철(LFP), BMS 내장'],
-      ['용량', '300kWh'],
-      ['백업 시간', '약 13분 @ 1,350kW'],
-      ['연결', 'UPS-A 직류 링크'],
-    ],
-  }),
-  E({
-    id: 'bat-b',
-    type: 'battery',
-    name: '리튬이온 배터리 B',
-    floor: '2F',
-    room: '2f-bat-b',
-    pos: [12, 0, 6.5],
-    size: [9.0, 2.0, 4.4],
-    system: 'B계통',
-    specs: [
-      ['종류', '리튬인산철(LFP), BMS 내장'],
-      ['용량', '300kWh'],
-      ['백업 시간', '약 13분 @ 1,350kW'],
-      ['연결', 'UPS-B 직류 링크'],
-    ],
-  }),
+  // UPS · 배터리: 서버실마다 2N 한 쌍 (UPS-A1 · B1 = 서버실 A, A2 · B2 = B, A3 · B3 = C).
+  // UPS 하나가 멈춰도 그 서버실만 반대쪽 한 대로 버티고, 다른 서버실은 영향이 없다(장애 범위를 서버실로 한정).
+  // A계통 UPS는 UPS실 A, 배터리는 배터리실 A에 모으고 B계통과 방화구획을 나눈다
+  ...SERVER_ROOMS.flatMap((sr, k): Equip[] =>
+    (['a', 'b'] as const).flatMap((sys): Equip[] => {
+      const S = sys.toUpperCase();
+      const O = sys === 'a' ? 'B' : 'A';
+      const x = (sys === 'a' ? -1 : 1) * [16.5, 12, 7.5][k];
+      const sts = RACKS.some((r) => r.serverRoom === sr.label && r.feed === 'STS');
+      return [
+        E({
+          id: `ups-${sys}${sr.num}`,
+          type: 'ups',
+          name: `UPS-${S}${sr.num}`,
+          floor: '2F',
+          room: `2f-ups-${sys}`,
+          pos: [x, 0, -9.1],
+          size: [3.6, 2.0, 1.0],
+          system: `${S}계통 (2N)`,
+          specs: [
+            ['방식', '온라인 이중변환 (모듈형)'],
+            ['용량', '1,200kVA / 1,080kW'],
+            ['효율', '94~97% (부하율에 따라)'],
+            ['담당', `서버실 ${sr.label}(${sr.floor})의 ${S}계통 (PDU-${S}${sr.num}-1~9${sts ? `, STS-${sr.num} ${sys === 'a' ? '우선' : '대체'} 입력` : ''})`],
+            ...(sts ? [['출력 동기', `UPS-${O}${sr.num}와 출력 위상 동기(LBS): STS가 위상 차이 없이 바로 절체하도록`] as [string, string]] : []),
+            ['권장 부하율', '≤50% (2N)'],
+          ],
+        }),
+        E({
+          id: `bat-${sys}${sr.num}`,
+          type: 'battery',
+          name: `리튬이온 배터리 ${S}${sr.num}`,
+          floor: '2F',
+          room: `2f-bat-${sys}`,
+          pos: [x, 0, 6.5],
+          size: [3.6, 2.0, 4.4],
+          system: `${S}계통`,
+          specs: [
+            ['종류', '리튬인산철(LFP), BMS 내장'],
+            ['용량', '200kWh'],
+            ['백업 시간', '약 11분 @ 1,080kW'],
+            ['연결', `UPS-${S}${sr.num} 직류 링크`],
+          ],
+        }),
+      ];
+    }),
+  ),
   E({
     id: 'gas-system',
     type: 'gasSystem',
@@ -657,7 +665,7 @@ export const EQUIPMENT: Equip[] = [
     specs: [
       ['약제', 'HFC-227ea (예시)'],
       ['구성', '저장용기 · 기동용기 · 선택밸브 · 압력스위치'],
-      ['방호구역', 'UPS실 A/B, 배터리실 A/B, 서버실 A, 서버실 B'],
+      ['방호구역', 'UPS실 A/B, 배터리실 A/B, 서버실 A · B · C'],
     ],
   }),
   ...(['2f-ups-a', '2f-ups-b', '2f-bat-a', '2f-bat-b'] as const).map((room) => {
@@ -682,28 +690,8 @@ export const EQUIPMENT: Equip[] = [
     });
   }),
 
-  // ════════ 3F 서버실 A (공냉식) ════════
-  ...COOL_Z.map((z, i) =>
-    E({
-      id: `crac-${i + 1}`,
-      type: 'crac',
-      name: `항온항습기(공냉식)-${i + 1}`,
-      floor: '3F',
-      room: '3f-sr-a',
-      pos: [-19.0, 0, z],
-      size: [2.0, F + 2.0, 1.0],
-      rotY: Math.PI / 2,
-      system: 'N+1',
-      specs: [
-        ['냉각 용량', '140kW (≈40 USRT)'],
-        ['풍량', '35,000m³/h'],
-        ['급기 설정', '20°C'],
-        ['취출', '하향 → 이중마루 하부'],
-        ['짝', `실외기-${i + 1} (냉매 배관, 1:1)`],
-        ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],
-      ],
-    }),
-  ),
+  // ════════ 3F 서버실 A (수냉식) ════════
+  ...coolingUnits(SR_A),
   ...pdus(SR_A),
   ...sensors(SR_A),
   E({
@@ -716,6 +704,20 @@ export const EQUIPMENT: Equip[] = [
     size: [0.3, 0.1, 0.3],
     specs: [['종류', '연기감지기 (A/B 교차회로) · VESDA']],
     area: { x: [-19, 13], z: [-9, 11] },
+  }),
+  E({
+    id: 'leak-3f',
+    type: 'leakDetector',
+    name: '누수 감지기 (서버실 A)',
+    floor: '3F',
+    room: '3f-sr-a',
+    pos: [-17.2, RAISED_H + 1.0, -9.85],
+    size: [0.5, 0.4, 0.2],
+    specs: [
+      ['감지선', '항온항습기(수냉식)·냉수 배관 주변 이중마루 하부 50m'],
+      ['위치 표시', '±1m'],
+    ],
+    area: { x: [-20, -17.6], z: [-9, 11] },
   }),
   E({
     id: 'access-3f',
@@ -738,27 +740,8 @@ export const EQUIPMENT: Equip[] = [
     specs: [['보관', '30~90일']],
   }),
 
-  // ════════ 4F 서버실 B (수냉식) ════════
-  ...COOL_Z.map((z, i) =>
-    E({
-      id: `crah-${i + 1}`,
-      type: 'crah',
-      name: `항온항습기(수냉식)-${i + 1}`,
-      floor: '4F',
-      room: '4f-sr-b',
-      pos: [19.0, 0, z],
-      size: [2.0, F + 2.0, 1.0],
-      rotY: -Math.PI / 2,
-      system: 'N+1',
-      specs: [
-        ['냉각 용량', '150kW (≈43 USRT)'],
-        ['풍량', '37,500m³/h'],
-        ['급기 설정', '20°C'],
-        ['냉수', '공급 7°C / 환수 12°C (냉수 헤더)'],
-        ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],
-      ],
-    }),
-  ),
+  // ════════ 4F 서버실 B (수냉식 · 공냉식) ════════
+  ...coolingUnits(SR_B),
   ...pdus(SR_B),
   ...sensors(SR_B),
   E({
@@ -778,7 +761,7 @@ export const EQUIPMENT: Equip[] = [
     name: '누수 감지기 (서버실 B)',
     floor: '4F',
     room: '4f-sr-b',
-    pos: [17.2, F + 1.0, -9.85],
+    pos: [17.2, RAISED_H + 1.0, -9.85],
     size: [0.5, 0.4, 0.2],
     specs: [
       ['감지선', '항온항습기(수냉식)·냉수 배관 주변 이중마루 하부 50m'],
@@ -807,26 +790,63 @@ export const EQUIPMENT: Equip[] = [
     specs: [['보관', '30~90일']],
   }),
 
+  // ════════ 5F 서버실 C (공냉식 · 이중마루 없음) ════════
+  ...coolingUnits(SR_C),
+  ...pdus(SR_C),
+  ...sensors(SR_C),
+  E({
+    id: 'fd-sr-c',
+    type: 'fireDetector',
+    name: '화재 감지기 (서버실 C)',
+    floor: '5F',
+    room: '5f-sr-c',
+    pos: [3, 4.5, 1],
+    size: [0.3, 0.1, 0.3],
+    specs: [['종류', '연기감지기 (A/B 교차회로) · VESDA']],
+    area: { x: [-13, 19], z: [-9, 11] },
+  }),
+  E({
+    id: 'access-5f',
+    type: 'accessControl',
+    name: '출입통제 장치 (서버실 C 맨트랩)',
+    floor: '5F',
+    room: '5f-ante',
+    pos: [-17, 0, 1],
+    size: [2.4, 2.4, 2.2],
+    specs: [['인증', '카드 + 생체 2단계, 인터록 이중문 (고객사별 출입 인가)']],
+  }),
+  E({
+    id: 'cctv-5f',
+    type: 'cctv',
+    name: 'CCTV (서버실 C)',
+    floor: '5F',
+    room: '5f-sr-c',
+    pos: [-13.5, 4.3, -9.5],
+    size: [0.35, 0.35, 0.35],
+    specs: [['보관', '30~90일']],
+  }),
+
   // ════════ PH 옥상 ════════
-  ...COOL_Z.map((z, i) =>
+  // 실외기: 4F · 5F 공냉식 항온항습기와 1:1. 냉매 배관 길이를 줄이려고 냉매 배관 샤프트 가까이 모은다
+  ...EQUIPMENT_COOL.filter((u) => u.type === 'crac' || u.type === 'cracFront').map((u, i) =>
     E({
-      id: `cond-${i + 1}`,
+      id: u.id.replace(/^crac/, 'cond'),
       type: 'condenser',
-      name: `실외기-${i + 1}`,
+      name: `실외기-${u.id.split('-')[1].toUpperCase()}`,
       floor: 'PH',
       room: 'ph-roof',
-      pos: [-15.5, 0, z],
+      pos: [-1.5 + (i % 3) * 3.5, 0, -6.5 + Math.floor(i / 3) * 3.5],
       size: [2.4, 1.5, 2.0],
       system: 'N+1',
       specs: [
-        ['방열 용량', '≈160kW'],
+        ['방열 용량', u.type === 'cracFront' ? '≈205kW' : '≈160kW'],
         ['외기 대응', '-15~43°C'],
-        ['짝', `항온항습기(공냉식)-${i + 1} (냉매 배관, 1:1)`],
-        ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],
+        ['짝', `${u.name} (냉매 배관, 1:1)`],
+        ['동력', mccOf(u.id) === 'a' ? '공조 동력반 A' : '공조 동력반 B'],
       ],
     }),
   ),
-  ...[-4.5, 1.5, 7.5].map((z, i) =>
+  ...[-6.75, -2.25, 2.25, 6.75].map((z, i) =>
     E({
       id: `ct-${i + 1}`,
       type: 'coolingTower',
@@ -840,7 +860,7 @@ export const EQUIPMENT: Equip[] = [
         ['방열 용량', '≈440kW'],
         ['냉각수', '37°C → 32°C'],
         ['짝', `냉동기-${i + 1}, 냉각수 펌프-${i + 1}`],
-        ['동력', i === 1 ? '공조 동력반 B' : '공조 동력반 A'],
+        ['동력', i % 2 === 0 ? '공조 동력반 A' : '공조 동력반 B'],
       ],
     }),
   ),

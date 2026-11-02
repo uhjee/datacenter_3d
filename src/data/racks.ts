@@ -1,7 +1,7 @@
 // 서버실 랙. IT 장비는 추후 상세화하며, 지금은 공간(U)·전력 할당과 rPDU A/B 표시용이다.
 
 import { slotOwner, type CustomerId } from './customers';
-import { EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, RAISED_H, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId, type ServerRoomLayout } from './building';
+import { EXPANSION_BLOCK, RACK, RACKS_PER_BLOCK, ROW_OFFSETS, SERVER_ROOMS, rackX, rowFacing, type FloorId, type RoomLabel, type ServerRoomLayout } from './building';
 
 export type DeviceKind = 'server' | 'storage' | 'gpu' | 'network' | 'patch';
 
@@ -14,7 +14,7 @@ export interface Device {
 export interface Rack {
   id: string; // 예: A-3-07 (서버실-열-번호)
   name: string;
-  serverRoom: 'A' | 'B';
+  serverRoom: RoomLabel;
   floor: FloorId;
   room: string;
   row: number; // 0~5
@@ -94,7 +94,7 @@ function makeRack(sr: ServerRoomLayout, r: number, block: 0 | 1 | 2, bi: number,
     block,
     pod: Math.floor(r / 2),
     x: rackX(sr, block, bi),
-    y: RAISED_H,
+    y: sr.raised,
     z: sr.cz + ROW_OFFSETS[r].dz,
     facing: rowFacing(sr, r),
     devices,
@@ -107,8 +107,9 @@ function makeRack(sr: ServerRoomLayout, r: number, block: 0 | 1 | 2, bi: number,
 function build(): Rack[] {
   const rnd = mulberry32(20261031);
   const racks: Rack[] = [];
-  // 개소분 두 블록
+  // 개소분 두 블록 (전 구역 코로케이션인 서버실 C는 아래 고객사 칸에서 따로 만든다)
   for (const sr of SERVER_ROOMS) {
+    if (sr.label === 'C') continue;
     ROW_OFFSETS.forEach((_, r) => {
       for (let i = 0; i < RACKS_PER_BLOCK * 2; i++) {
         const block = (i < RACKS_PER_BLOCK ? 0 : 1) as 0 | 1;
@@ -122,25 +123,31 @@ function build(): Rack[] {
   }
   // 증설 블록. 개소분 배치가 바뀌지 않도록 난수열을 따로 쓴다
   // - 서버실 A: 랙은 여섯 열 모두 세웠고, 장비는 1 · 2열(첫 포드)에만 들어왔다. 나머지는 장비 입고를 기다리는 빈 랙.
-  // - 서버실 B: 고객사에 임대한다 (customers.ts). 고객사 랙만 장비가 있고, 케이지 안 예약 칸에는 랙이 없다.
+  // - 서버실 B: 임대를 기다리는 빈 랙 (미임대).
   const rndX = mulberry32(20261101);
-  for (const sr of SERVER_ROOMS)
+  for (const sr of SERVER_ROOMS) {
+    if (sr.label === 'C') continue;
     ROW_OFFSETS.forEach((_, r) => {
-      for (let bi = 0; bi < RACKS_PER_BLOCK; bi++) {
-        if (sr.label === 'A') {
-          racks.push(makeRack(sr, r, EXPANSION_BLOCK, bi, fill(ROW_KIND[r], r > 1, rndX), 'AB'));
-          continue;
-        }
-        const { customer, reserved } = slotOwner(sr.roomId, r, bi);
-        if (reserved) continue;
-        const rack = makeRack(sr, r, EXPANSION_BLOCK, bi, fill(customer?.kind ?? ROW_KIND[r], !customer, rndX), 'AB');
-        if (customer) {
+      for (let bi = 0; bi < RACKS_PER_BLOCK; bi++)
+        racks.push(makeRack(sr, r, EXPANSION_BLOCK, bi, fill(ROW_KIND[r], sr.label === 'B' || r > 1, rndX), 'AB'));
+    });
+  }
+  // 서버실 C: 세 블록 모두 고객사 케이지 (customers.ts). 고객사 랙만 세우고, 케이지 안 예약 칸에는 랙이 없다
+  const rndC = mulberry32(20261102);
+  for (const sr of SERVER_ROOMS) {
+    if (sr.label !== 'C') continue;
+    for (let block = 0; block < sr.blocks.length; block++)
+      ROW_OFFSETS.forEach((_, r) => {
+        for (let bi = 0; bi < RACKS_PER_BLOCK; bi++) {
+          const { customer } = slotOwner(sr.roomId, r, block, bi);
+          if (!customer) continue;
+          const rack = makeRack(sr, r, block as 0 | 1 | 2, bi, fill(customer.kind, false, rndC), 'AB');
           rack.customer = customer.id;
           rack.designKw = customer.designKw;
+          racks.push(rack);
         }
-        racks.push(rack);
-      }
-    });
+      });
+  }
   return racks;
 }
 

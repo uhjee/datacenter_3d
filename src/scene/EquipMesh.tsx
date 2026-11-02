@@ -2,6 +2,7 @@
 
 import { Line } from '@react-three/drei';
 import { useMemo } from 'react';
+import { raisedOf } from '../data/building';
 import type { Equip } from '../data/equipment';
 import { Box, Cyl, Led, type V3 } from './common';
 
@@ -163,22 +164,34 @@ function Battery({ e }: { e: Equip }) {
   );
 }
 
-function CoolingUnit({ e, water }: { e: Equip; water: boolean }) {
+function CoolingUnit({ e, water, front = false }: { e: Equip; water: boolean; front?: boolean }) {
   const [w, h, d] = e.size;
-  const floorH = 0.6;
+  // 이중마루가 있는 서버실은 마루 아래 받침대 + 하부 토출, 없는 서버실(전면 토출형)은 바닥에 바로 선다
+  const floorH = raisedOf(e.room);
   const bodyH = h - floorH;
-  const stripe = water ? '#22b8cf' : '#9775fa';
+  const stripe = water ? '#22b8cf' : front ? '#f783ac' : '#9775fa';
   return (
     <group>
-      {/* 이중마루 아래 받침대 + 하부 토출 */}
-      <Box position={[0, floorH / 2, 0]} size={[w * 0.95, floorH, d * 0.95]} color="#212529" opacity={0.85} />
-      <Box position={[0, floorH / 2, d / 2 + 0.01]} size={[w * 0.8, floorH * 0.7, 0.02]} color="#0b1a26" />
+      {floorH > 0 && (
+        <>
+          <Box position={[0, floorH / 2, 0]} size={[w * 0.95, floorH, d * 0.95]} color="#212529" opacity={0.85} />
+          <Box position={[0, floorH / 2, d / 2 + 0.01]} size={[w * 0.8, floorH * 0.7, 0.02]} color="#0b1a26" />
+        </>
+      )}
       {/* 본체 */}
       <Box position={[0, floorH + bodyH / 2, 0]} size={[w, bodyH, d]} color="#e3e6ea" roughness={0.5} />
-      {/* 전면 그릴 */}
-      {[0.2, 0.45, 0.7].map((k) => (
-        <Box key={k} position={[0, floorH + bodyH * k, d / 2 + 0.005]} size={[w * 0.82, bodyH * 0.18, 0.01]} color="#adb5bd" />
-      ))}
+      {front ? (
+        // 전면 토출 루버: 정면 가운데 넓은 어두운 면에 가로 날개
+        <>
+          <Box position={[0, floorH + bodyH * 0.45, d / 2 + 0.006]} size={[w * 0.86, bodyH * 0.5, 0.01]} color="#1c2a36" />
+          {[0.27, 0.36, 0.45, 0.54, 0.63].map((k) => (
+            <Box key={k} position={[0, floorH + bodyH * k, d / 2 + 0.02]} size={[w * 0.84, 0.03, 0.04]} color="#adb5bd" />
+          ))}
+        </>
+      ) : (
+        /* 전면 그릴 */
+        [0.2, 0.45, 0.7].map((k) => <Box key={k} position={[0, floorH + bodyH * k, d / 2 + 0.005]} size={[w * 0.82, bodyH * 0.18, 0.01]} color="#adb5bd" />)
+      )}
       {/* 상부 흡입 그릴 */}
       <Box position={[0, h + 0.005, 0]} size={[w * 0.85, 0.01, d * 0.7]} color="#495057" />
       <Box position={[0, floorH + bodyH * 0.92, d / 2 + 0.01]} size={[w, 0.08, 0.01]} color={stripe} emissive={stripe} emissiveIntensity={0.6} />
@@ -445,6 +458,8 @@ export function EquipMesh({ e }: { e: Equip }) {
       return <Battery e={e} />;
     case 'crac':
       return <CoolingUnit e={e} water={false} />;
+    case 'cracFront':
+      return <CoolingUnit e={e} water={false} front />;
     case 'crah':
       return <CoolingUnit e={e} water />;
     case 'condenser':

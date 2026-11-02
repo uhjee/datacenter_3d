@@ -5,8 +5,8 @@ import { Html, useCursor } from "@react-three/drei";
 import { useMemo, useState, type ReactNode } from "react";
 import type { ThreeEvent } from "@react-three/fiber";
 import { CanvasTexture, DoubleSide, RepeatWrapping } from "three";
-import { RACK, RAISED_H, type FloorId } from "../data/building";
-import { CAGE_H, CUSTOMERS, type Customer } from "../data/customers";
+import { RACK, type FloorId } from "../data/building";
+import { CAGE_BASE, CAGE_H, CUSTOMERS, type Customer } from "../data/customers";
 import { RACKS } from "../data/racks";
 import { useView } from "../store/useView";
 import { htmlPortal } from "./htmlPortal";
@@ -50,7 +50,7 @@ function Fence({
   lit: boolean;
 }) {
   const len = Math.hypot(to[0] - from[0], to[1] - from[1]);
-  const h = CAGE_H - RAISED_H;
+  const h = CAGE_H - CAGE_BASE;
   const map = useMemo(() => {
     const t = tex.clone();
     t.repeat.set(len / MESH_CELL, h / MESH_CELL);
@@ -61,7 +61,7 @@ function Fence({
   const cx = (from[0] + to[0]) / 2;
   const cz = (from[1] + to[1]) / 2;
   return (
-    <group position={[cx, RAISED_H + h / 2, cz]} rotation={[0, rotY, 0]}>
+    <group position={[cx, CAGE_BASE + h / 2, cz]} rotation={[0, rotY, 0]}>
       {/* 철망 면은 누를 수 있다 (고객사 선택) */}
       <mesh renderOrder={4}>
         <planeGeometry args={[len, h]} />
@@ -102,7 +102,7 @@ function CageMesh({ c, lit }: { c: Customer; lit: boolean }) {
   const [z0, z1] = cage.z;
   const dx = cage.door === "east" ? x1 : x0;
   const zm = (z0 + z1) / 2;
-  const h = CAGE_H - RAISED_H;
+  const h = CAGE_H - CAGE_BASE;
   // 출입문이 난 면은 문 양옆 두 토막으로 나눈다
   return (
     <group>
@@ -131,7 +131,7 @@ function CageMesh({ c, lit }: { c: Customer; lit: boolean }) {
       />
       {/* 출입문: 조금 열린 문짝 */}
       <group
-        position={[dx, RAISED_H, zm - DOOR_W / 2]}
+        position={[dx, CAGE_BASE, zm - DOOR_W / 2]}
         rotation={[0, cage.door === "east" ? -0.5 : 0.5, 0]}
       >
         <mesh
@@ -175,7 +175,7 @@ function RackOutline({ c, lit }: { c: Customer; lit: boolean }) {
         return sides.map(([sx, sz, sw, sd], i) => (
           <mesh
             key={`${r.id}-${i}`}
-            position={[r.x + sx, RAISED_H + 0.012, r.z + sz]}
+            position={[r.x + sx, CAGE_BASE + 0.012, r.z + sz]}
             rotation={[-Math.PI / 2, 0, 0]}
           >
             <planeGeometry args={[sw, sd]} />
@@ -195,7 +195,7 @@ function CustomerTag({ c, hidden, lit }: { c: Customer; hidden: boolean; lit: bo
         CAGE_H + 0.35,
         (c.cage.z[0] + c.cage.z[1]) / 2,
       ]
-    : [racks[0].x, RAISED_H + RACK.h + 1.1, racks[0].z];
+    : [racks[0].x, CAGE_BASE + RACK.h + 1.1, racks[0].z];
   return (
     <Html
       portal={htmlPortal}

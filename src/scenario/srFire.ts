@@ -8,7 +8,7 @@ import { RACK_BY_ID, RACKS } from '../data/racks';
 import { ROOM_BY_ID, SERVER_ROOMS, FLOOR_BY_ID } from '../data/building';
 import type { RoomLabel } from '../data/thermal';
 import { phaseAt, sigOf, SRC_META, STARTING_COLOR, FAULT_COLOR, type EdgeState, type LogItem, type NodeState, type Phase, type ScenarioDef, type Snapshot } from './core';
-import { snapshot as outageSnapshot } from './outage';
+import { NORMAL_PARAMS, snapshot as outageSnapshot } from './outage';
 
 export interface SrFireParams {
   room: RoomLabel;
@@ -60,7 +60,6 @@ export function phases(p: SrFireParams): Phase[] {
   return list;
 }
 
-const NORMAL_PARAMS = { upsOut: { A: 0, B: 0 }, facilityKw: 0, baseInlet: { A: 0, B: 0 }, genFail: false };
 
 export function snapshot(t: number, p: SrFireParams): Snapshot {
   const base = outageSnapshot(0, NORMAL_PARAMS);

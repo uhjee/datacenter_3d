@@ -9,7 +9,9 @@ import { RECOMMENDED, type RoomLabel, type RoomTherm } from '../data/thermal';
 import { enterHeat, focusItem } from '../scene/focus';
 import { useView } from '../store/useView';
 import { InfoTip, Status, TipTable, type Tone } from './kit';
-import { useMetrics, useRoomTherm } from './useStatus';
+import { useAllRoomTherm, useMetrics } from './useStatus';
+import { ROOM_LABELS, SR_BY_LABEL, roomOfId } from '../data/building';
+import { upsId } from '../data/metrics';
 
 export interface Alert {
   key: string;
@@ -51,32 +53,38 @@ function roomAlerts(label: RoomLabel, th: RoomTherm): Alert[] {
 
 export function useAlerts(): Alert[] {
   const m = useMetrics();
-  const thA = useRoomTherm('A');
-  const thB = useRoomTherm('B');
+  const th = useAllRoomTherm();
   const snap = useView((s) => s.scenSnap);
   return useMemo(() => {
-    const out: Alert[] = [...roomAlerts('A', thA), ...roomAlerts('B', thB)];
-    if (m.upsFailPct > 1)
-      out.push({
-        key: 'ups-2n',
-        tone: 'crit',
-        area: '전력',
-        title: 'UPS 2N 깨짐',
-        detail: `한 대가 멈추면 남은 한 대가 ${pct(m.upsFailPct)}를 받아야 함`,
-        go: () => focusItem('ups-a'),
-      });
-    for (const k of ['A', 'B'] as const)
-      if (m.ups[k].pct > 0.5 && m.upsFailPct <= 1)
+    const out: Alert[] = ROOM_LABELS.flatMap((l) => roomAlerts(l, th[l]));
+    // UPS: 서버실마다 한 쌍
+    for (const l of ROOM_LABELS) {
+      const n = SR_BY_LABEL[l].num;
+      if (m.upsFail[l] > 1)
         out.push({
-          key: `ups-${k}`,
-          tone: 'warn',
+          key: `ups-2n-${l}`,
+          tone: 'crit',
           area: '전력',
-          title: `UPS-${k} 2N 권장 상한(50%) 초과`,
-          detail: `지금 ${pct(m.ups[k].pct)} · ${Math.round(m.ups[k].out)}kW`,
-          go: () => focusItem(`ups-${k.toLowerCase()}`),
+          title: `UPS-A${n} · B${n} 2N 깨짐 (서버실 ${l})`,
+          detail: `한 대가 멈추면 남은 한 대가 ${pct(m.upsFail[l])}를 받아야 함`,
+          go: () => focusItem(upsId('a', l)),
         });
+      else
+        for (const sys of ['a', 'b'] as const) {
+          const u = m.ups[upsId(sys, l)];
+          if (u.pct > 0.5)
+            out.push({
+              key: `ups-${sys}${n}`,
+              tone: 'warn',
+              area: '전력',
+              title: `UPS-${sys.toUpperCase()}${n} 2N 권장 상한(50%) 초과`,
+              detail: `지금 ${pct(u.pct)} · ${Math.round(u.out)}kW`,
+              go: () => focusItem(upsId(sys, l)),
+            });
+        }
+    }
     for (const c of CUSTOMERS) {
-      const s = coloStats(c, thB);
+      const s = coloStats(c, th[roomOfId(c.room)]);
       if (s.tone !== 'ok' || s.peakRatio > 1)
         out.push({
           key: `cu-${c.id}`,
@@ -109,7 +117,7 @@ export function useAlerts(): Alert[] {
         });
     }
     return out.sort((a, b) => ORDER[a.tone] - ORDER[b.tone]);
-  }, [m, thA, thB, snap]);
+  }, [m, th, snap]);
 }
 
 export function AlertPanel() {

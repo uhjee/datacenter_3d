@@ -10,7 +10,6 @@ import {
   coldAisleDZ,
   FLOORS,
   FOOTPRINT,
-  RAISED_H,
   ROOMS,
   SERVER_ROOMS,
   SHAFTS,
@@ -386,22 +385,30 @@ function RaisedFloor({ room, sr }: { room: Room; sr: ServerRoomLayout }) {
   }, [perf]);
   const mx = (room.x[0] + room.x[1]) / 2;
   const mz = (room.z[0] + room.z[1]) / 2;
+  // 이중마루가 없는 서버실(C): 슬래브 위 에폭시 바닥만. 타공판 · 마루 아래 공간이 없다
+  if (sr.raised === 0)
+    return (
+      <mesh position={[mx, 0.004, mz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+        <planeGeometry args={[w - 0.2, d - 0.2]} />
+        <meshStandardMaterial color="#3a4048" roughness={0.6} />
+      </mesh>
+    );
   return (
     <group>
       {/* 마루 아래 공간 표시 (측면). 투시 중에는 냉기 통로임을 강조 */}
-      <mesh position={[mx, RAISED_H / 2, mz]} raycast={() => null}>
-        <boxGeometry args={[w - 0.2, RAISED_H, d - 0.2]} />
+      <mesh position={[mx, sr.raised / 2, mz]} raycast={() => null}>
+        <boxGeometry args={[w - 0.2, sr.raised, d - 0.2]} />
         {/* 투시가 꺼져 있으면 옆면을 막아 마루 아래 기류가 비쳐 보이지 않게 한다 */}
         <meshStandardMaterial color={xray ? '#1c4f78' : '#0e2233'} transparent={xray} opacity={xray ? 0.25 : 1} depthWrite={!xray} />
       </mesh>
-      <mesh position={[mx, RAISED_H + 0.002, mz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+      <mesh position={[mx, sr.raised + 0.002, mz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
         <planeGeometry args={[w - 0.2, d - 0.2]} />
         <meshStandardMaterial map={solidTex} roughness={0.85} transparent={xray} opacity={xray ? 0.18 : 1} depthWrite={!xray} />
       </mesh>
       {/* 냉복도 타공판: 냉복도 × 블록마다 (서버실 A는 포드 사이 · 바깥 통로가 냉복도) */}
       {coldAisleDZ(sr).flatMap((dz) =>
         sr.blocks.map((bx) => (
-          <mesh key={`${dz}|${bx}`} position={[bx + BLOCK_LEN / 2, RAISED_H + 0.006, sr.cz + dz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
+          <mesh key={`${dz}|${bx}`} position={[bx + BLOCK_LEN / 2, sr.raised + 0.006, sr.cz + dz]} rotation={[-Math.PI / 2, 0, 0]} raycast={() => null}>
             <planeGeometry args={[BLOCK_LEN, AISLE_W]} />
             <meshStandardMaterial map={perfTex} roughness={0.8} transparent={xray} opacity={xray ? 0.35 : 1} depthWrite={!xray} />
           </mesh>

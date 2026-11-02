@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { EXPLODE_GAP, FLOOR_BY_ID, type FloorId } from '../data/building';
+import { EXPLODE_GAP, FLOOR_BY_ID, byRoom, type FloorId } from '../data/building';
 import type { LinkGroup } from '../data/connections';
 import type { DiagramId } from '../diagram/model';
 import type { Domain } from '../data/equipTypes';
@@ -208,7 +208,7 @@ export const useView = create<ViewState>((set, get) => ({
   airOn: false,
   airRoom: 'A',
   airCfg: DEFAULT_AIR_BY_ROOM,
-  therm: { A: computeRoom('A', DEFAULT_AIR_BY_ROOM.A), B: computeRoom('B', DEFAULT_AIR_BY_ROOM.B) },
+  therm: byRoom((l) => computeRoom(l, DEFAULT_AIR_BY_ROOM[l])),
   setAirOn: (v) => set({ airOn: v }),
   setAirRoom: (r) => set({ airRoom: r }),
   heatOn: false,
@@ -231,7 +231,7 @@ export const useView = create<ViewState>((set, get) => ({
 
   itLoad: 1,
   outdoorT: 15,
-  setItLoad: (v) => set((s) => ({ itLoad: v, therm: { A: computeRoom('A', s.airCfg.A, v), B: computeRoom('B', s.airCfg.B, v) } })),
+  setItLoad: (v) => set((s) => ({ itLoad: v, therm: byRoom((l) => computeRoom(l, s.airCfg[l], v)) })),
   setOutdoorT: (v) => set({ outdoorT: v }),
 
   rackColor: 'none',

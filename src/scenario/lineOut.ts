@@ -63,7 +63,7 @@ export function eventLog(p: ScenarioParams): LogItem[] {
   const L = tl(p);
   const items: LogItem[] = [
     { t: L.out, text: '한전 본선 정전 (선로 사고), 예비선은 살아 있음' },
-    { t: L.out, text: 'UPS-A · B 배터리 운전 전환 (0초, 랙 무정전)' },
+    { t: L.out, text: 'UPS 6대 배터리 운전 전환 (0초, 랙 무정전)' },
     { t: L.out, text: '공조 동력반 순간 정전 → 공조 설비 전부 정지' },
     { t: L.genStart, text: p.genFail ? '발전기-1 기동, 발전기-2 기동 실패' : '발전기-1 · 2 기동 신호' },
     { t: L.genRated, text: L.onGen ? '발전기 정격 도달' : '발전기 정격 도달 (상용 복전 상태라 부하 없음)' },

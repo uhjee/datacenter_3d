@@ -8,7 +8,8 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, Eye, MoveDown } from 'lucide-react';
 import { fieldStats, HEIGHT_M, HEIGHT_NAME } from '../data/heatField';
 import { RACKS } from '../data/racks';
-import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, TEMP_BANDS, tempColor, tempGradient, type AirCfg, type Containment, type RoomLabel } from '../data/thermal';
+import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, TEMP_BANDS, tempColor, tempGradient, type AirCfg, type Containment , type RoomLabel } from '../data/thermal';
+import { ROOM_LABELS, SR_BY_LABEL } from '../data/building';
 import { exitThermal, focusItem, heatView, switchRoom, viewRoom } from '../scene/focus';
 import { useView, type HeatHeight } from '../store/useView';
 import { InfoTip, TipSwatch, TipTable, ToggleTag } from './kit';
@@ -27,6 +28,9 @@ const CONTAINMENT: { key: Containment; name: string; blocks: string; room: strin
 ];
 
 const STAGES = ['급기(하부)', '이중마루 하부', '타공판', '냉복도', '랙 흡기', '랙 배기', '열복도', '천장 · 리턴', '항온항습기 흡입', '코일에서 열 전달'];
+// 이중마루가 없는 서버실(C): 기기 정면에서 바로 불어 넣는다
+const STAGES_FLOOD = ['전면 토출', '방을 건너며 섞임', '냉복도', '랙 앞', '랙 흡기', '랙 배기', '열복도', '실내 위쪽', '항온항습기 흡입', '코일에서 열 전달'];
+const stagesOf = (room: RoomLabel) => (SR_BY_LABEL[room].raised > 0 ? STAGES : STAGES_FLOOD);
 
 // 온도 척도 (히트맵 · 랙 색칠 · 기류 입자 공통)
 const LO = 15;
@@ -124,8 +128,8 @@ export function ThermalPanel() {
           />
         </b>
         <div className="seg small">
-          {(['A', 'B'] as RoomLabel[]).map((r) => (
-            <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)} title={r === 'A' ? '3F 공냉식' : '4F 수냉식'}>
+          {ROOM_LABELS.map((r) => (
+            <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)} title={`${AIR_LAYOUT[r].floor} ${SR_BY_LABEL[r].coolName}`}>
               서버실 {r} · {AIR_LAYOUT[r].floor}
             </button>
           ))}
@@ -155,7 +159,7 @@ export function ThermalPanel() {
         {heatOn && (
           <div className="seg small heat-h">
             {HEIGHT_NAME.map((n, i) => (
-              <button key={n} className={h === i ? 'on' : ''} onClick={() => s.setHeatHeight(i as HeatHeight)} title={`이중마루 위 ${HEIGHT_M[i]}m 단면`}>
+              <button key={n} className={h === i ? 'on' : ''} onClick={() => s.setHeatHeight(i as HeatHeight)} title={`${SR_BY_LABEL[room].raised > 0 ? '이중마루 위' : '바닥 위'} ${HEIGHT_M[i]}m 단면`}>
                 {n} {HEIGHT_M[i]}m
               </button>
             ))}
@@ -291,10 +295,12 @@ export function ThermalPanel() {
                     <input type="checkbox" checked={cfg.blanking} onChange={(e) => set({ blanking: e.target.checked })} />
                     블랭킹 패널
                   </label>
-                  <label className="chk">
-                    <input type="checkbox" checked={cfg.xray} onChange={(e) => set({ xray: e.target.checked })} />
-                    이중마루 투시
-                  </label>
+                  {SR_BY_LABEL[room].raised > 0 && (
+                    <label className="chk">
+                      <input type="checkbox" checked={cfg.xray} onChange={(e) => set({ xray: e.target.checked })} />
+                      이중마루 투시
+                    </label>
+                  )}
                   <label className="chk">
                     <input
                       type="checkbox"
@@ -329,7 +335,7 @@ export function ThermalPanel() {
                           ]}
                         />
                         <p>기류 입자가 지나는 길</p>
-                        <TipTable rows={STAGES.slice(0, 5).map((a, i) => [`${'①②③④⑤'[i]} ${a}`, `${'⑥⑦⑧⑨⑩'[i]} ${STAGES[i + 5]}`])} />
+                        <TipTable rows={stagesOf(room).slice(0, 5).map((a, i) => [`${'①②③④⑤'[i]} ${a}`, `${'⑥⑦⑧⑨⑩'[i]} ${stagesOf(room)[i + 5]}`])} />
                       </>
                     }
                   />
