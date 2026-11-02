@@ -1,6 +1,7 @@
 // 3D 연결선. 평상시엔 얇게, 선택 · 추적 중엔 관련 선만 굵게 하고 흐름 방향으로 움직이는 점선을 보여준다.
 // 장비 선택 · 그 장비의 상류 · 하류 추적은 점선 대신 방향이 보이는 꺾쇠(>>>)로 보여준다.
-// 계통 묶음 강조(가이드 투어 포함)는 선이 많아 꺾쇠가 어지러우므로 점선, 시나리오도 점선
+// 계통 묶음 강조(가이드 투어 포함)는 선이 많아 꺾쇠가 어지러우므로 점선, 시나리오도 점선.
+// 단, 묶음 강조 중에도 선택한 장비에 붙은 선은 꺾쇠로 남겨 그 장비의 받는 곳 · 보내는 곳 방향이 보이게 한다
 
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -128,13 +129,13 @@ export function Connections() {
         continue;
       }
       mat.color.copy(d.base);
-      let on = false;
-      if (highlight) on = line.conns.some((id) => highlight.edges.has(id));
-      else if (selectedId)
-        on = line.conns.some((id) => {
+      const touchesSel =
+        !!selectedId &&
+        line.conns.some((id) => {
           const c = CONN_BY_ID[id];
           return c.from === selectedId || c.to === selectedId;
         });
+      const on = highlight ? line.conns.some((id) => highlight.edges.has(id)) : touchesSel;
       const floorsOk = line.floors.every((f) => isFloorVisible(f, focus));
       // 기류 보기 중에는 연결선을 숨겨 기류가 잘 보이게
       obj.visible = !airOn && floorsOk && (on || (layersOn && filter[line.group]));
@@ -145,8 +146,8 @@ export function Connections() {
       mat.dashed = line.standby || d.flow;
       mat.depthTest = !on;
       obj.renderOrder = on ? 5 : 2;
-      // 꺾쇠: 장비 선택 · 추적만 (계통 묶음 강조는 점선)
-      showFlow(d, highlight?.kind === 'trace' || (!highlight && !!selectedId));
+      // 꺾쇠: 장비 선택 · 추적. 계통 묶음 강조는 점선이되 선택한 장비에 붙은 선만 꺾쇠
+      showFlow(d, highlight?.kind === 'trace' || (highlight ? touchesSel : !!selectedId));
     }
   }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap]);
 
