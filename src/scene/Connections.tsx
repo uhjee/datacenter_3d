@@ -1,6 +1,6 @@
 // 3D 연결선. 평상시엔 얇게, 선택 · 추적 중엔 관련 선만 굵게 하고 흐름 방향으로 움직이는 점선을 보여준다.
-// 장비 선택 · 그 장비의 상류 · 하류 추적 · 가이드 투어 중에는 점선 대신 방향이 보이는 꺾쇠(>>>)로 보여준다.
-// (직접 켠 묶음 강조 · 시나리오는 점선)
+// 장비 선택 · 그 장비의 상류 · 하류 추적은 점선 대신 방향이 보이는 꺾쇠(>>>)로 보여준다.
+// 계통 묶음 강조(가이드 투어 포함)는 선이 많아 꺾쇠가 어지러우므로 점선, 시나리오도 점선
 
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -105,7 +105,6 @@ export function Connections() {
   const highlight = useView((s) => s.highlight);
   const airOn = useView((s) => s.airOn || s.heatOn); // 온도 보기 중에는 연결선을 숨긴다
   const snap = useView((s) => s.scenSnap);
-  const touring = useView((s) => s.tourStep != null);
 
   // 상태가 바뀔 때만 재질 · 표시 갱신
   useEffect(() => {
@@ -146,10 +145,10 @@ export function Connections() {
       mat.dashed = line.standby || d.flow;
       mat.depthTest = !on;
       obj.renderOrder = on ? 5 : 2;
-      // 꺾쇠: 장비 선택 · 추적, 가이드 투어 중에는 묶음 강조까지 (그 밖의 묶음 강조는 점선)
-      showFlow(d, touring || highlight?.kind === 'trace' || (!highlight && !!selectedId));
+      // 꺾쇠: 장비 선택 · 추적만 (계통 묶음 강조는 점선)
+      showFlow(d, highlight?.kind === 'trace' || (!highlight && !!selectedId));
     }
-  }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap, touring]);
+  }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap]);
 
   const lastY = useRef('');
   useFrame(({ invalidate }, dt) => {
