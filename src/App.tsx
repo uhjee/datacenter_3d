@@ -7,7 +7,7 @@ import { htmlPortal } from './scene/htmlPortal';
 import { LabelOverlay } from './scene/HoverLabel';
 import { Scene } from './scene/Scene';
 import { InfoPanel } from './ui/InfoPanel';
-import { ThermalPanel } from './ui/ThermalPanel';
+import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
 import { startTour } from './ui/Tour';
@@ -117,6 +117,7 @@ export function App() {
           <TraceBanner />
           <Toast />
           <ThermalPanel />
+          <SupplyCard />
           <FloorBar />
           <CameraButtons />
         </div>

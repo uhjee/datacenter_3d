@@ -3675,7 +3675,25 @@ button.co-tr:hover {
 .thermal-panel .heat-h button {
   flex: 1;
 }
-/* 온도 카드 머리글의 지금 서버실 이름 (서버실 전환은 층 이동 막대) */
+/* 급기 · 수치 카드 (3D 오른쪽 아래). 왼쪽 위 온도 카드와 같은 모양 */
+.air-panel.supply-card {
+  top: auto;
+  left: auto;
+  right: 10px; /* 오른쪽 위 카메라 막대와 같은 오른쪽 선 */
+  bottom: 10px;
+  width: 300px;
+  max-height: calc(100% - 242px); /* 위쪽 카메라 막대(약 222px) 아래까지만, 넘치면 스크롤 */
+}
+.supply-card .air-body h5:first-child {
+  margin-top: 2px;
+  display: flex;
+  align-items: baseline;
+}
+.supply-card .supply-sum {
+  margin-left: auto;
+  font-weight: 400;
+}
+/* 온도 카드 · 급기 카드 머리글의 지금 서버실 이름 (서버실 전환은 층 이동 막대) */
 .air-panel header .room-name {
   flex: 1;
   min-width: 0;

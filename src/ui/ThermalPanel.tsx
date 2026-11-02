@@ -2,7 +2,8 @@
 // 서버실 전환은 왼쪽 층 이동 막대(3F · 4F · 5F)가 맡고, 카드 머리글에는 지금 서버실 이름만 둔다
 //   보기: 히트맵 · 기류 입자 (둘 중 하나는 켜 둔다) · 시점(위에서 / 통로 단면) · 단면 높이 · 온도 바 · 요약 한 줄
 //   ⚙ 보기 옵션: 불투명도 · 넘는 곳만 · 랙 흡기 온도 색 · 이중마루 투시
-//   공조 조건 (펼침, 기본 접힘): 급기 설정 온도 · 컨테인먼트 · 블랭킹 · 플레넘과 그 결과 수치 → 조건을 바꾸며 결과를 바로 본다
+//   공조 조건 (펼침, 기본 접힘): 컨테인먼트 · 블랭킹 · 플레넘
+// 급기 온도 · 수치는 따로 떼어 3D 오른쪽 아래 카드(SupplyCard)에 둔다 → 급기를 바꾸며 히트맵과 수치를 함께 본다
 
 import { useMemo, useState } from 'react';
 import { ChevronDown, Columns3, MoveDown, Settings2 } from 'lucide-react';
@@ -63,6 +64,7 @@ const bandRange = (b: (typeof TEMP_BANDS)[number]) =>
 // 보기 옵션 · 공조 조건의 열림 상태 (이번 화면 동안 기억)
 let optsOpen = false;
 let condOpen = false;
+let supplyOpen = false;
 
 export function ThermalPanel() {
   const airOn = useView((s) => s.airOn);
@@ -112,8 +114,6 @@ export function ThermalPanel() {
   };
   const cont = CONTAINMENT.find((c) => c.key === cfg.containment)!;
   const plenum = cfg.plenum || cfg.containment === 'HAC';
-  const loadPct = Math.round((th.loadKw / th.capKw) * 100);
-  const dT = +(th.returnT - cfg.supply).toFixed(1);
 
   return (
     <div className="air-panel thermal-panel">
@@ -278,22 +278,17 @@ export function ThermalPanel() {
           )}
         </div>
 
-        {/* 공조 조건: 바꾸면 결과(히트맵 · 수치)가 바로 달라진다 */}
+        {/* 공조 조건: 바꾸면 히트맵 · 오른쪽 아래 수치가 바로 달라진다 */}
         <button className={`air-more${cond ? ' open' : ''}`} aria-expanded={cond} onClick={toggleCond}>
           <span className="air-more-t">공조 조건</span>
           <span className="air-more-sum num">
-            급기 {cfg.supply}°C · {cont.short} · 블랭킹 {cfg.blanking ? '있음' : '없음'}
+            {cont.short} · 블랭킹 {cfg.blanking ? '있음' : '없음'} · 플레넘 {plenum ? '있음' : '없음'}
           </span>
           <ChevronDown className="k-chev" size={14} />
         </button>
 
         {cond && (
           <div className="th-cond">
-            <h5>
-              급기 설정 온도 <b className="num">{cfg.supply}°C</b>
-            </h5>
-            <input className="range" type="range" min={16} max={26} step={0.5} value={cfg.supply} onChange={(e) => set({ supply: +e.target.value })} />
-
             <h5>
               컨테인먼트
               <InfoTip
@@ -325,34 +320,78 @@ export function ThermalPanel() {
               <ToggleTag on={cfg.blanking} onToggle={() => set({ blanking: !cfg.blanking })} label="블랭킹 패널" color="#63e6be" />
               <ToggleTag on={plenum} onToggle={() => set({ plenum: !cfg.plenum })} label="천장 리턴 플레넘" color="#63e6be" disabled={cfg.containment === 'HAC'} />
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
-            <h5>
-              결과
-              <InfoTip
-                text={
-                  <>
-                    <TipTable
-                      head={['수치', '뜻', '좋은 쪽']}
-                      rows={[
-                        ['환기 − 급기', '항온항습기로 돌아오는 공기와 내보내는 공기의 온도 차. 같은 바람으로 옮기는 열의 양', '클수록'],
-                        ['재순환', '랙 배기가 다시 흡기로 돌아오는 비율 (흡기 온도를 올림)', '작을수록'],
-                        ['바이패스', '찬 공기가 랙을 거치지 않고 그냥 돌아가는 비율 (환기 − 급기 차이를 줄임)', '작을수록'],
-                        ['열부하 / 냉각 용량', '1대를 예비로 뺀(N+1) 냉각 용량 대비 지금 열부하', '100% 이하'],
-                      ]}
-                    />
-                    <p>기류 입자가 지나는 길</p>
-                    <TipTable rows={stagesOf(room).slice(0, 5).map((a, i) => [`${'①②③④⑤'[i]} ${a}`, `${'⑥⑦⑧⑨⑩'[i]} ${stagesOf(room)[i + 5]}`])} />
-                  </>
-                }
-              />
-            </h5>
-            <div className="air-metrics">
-              <Metric name="평균 흡기" value={`${th.avgInlet}°C`} color={tempColor(th.avgInlet)} />
-              <Metric name="권장 초과 랙" value={`${th.over} / ${th.loaded}`} color={th.over ? STATUS_META.warn.color : STATUS_META.ok.color} />
-              <Metric name="환기 온도" value={`${th.returnT}°C`} sub={`급기와 차이 ${dT}°C`} />
-              <Metric name="재순환 · 바이패스" value={`${Math.round(th.recirc * 100)}% · ${Math.round(th.bypass * 100)}%`} />
-              <Metric name="열부하 / 냉각 용량" value={`${th.loadKw} / ${th.capKw}kW`} sub={`N+1 기준 ${loadPct}% · ${th.unitKw}kW × ${th.units - 1}대`} />
-            </div>
+// 급기 · 수치 카드 (3D 오른쪽 아래, 온도 보기 중). 고른 서버실의 급기 설정 온도와 공조 수치를 보여 준다
+export function SupplyCard() {
+  const airOn = useView((s) => s.airOn);
+  const heatOn = useView((s) => s.heatOn);
+  const room = useView((s) => s.airRoom);
+  const cfg = useView((s) => s.airCfg[room]);
+  const th = useRoomTherm(room);
+  const [open, setOpen] = useState(supplyOpen);
+  if (!airOn && !heatOn) return null;
+  const toggle = () => {
+    supplyOpen = !open;
+    setOpen(!open);
+  };
+  const loadPct = Math.round((th.loadKw / th.capKw) * 100);
+  const dT = +(th.returnT - cfg.supply).toFixed(1);
+
+  return (
+    <div className="air-panel supply-card">
+      <header>
+        <b>
+          급기 · 수치
+          <InfoTip
+            text={
+              <>
+                <TipTable
+                  head={['수치', '뜻', '좋은 쪽']}
+                  rows={[
+                    ['환기 − 급기', '항온항습기로 돌아오는 공기와 내보내는 공기의 온도 차. 같은 바람으로 옮기는 열의 양', '클수록'],
+                    ['재순환', '랙 배기가 다시 흡기로 돌아오는 비율 (흡기 온도를 올림)', '작을수록'],
+                    ['바이패스', '찬 공기가 랙을 거치지 않고 그냥 돌아가는 비율 (환기 − 급기 차이를 줄임)', '작을수록'],
+                    ['열부하 / 냉각 용량', '1대를 예비로 뺀(N+1) 냉각 용량 대비 지금 열부하', '100% 이하'],
+                  ]}
+                />
+                <p>기류 입자가 지나는 길</p>
+                <TipTable rows={stagesOf(room).slice(0, 5).map((a, i) => [`${'①②③④⑤'[i]} ${a}`, `${'⑥⑦⑧⑨⑩'[i]} ${stagesOf(room)[i + 5]}`])} />
+              </>
+            }
+          />
+        </b>
+        <span className="room-name">
+          서버실 {room} · {AIR_LAYOUT[room].floor}
+        </span>
+        <button className={`icon heat-fold${open ? ' open' : ''}`} onClick={toggle} title={open ? '접기' : '펼치기'} aria-expanded={open}>
+          <ChevronDown size={14} />
+        </button>
+      </header>
+      <div className="air-body">
+        <h5>
+          급기 설정 온도 <b>{cfg.supply}°C</b>
+          {!open && (
+            <span className="supply-sum num">
+              최고 흡기 <b style={{ color: tempColor(th.maxInlet) }}>{th.maxInlet}°C</b>
+            </span>
+          )}
+        </h5>
+        <input className="range" type="range" min={16} max={26} step={0.5} value={cfg.supply} onChange={(e) => useView.getState().setAirCfg(room, { supply: +e.target.value })} />
+        {open && (
+          <div className="air-metrics">
+            <Metric name="평균 흡기" value={`${th.avgInlet}°C`} color={tempColor(th.avgInlet)} />
+            <Metric name="최고 흡기" value={`${th.maxInlet}°C`} color={tempColor(th.maxInlet)} />
+            <Metric name="권장 초과 랙" value={`${th.over} / ${th.loaded}`} color={th.over ? STATUS_META.warn.color : STATUS_META.ok.color} />
+            <Metric name="환기 온도" value={`${th.returnT}°C`} sub={`급기와 차이 ${dT}°C`} />
+            <Metric name="재순환" value={`${Math.round(th.recirc * 100)}%`} />
+            <Metric name="바이패스" value={`${Math.round(th.bypass * 100)}%`} />
+            <Metric name="열부하 / 냉각 용량" value={`${th.loadKw} / ${th.capKw}kW`} sub={`N+1 기준 ${loadPct}% · ${th.unitKw}kW × ${th.units - 1}대`} />
           </div>
         )}
       </div>
