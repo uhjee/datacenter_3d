@@ -9,7 +9,7 @@ import { nodeInfo } from '../data/graph';
 import { enterHeat, focusItem, goFloor } from '../scene/focus';
 import { useView, type PanelTab } from './useView';
 
-const KEY = 'dc3d.view.v2'; // v2: 서버실 C 추가 · 냉각 방식 재배치 (v1 공조 조건은 버린다)
+const KEY = 'dc3d.view.v3'; // v3: 세 서버실 급기 20°C 통일 (이전 공조 조건은 버린다)
 const SAVED = ['layers', 'linkFilter', 'rackColor', 'viewMode', 'airCfg', 'itLoad', 'outdoorT', 'heatHeight', 'heatValue', 'heatOpacity', 'heatHotOnly'] as const;
 type SavedKey = (typeof SAVED)[number];
 

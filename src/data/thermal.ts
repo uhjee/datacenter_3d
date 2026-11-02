@@ -20,7 +20,7 @@ export interface AirCfg {
 
 export const DEFAULT_AIR: AirCfg = { containment: 'CAC', blanking: true, supply: 20, xray: true, plenum: false }; // 이중마루 아래 냉기 흐름이 보이도록 투시를 켜 둔다
 // 세 서버실 모두 랙이 등을 맞댄 안쪽 통로가 열복도, 포드 사이 · 바깥 통로가 냉복도. 서버실 A(3F)는 열복도를 봉쇄(천장 리턴으로 배출), B(4F) · C(5F)는 봉쇄 없음.
-// 봉쇄가 없으면 섞이는 열기만큼 급기를 낮춰 운전하는 것이 보통이라 B는 18°C, 이중마루도 없는 C는 16°C
+// 냉각 구조끼리 비교가 쉽도록 세 서버실 급기를 20°C로 같게 둔다 → 섞임이 큰 서버실일수록 흡기가 높다
 export const DEFAULT_AIR_BY_ROOM: Record<RoomLabel, AirCfg> = {
   A: { ...DEFAULT_AIR, containment: 'HAC', supply: SUPPLY_BY_ROOM.A },
   B: { ...DEFAULT_AIR, containment: 'none', supply: SUPPLY_BY_ROOM.B },

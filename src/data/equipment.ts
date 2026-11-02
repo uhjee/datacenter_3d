@@ -173,7 +173,7 @@ const UNIT_PLAN: Record<RoomLabel, TypeId[]> = {
   C: ['cracFront', 'cracFront', 'cracFront', 'cracFront', 'cracFront', 'cracFront'],
 };
 const UNIT_NAME: Record<string, string> = { crah: '항온항습기(수냉식)', crac: '항온항습기(공냉식)', cracFront: '항온항습기(공냉식 전면 토출)' };
-export const SUPPLY_BY_ROOM: Record<RoomLabel, number> = { A: 20, B: 18, C: 16 };
+export const SUPPLY_BY_ROOM: Record<RoomLabel, number> = { A: 20, B: 20, C: 20 };
 // 항온항습기 1대 냉각 용량 (kW)
 export const UNIT_KW: Record<string, number> = { crah: 150, crac: 140, cracFront: 180 };
 
