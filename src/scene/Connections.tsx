@@ -1,5 +1,6 @@
 // 3D 연결선. 평상시엔 얇게, 선택 · 추적 중엔 관련 선만 굵게 하고 흐름 방향으로 움직이는 점선을 보여준다.
-// 장비 하나를 선택했을 때(추적 · 시나리오 아님)와 가이드 투어 중에는 점선 대신 방향이 보이는 꺾쇠(>>>)로 보여준다.
+// 장비 선택 · 그 장비의 상류 · 하류 추적 · 가이드 투어 중에는 점선 대신 방향이 보이는 꺾쇠(>>>)로 보여준다.
+// (직접 켠 묶음 강조 · 시나리오는 점선)
 
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -145,8 +146,8 @@ export function Connections() {
       mat.dashed = line.standby || d.flow;
       mat.depthTest = !on;
       obj.renderOrder = on ? 5 : 2;
-      // 꺾쇠: 장비 하나를 선택했을 때, 가이드 투어 중에는 추적 · 그룹 강조까지 (그 밖의 추적은 점선)
-      showFlow(d, touring || (!highlight && !!selectedId));
+      // 꺾쇠: 장비 선택 · 추적, 가이드 투어 중에는 묶음 강조까지 (그 밖의 묶음 강조는 점선)
+      showFlow(d, touring || highlight?.kind === 'trace' || (!highlight && !!selectedId));
     }
   }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap, touring]);
 
