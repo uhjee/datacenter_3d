@@ -50,8 +50,9 @@ function FloorGroup({ floor }: { floor: Floor }) {
   const ref = useRef<Group>(null);
   const viewMode = useView((s) => s.viewMode);
   const focus = useView((s) => s.floorFocus);
+  const floorSet = useView((s) => s.floorSet);
   const layers = useView((s) => s.layers);
-  const visible = isFloorVisible(floor.id, focus);
+  const visible = isFloorVisible(floor.id, focus, floorSet);
   const targetY = floorWorldY(floor.id, viewMode);
 
   useFrame(({ invalidate }, dt) => {

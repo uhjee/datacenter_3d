@@ -136,17 +136,18 @@ export function activateGroup(id: string | null) {
   else frameNodes([...g.nodes]);
 }
 
-// 노드 묶음이 한 화면에 들어오도록: 가장 높은 층까지만 보이게 하고 카메라 이동
+// 노드 묶음이 한 화면에 들어오도록: 노드가 있는 층만 보이게 하고 카메라 이동
+//   한 층이면 그 층, 모든 층이면 전체, 그 사이면 걸친 층만 (여러 층 보기)
 function frameNodes(ids: string[]) {
   const s = useView.getState();
   const mode = s.viewMode;
   const min = [Infinity, Infinity, Infinity];
   const max = [-Infinity, -Infinity, -Infinity];
-  let top = 0;
+  const floors = new Set<FloorId>();
   for (const id of ids) {
     const n = nodeInfo(id);
     if (!n) continue;
-    top = Math.max(top, FLOOR_BY_ID[n.floor].index);
+    floors.add(n.floor);
     const by = floorWorldY(n.floor, mode) + n.pos[1];
     const lo = [n.pos[0] - n.size[0] / 2, by, n.pos[2] - n.size[2] / 2];
     const hi = [n.pos[0] + n.size[0] / 2, by + n.size[1], n.pos[2] + n.size[2] / 2];
@@ -155,7 +156,10 @@ function frameNodes(ids: string[]) {
       max[k] = Math.max(max[k], hi[k]);
     }
   }
-  s.setFloorFocus(top >= FLOORS.length - 1 ? null : FLOORS[top].id);
+  const shown = FLOORS.filter((f) => floors.has(f.id)).map((f) => f.id);
+  if (shown.length === 1) s.setFloorFocus(shown[0]);
+  else if (shown.length === FLOORS.length || shown.length === 0) s.setFloorFocus(null);
+  else s.setFloorSet(shown);
   const c: [number, number, number] = [(min[0] + max[0]) / 2, (min[1] + max[1]) / 2, (min[2] + max[2]) / 2];
   const r = Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]) / 2;
   s.flyTo(along(c, [-0.5, 0.62, 0.85], Math.max(14, fitDistance(r) * 1.15)), c);

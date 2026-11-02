@@ -102,6 +102,7 @@ export function Connections() {
   const layersOn = useView((s) => s.layers.links);
   const filter = useView((s) => s.linkFilter);
   const focus = useView((s) => s.floorFocus);
+  const floorSet = useView((s) => s.floorSet);
   const selectedId = useView((s) => s.selectedId);
   const highlight = useView((s) => s.highlight);
   const airOn = useView((s) => s.airOn || s.heatOn); // 온도 보기 중에는 연결선을 숨긴다
@@ -118,7 +119,7 @@ export function Connections() {
         const sc = edgeColor(st);
         if (sc) mat.color.set(sc);
         else mat.color.copy(d.base);
-        obj.visible = !airOn && layersOn && line.floors.every((f) => isFloorVisible(f, focus));
+        obj.visible = !airOn && layersOn && line.floors.every((f) => isFloorVisible(f, focus, floorSet));
         mat.opacity = st === 'none' ? 0.35 : st === 'idle' ? 0.25 : line.ret ? 0.7 : 1;
         mat.linewidth = live ? (line.ret ? 1.8 : 2.8) : 1.5;
         d.flow = live && !line.ret;
@@ -136,7 +137,7 @@ export function Connections() {
           return c.from === selectedId || c.to === selectedId;
         });
       const on = highlight ? line.conns.some((id) => highlight.edges.has(id)) : touchesSel;
-      const floorsOk = line.floors.every((f) => isFloorVisible(f, focus));
+      const floorsOk = line.floors.every((f) => isFloorVisible(f, focus, floorSet));
       // 기류 보기 중에는 연결선을 숨겨 기류가 잘 보이게
       obj.visible = !airOn && floorsOk && (on || (layersOn && filter[line.group]));
       const dim = (highlight || selectedId) && !on;
@@ -149,7 +150,7 @@ export function Connections() {
       // 꺾쇠: 장비 선택 · 추적. 계통 묶음 강조는 점선이되 선택한 장비에 붙은 선만 꺾쇠
       showFlow(d, highlight?.kind === 'trace' || (highlight ? touchesSel : !!selectedId));
     }
-  }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap]);
+  }, [drawn, layersOn, filter, focus, floorSet, selectedId, highlight, airOn, snap]);
 
   const lastY = useRef('');
   useFrame(({ invalidate }, dt) => {

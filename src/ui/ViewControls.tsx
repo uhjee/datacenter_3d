@@ -14,6 +14,7 @@ export function FloorBar() {
   const focus = useView((s) => s.floorFocus);
   const viewMode = useView((s) => s.viewMode);
   const thermal = useView((s) => s.airOn || s.heatOn);
+  const floorSet = useView((s) => s.floorSet);
   const changeMode = (m: 'stack' | 'explode') => {
     useView.getState().setViewMode(m);
     // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
@@ -25,7 +26,7 @@ export function FloorBar() {
         <IconButton icon={UnfoldVertical} label="층 벌려 보기" active={viewMode === 'explode'} onClick={() => changeMode('explode')} />
         <IconButton icon={FoldVertical} label="겹쳐 보기" active={viewMode === 'stack'} onClick={() => changeMode('stack')} />
         <span className="vc-sep h" />
-        <button className={`vc-floor${!focus ? ' on' : ''}${thermal ? ' dim' : ''}`} onClick={goOverview} title={thermal ? '온도 보기를 끄고 건물 전체 보기' : '건물 전체 보기'}>
+        <button className={`vc-floor${!focus && !floorSet ? ' on' : ''}${thermal ? ' dim' : ''}`} onClick={goOverview} title={thermal ? '온도 보기를 끄고 건물 전체 보기' : '건물 전체 보기'}>
           전체
         </button>
         {[...FLOORS].reverse().map((f) => {
@@ -33,7 +34,7 @@ export function FloorBar() {
           const room = thermal ? (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === f.id) : undefined;
           const title = !thermal ? `${f.name} · ${f.summary}` : room ? `서버실 ${room} 온도 보기 · ${SR_BY_LABEL[room].coolName}` : `${f.name} · 온도 보기를 끄고 이동`;
           return (
-            <button key={f.id} className={`vc-floor${focus === f.id ? ' on' : ''}${thermal && !room ? ' dim' : ''}`} onClick={() => goFloor(f.id as FloorId)} title={title}>
+            <button key={f.id} className={`vc-floor${focus === f.id || floorSet?.includes(f.id as FloorId) ? ' on' : ''}${thermal && !room ? ' dim' : ''}`} onClick={() => goFloor(f.id as FloorId)} title={title}>
               {f.id}
             </button>
           );

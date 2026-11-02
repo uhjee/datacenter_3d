@@ -15,7 +15,7 @@ export function LeakMark() {
   const params = useView((s) => (s.scenario?.id === 'leak' ? s.scenario.params : null));
   // 이름표 숫자는 1L 단위로만 다시 그린다
   const liters = useView((s) => (s.scenario?.id === 'leak' ? Math.round(waterAt(s.scenario.t, s.scenario.params)) : 0));
-  const shown = useView((s) => isFloorVisible('4F', s.floorFocus));
+  const shown = useView((s) => isFloorVisible('4F', s.floorFocus, s.floorSet));
   const puddle = useRef<Mesh>(null);
   const edge = useRef<Mesh>(null);
   const ring = useRef<Mesh>(null);

@@ -45,6 +45,8 @@ interface ViewState {
   setViewMode: (m: ViewMode) => void;
   floorFocus: FloorId | null; // null = 전체
   setFloorFocus: (f: FloorId | null) => void;
+  floorSet: FloorId[] | null; // 여러 층 보기 (계통 묶음 · 추적이 걸친 층만). 있으면 floorFocus보다 우선
+  setFloorSet: (fs: FloorId[]) => void;
 
   // 선택 id: 장비 id 그대로, 랙은 'rack:<id>', 샤프트는 'shaft:<id>'
   selectedId: string | null;
@@ -177,7 +179,10 @@ export const useView = create<ViewState>((set, get) => ({
   viewMode: 'explode',
   setViewMode: (m) => set({ viewMode: m }),
   floorFocus: null,
-  setFloorFocus: (f) => set({ floorFocus: f }),
+  // 층 하나 · 전체를 고르면 여러 층 보기는 풀린다
+  setFloorFocus: (f) => set({ floorFocus: f, floorSet: null }),
+  floorSet: null,
+  setFloorSet: (fs) => set({ floorFocus: null, floorSet: fs }),
 
   selectedId: null,
   hoveredId: null,
@@ -294,7 +299,8 @@ useView.subscribe((s, prev) => {
     : g
       ? { kind: 'group', nodes: g.nodes, edges: g.edges }
       : null;
-  useView.setState({ highlight });
+  // 묶음 · 추적을 끄면 그것이 고른 여러 층 보기도 함께 풀어 전체로
+  useView.setState(highlight ? { highlight } : { highlight, floorSet: null });
 });
 
 // 층의 화면상 바닥 높이 (층 벌려 보기 반영)
@@ -304,7 +310,8 @@ export function floorWorldY(floor: FloorId, mode: ViewMode) {
 }
 
 // 층을 고르면 그 층만 보인다 (위 · 아래층 모두 숨김)
-export function isFloorVisible(floor: FloorId, focus: FloorId | null) {
+export function isFloorVisible(floor: FloorId, focus: FloorId | null, floorSet: FloorId[] | null = null) {
+  if (floorSet) return floorSet.includes(floor);
   return !focus || floor === focus;
 }
 
