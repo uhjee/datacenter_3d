@@ -209,4 +209,6 @@ export const UPS_FAIL: ScenarioDef<UpsFailParams, null> = {
   scaled: [['UPS 수리', '수 시간', '약 8분']],
 };
 
-export const UPS_FAIL_COUNTS = { dual: DUAL, single: SINGLE };
+// 계통별 PDU 대수 (A · B 같음, PDU-S 제외)
+const PDU_PER_SYS = EQUIPMENT.filter((e) => e.type === 'pdu' && e.id.startsWith('pdu-a')).length;
+export const UPS_FAIL_COUNTS = { dual: DUAL, single: SINGLE, pdu: PDU_PER_SYS };

@@ -677,7 +677,7 @@ function UpsBoard({ v, side }: { v: UpsFailValues; side: 'A' | 'B' }) {
         c={v.stsOnB ? 'var(--warn)' : SRC_META.utility.color}
         s={v.stsOnB ? '4~8ms, 서버 꺼지지 않음' : '평상시 입력'}
       />
-      <Tile k={`${side}계통 PDU 12대`} v={pduText} c={pduColor} s={v.pduSrc === 'none' ? '랙 rPDU-' + side + ' 꺼짐' : undefined} />
+      <Tile k={`${side}계통 PDU ${UPS_FAIL_COUNTS.pdu}대`} v={pduText} c={pduColor} s={v.pduSrc === 'none' ? '랙 rPDU-' + side + ' 꺼짐' : undefined} />
     </div>
   );
 }

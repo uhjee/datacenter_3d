@@ -42,7 +42,7 @@ export const KIND_META: Record<ConnKind, KindMeta> = {
   dc: { name: '직류 (배터리)', color: '#ffe066', domain: 'power', group: 'power', desc: '배터리 ↔ UPS 직류 링크' },
   upsA: { name: 'UPS 출력 A', color: '#3d8bfd', domain: 'power', group: 'power', desc: '무정전 전원 A계통' },
   upsB: { name: 'UPS 출력 B', color: '#fd7e14', domain: 'power', group: 'power', desc: '무정전 전원 B계통' },
-  sts: { name: 'STS 출력', color: '#be4bdb', domain: 'power', group: 'power', desc: 'A/B 중 하나를 골라 단일전원 랙에 공급' },
+  sts: { name: 'STS 출력', color: '#be4bdb', domain: 'power', group: 'power', desc: 'A/B 중 하나를 고른 전원. STS → PDU-S → 단일전원 랙 (단일 경로)' },
   mech: { name: '공조 동력', color: '#ced4da', domain: 'power', group: 'mech', desc: '공조 설비 모터·압축기 전원 (UPS 미경유)' },
   refrig: {
     name: '냉매',
@@ -169,22 +169,24 @@ C('ats-b', 'mcc-b', 'lv', { sys: 'B' });
 // UPS · 배터리
 C('bat-a', 'ups-a', 'dc', { sys: 'A', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
 C('bat-b', 'ups-b', 'dc', { sys: 'B', note: '정전 순간부터 발전기 기동까지 직류로 공급' });
-// UPS → PDU (서버실마다 A · B 9대씩) · STS
+// UPS → PDU (서버실마다 A · B 9대씩) · STS → PDU-S
 for (const e of EQUIPMENT) {
-  if (e.type !== 'pdu') continue;
+  // PDU-S는 UPS가 아니라 STS 출력을 받는다
+  if (e.type !== 'pdu' || e.system === 'STS 출력') continue;
   const sys = e.system?.startsWith('A') ? 'A' : 'B';
   C(`ups-${sys.toLowerCase()}`, e.id, sys === 'A' ? 'upsA' : 'upsB', { sys });
 }
 for (const n of [1, 2]) {
   C('ups-a', `sts-${n}`, 'upsA', { sys: 'A', note: 'STS 우선 입력' });
   C('ups-b', `sts-${n}`, 'upsB', { sys: 'B', note: 'STS 대체 입력' });
+  C(`sts-${n}`, `pdu-s${n}`, 'sts', { note: 'STS 출력 (단일 경로)' });
 }
 
-// PDU · STS → 랙 rPDU. 랙이 속한 포드 · 블록의 PDU-A · PDU-B에서 한 회로씩
+// PDU → 랙 rPDU. 랙이 속한 포드 · 블록의 PDU-A · PDU-B에서 한 회로씩, 단일전원 랙은 PDU-S에서 한 회로
 for (const r of RACKS) {
   const sr = SERVER_ROOMS.find((k) => k.label === r.serverRoom)!;
   const rack = `rack:${r.id}`;
-  if (r.feed === 'STS') C(`sts-${r.serverRoom === 'A' ? 1 : 2}`, rack, 'sts', { note: 'rPDU (단일)' });
+  if (r.feed === 'STS') C(`pdu-s${r.serverRoom === 'A' ? 1 : 2}`, rack, 'sts', { note: 'rPDU (단일)' });
   else {
     const n = pduIndex(r.pod, r.block);
     C(pduId('a', sr, n), rack, 'upsA', { sys: 'A', note: 'rPDU-A' });

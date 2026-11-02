@@ -111,9 +111,14 @@ function pdus(room: ServerRoomLayout): Equip[] {
       }
     }
   }
-  // STS: 6열 동쪽 블록 끝 단일전원 랙 2대용. PDU-B 바깥에 선다
-  const sx = blockOuterX(room, 1) + 1.45;
-  const row = ROW_OFFSETS[5];
+  // STS → 전용 분전반(PDU-S) → 단일전원 랙 2대(6열 동쪽 블록 23·24번).
+  // 국내 관행대로 STS반과 분전반을 따로 두고, STS는 보호 효과가 큰 부하 가까이(서버실 안) 둔다.
+  // 블록 사이 이동 통로를 막지 않도록 6열 남쪽 냉복도 건너 남쪽 벽에 STS · PDU-S를 나란히 세운다(앞면이 북쪽, 앞 작업 공간 2m 이상).
+  // STS 출력부터는 단일 경로라 STS · PDU-S · rPDU 어느 하나가 멈춰도 이 랙들은 꺼진다.
+  const racksS = RACKS.filter((r) => r.serverRoom === room.label && r.feed === 'STS');
+  const sx = racksS.reduce((s, r) => s + r.x, 0) / racksS.length;
+  const sz = 11.4;
+  const kwS = racksS.reduce((s, r) => s + r.designKw, 0);
   out.push(
     E({
       id: `sts-${rn}`,
@@ -121,15 +126,32 @@ function pdus(room: ServerRoomLayout): Equip[] {
       name: `STS-${rn}`,
       floor: room.floor,
       room: room.roomId,
-      pos: [sx, F, room.cz + row.dz],
+      pos: [sx - 0.45, F, sz],
       size: [0.8, 2.0, 0.8],
-      rotY: Math.PI / 2,
+      rotY: Math.PI,
       system: 'A/B 선택',
       specs: [
-        ['입력', 'UPS-A 출력 / UPS-B 출력'],
-        ['절체 시간', '4~8ms (반도체)'],
-        ['정격', '100A'],
-        ['대상', `서버실 ${room.label} 6열 23·24번 단일전원 랙`],
+        ['입력', 'UPS-A 출력(우선) / UPS-B 출력(대체), 3상 380V'],
+        ['절체 시간', '4~8ms (반도체, 두 입력 위상 동기 시)'],
+        ['정격', '100A (바닥형 STS 최소 정격대, 단일전원 랙 증설 여유)'],
+        ['공급', `PDU-S${rn} (단일 경로)`],
+      ],
+    }),
+    E({
+      id: `pdu-s${rn}`,
+      type: 'pdu',
+      name: `PDU-S${rn}`,
+      floor: room.floor,
+      room: room.roomId,
+      pos: [sx + 0.45, F, sz],
+      size: [0.8, 2.0, 0.6],
+      rotY: Math.PI,
+      system: 'STS 출력',
+      specs: [
+        ['입력', `STS-${rn} 출력 380V (주차단기 100A)`],
+        ['용량', '66kVA (연속 부하 80% ≈ 48kW)'],
+        ['분기', `42극 분전반 1면 중 ${racksS.length}회로 사용`],
+        ['담당', `서버실 ${room.label} 6열 23·24번 단일전원 랙 ${racksS.length}대의 rPDU (설계 ${kwS}kW)`],
       ],
     }),
   );
@@ -569,7 +591,8 @@ export const EQUIPMENT: Equip[] = [
       ['방식', '온라인 이중변환'],
       ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
       ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 A계통 (PDU-A1-1~9, PDU-A2-1~9, STS-1·2)'],
+      ['담당', '서버실 A·B의 A계통 (PDU-A1-1~9, PDU-A2-1~9, STS-1·2 우선 입력)'],
+      ['출력 동기', 'UPS-B와 출력 위상 동기(LBS): STS가 위상 차이 없이 바로 절체하도록'],
       ['권장 부하율', '≤50% (2N)'],
     ],
   }),
@@ -586,7 +609,8 @@ export const EQUIPMENT: Equip[] = [
       ['방식', '온라인 이중변환'],
       ['용량', '1,500kVA / 1,350kW (모듈형, 증설 때 모듈 추가)'],
       ['효율', '94~97% (부하율에 따라)'],
-      ['담당', '서버실 A·B의 B계통 (PDU-B1-1~9, PDU-B2-1~9, STS-1·2)'],
+      ['담당', '서버실 A·B의 B계통 (PDU-B1-1~9, PDU-B2-1~9, STS-1·2 대체 입력)'],
+      ['출력 동기', 'UPS-A와 출력 위상 동기(LBS): STS가 위상 차이 없이 바로 절체하도록'],
       ['권장 부하율', '≤50% (2N)'],
     ],
   }),

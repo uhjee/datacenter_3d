@@ -41,7 +41,7 @@ export function KitPreview() {
                 { k: '용량', v: '1,200kVA / 1,080kW' },
                 { k: '효율', v: '94~97%' },
                 { k: '권장 부하율', v: '≤ 50% (2N)' },
-                { k: '담당', v: '서버실 A·B의 A계통 · PDU 12대 · STS 2대', wide: true },
+                { k: '담당', v: '서버실 A·B의 A계통 · PDU 18대 · STS 2대', wide: true },
               ]}
             />
           </Section>

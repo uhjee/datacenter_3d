@@ -81,8 +81,9 @@ function subOf(id: string) {
 
 function sysOf(id: string): 'A' | 'B' | undefined {
   const s = EQUIP_BY_ID[id]?.system ?? '';
-  if (s.startsWith('A')) return 'A';
-  if (s.startsWith('B')) return 'B';
+  // 'A/B 선택'(STS) · 'A·B 연계'(연계 ACB)는 어느 한 계통이 아니므로 'A계통' · 'B계통'만 계통 색을 칠한다
+  if (s.startsWith('A계통')) return 'A';
+  if (s.startsWith('B계통')) return 'B';
   return undefined;
 }
 
@@ -171,6 +172,8 @@ const POWER_POS: Record<string, [number, number]> = {
   'bat-b': [3.2, 6],
   'sts-1': [-1.5, 7],
   'sts-2': [1.5, 7],
+  'pdu-s1': [-1.5, 8],
+  'pdu-s2': [1.5, 8],
 };
 
 // PDU는 서버실 · 계통마다 9대씩이라 흐름도에서는 한 묶음 노드로 보여준다
@@ -185,7 +188,7 @@ const pduGroupOf = (id: string) => {
   return m ? `pdus:${m[1]}${m[2]}` : null;
 };
 
-const POWER_ROWS = ['한전 수전', '수전 · 절체 (ALTS)', '특고압 차단 (VCB)', '변압 (TR)', '저압 배전', '상용 ⇄ 발전기 절체 (ATS)', '무정전 (UPS)', '분배 (PDU · STS)', '랙 (rPDU)'];
+const POWER_ROWS = ['한전 수전', '수전 · 절체 (ALTS)', '특고압 차단 (VCB)', '변압 (TR)', '저압 배전', '상용 ⇄ 발전기 절체 (ATS)', '무정전 (UPS)', '분배 (PDU) · 절체 (STS)', '단일전원 분배 (PDU-S)', '랙 (rPDU)'];
 
 function buildPower(): Diagram {
   const nodes: DNode[] = Object.entries(POWER_POS).map(([id, [c, r]]) => equipNode(id, c * PC, r * PR));
@@ -223,11 +226,11 @@ function buildPower(): Diagram {
       ref: null,
       members: racks.map((r) => `rack:${r.id}`),
       name: `서버실 ${g.room} 랙 ${racks.length}대`,
-      sub: g.feed === 'AB' ? '이중전원 (rPDU-A·B)' : '단일전원 (STS 경유)',
+      sub: g.feed === 'AB' ? '이중전원 (rPDU-A·B)' : '단일전원 (STS · PDU-S 경유)',
       floor: racks[0].floor,
       type: 'group',
       x: g.col * PC,
-      y: 8 * PR,
+      y: 9 * PR,
       w: g.feed === 'AB' ? 150 : NODE_W,
       h: NODE_H,
     });
@@ -267,8 +270,8 @@ function buildPower(): Diagram {
   const labels: Label[] = POWER_ROWS.map((t, r) => ({ text: t, x: left, y: r * PR, anchor: 'start' }));
   const bands: Band[] = [
     { x: 4.0 * PC - 4, y: 0.55 * PR, w: 2 * PC + 8, h: 3.9 * PR, text: '비상 전원 (정전 시)' },
-    { x: -4.15 * PC, y: 6.55 * PR, w: 3.55 * PC, h: 2.0 * PR, text: '서버실 A (3F)' },
-    { x: 0.95 * PC, y: 6.55 * PR, w: 3.6 * PC, h: 2.0 * PR, text: '서버실 B (4F)' },
+    { x: -4.15 * PC, y: 6.55 * PR, w: 3.55 * PC, h: 3.0 * PR, text: '서버실 A (3F)' },
+    { x: 0.95 * PC, y: 6.55 * PR, w: 3.6 * PC, h: 3.0 * PR, text: '서버실 B (4F)' },
   ];
   return { id: 'power', flow: 'down', nodes, edges, labels, bands };
 }

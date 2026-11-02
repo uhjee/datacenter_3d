@@ -213,9 +213,9 @@ function EquipKpis({ e }: { e: Equip }) {
     );
   }
   if (e.type === 'pdu' || e.type === 'sts') {
-    const racks = outgoing(e.id)
-      .filter((c) => c.to.startsWith('rack:'))
-      .map((c) => RACK_BY_ID[c.to.slice(5)]);
+    // STS는 랙에 바로 주지 않고 PDU-S를 거치므로 한 단계 더 내려가 담당 랙을 모은다
+    const outs = e.type === 'sts' ? outgoing(e.id).flatMap((c) => outgoing(c.to)) : outgoing(e.id);
+    const racks = outs.filter((c) => c.to.startsWith('rack:')).map((c) => RACK_BY_ID[c.to.slice(5)]);
     const load = racks.reduce((s, r) => s + rackKw(r, itLoad) * (r.feed === 'AB' ? 0.5 : 1), 0);
     const kva = Number(/(\d+)kVA/.exec(e.specs.find(([k]) => k === '용량')?.[1] ?? '')?.[1] ?? 0);
     const cap = kva * 0.8 * 0.9;
@@ -226,7 +226,7 @@ function EquipKpis({ e }: { e: Equip }) {
           value={load.toFixed(1)}
           unit="kW"
           meter={cap ? { v: load / cap, color: load > cap ? 'var(--crit)' : 'var(--ok)' } : undefined}
-          sub={e.type === 'pdu' ? '이중전원 랙은 절반만' : '단일전원 랙 전부'}
+          sub={racks.some((r) => r.feed === 'AB') ? '이중전원 랙은 절반만' : '단일전원 랙 전부'}
         />
         <Kpi label="담당 랙" value={racks.length} unit="대" />
         {kva > 0 ? <Kpi label="용량" value={kva} unit="kVA" sub={`연속 ${f0(cap)}kW`} /> : <Kpi label="절체" value="4~8" unit="ms" />}
@@ -299,6 +299,9 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
   if (!rack) return null;
   const kw = rackKw(rack, itLoad);
   const from = (kind: string) => nodeName(incoming(`rack:${rack.id}`).find((c) => c.kind === kind)?.from ?? '');
+  // 단일전원 랙: rPDU ← PDU-S ← STS 순서라 STS 이름은 PDU-S의 입력에서 찾는다
+  const pduS = incoming(`rack:${rack.id}`).find((c) => c.kind === 'sts')?.from;
+  const stsName = pduS ? nodeName(incoming(pduS).find((c) => c.kind === 'sts')?.from ?? '') : '';
   const maxIn = t && t.kw > 0 ? Math.max(...t.inlet) : null;
   const pw = kw / rack.designKw;
   const cust = rack.customer ? CUSTOMER_BY_ID[rack.customer] : null;
@@ -388,7 +391,7 @@ function RackCard({ rack }: { rack: Rack | undefined }) {
           ) : (
             <div style={{ borderLeftColor: '#be4bdb' }} className="wide">
               <b>rPDU</b>
-              <small>{from('sts')} ← UPS-A/B 중 택1</small>
+              <small>{from('sts')} ← {stsName} ← UPS-A/B 중 택1</small>
               <small className="num">{circuit} · {kw.toFixed(1)}kW</small>
             </div>
           )}
