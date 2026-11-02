@@ -49,7 +49,7 @@ const bandRange = (b: (typeof TEMP_BANDS)[number]) =>
 // 카드 전체 · 세부 설정 · 급기 카드의 열림 상태 (이번 화면 동안 기억)
 let cardOpen = false;
 let detailOpen = false;
-let supplyOpen = true;
+let supplyOpen = false;
 
 export function ThermalPanel() {
   const airOn = useView((s) => s.airOn);

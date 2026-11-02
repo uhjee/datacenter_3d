@@ -3814,10 +3814,10 @@ button.co-tr:hover {
 .air-panel.supply-card {
   top: auto;
   left: auto;
-  right: 56px; /* 오른쪽 세로 카메라 막대 옆 */
+  right: 10px; /* 오른쪽 위 카메라 막대와 같은 오른쪽 선 */
   bottom: 10px;
   width: 300px;
-  max-height: calc(100% - 20px);
+  max-height: calc(100% - 242px); /* 위쪽 카메라 막대(약 222px) 아래까지만, 넘치면 스크롤 */
 }
 .supply-card header .supply-room {
   flex: 1;
