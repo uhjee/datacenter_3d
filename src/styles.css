@@ -2596,6 +2596,10 @@ button.primary:hover {
   background: var(--s3);
   color: var(--ink);
 }
+/* 온도 보기 중 서버실이 없는 층 · 전체: 누르면 온도 보기가 꺼진다 */
+.vc-floor.dim {
+  opacity: 0.4;
+}
 .vc-floor.on {
   background: var(--s3);
   color: var(--sel);
@@ -3819,11 +3823,26 @@ button.co-tr:hover {
   width: 300px;
   max-height: calc(100% - 242px); /* 위쪽 카메라 막대(약 222px) 아래까지만, 넘치면 스크롤 */
 }
-.supply-card header .supply-room {
+/* 온도 카드 · 급기 카드 머리글의 지금 서버실 이름 (서버실 전환은 층 이동 막대) */
+.air-panel header .room-name {
   flex: 1;
+  min-width: 0;
   color: var(--muted);
   font-size: 11px;
   text-align: right;
+}
+.thermal-panel header .room-name {
+  color: var(--ink);
+  font-weight: 600;
+}
+.air-panel header .room-name small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .supply-card .air-body h5:first-child {
   margin-top: 2px;

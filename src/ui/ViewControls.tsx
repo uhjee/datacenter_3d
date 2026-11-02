@@ -1,7 +1,8 @@
 // 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 화면 맞춤 · 확대 · 축소 · 조작 안내
 
 import { FoldVertical, House, Link2, Minus, Plus, Scan, UnfoldVertical } from 'lucide-react';
-import { FLOORS, type FloorId } from '../data/building';
+import { FLOORS, SR_BY_LABEL, type FloorId } from '../data/building';
+import { AIR_LAYOUT, type RoomLabel } from '../data/thermal';
 import { exitThermal, focusFloor, focusOverview, goFloor, goOverview, startTrace, switchRoom, thermalOn } from '../scene/focus';
 import { INITIAL_VIEW, useView } from '../store/useView';
 import { stopScenario } from '../scenario/ScenarioPanel';
@@ -12,6 +13,7 @@ import { IconButton, InfoTip, TipTable } from './kit';
 export function FloorBar() {
   const focus = useView((s) => s.floorFocus);
   const viewMode = useView((s) => s.viewMode);
+  const thermal = useView((s) => s.airOn || s.heatOn);
   const changeMode = (m: 'stack' | 'explode') => {
     useView.getState().setViewMode(m);
     // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
@@ -23,14 +25,19 @@ export function FloorBar() {
         <IconButton icon={UnfoldVertical} label="층 벌려 보기" active={viewMode === 'explode'} onClick={() => changeMode('explode')} />
         <IconButton icon={FoldVertical} label="겹쳐 보기" active={viewMode === 'stack'} onClick={() => changeMode('stack')} />
         <span className="vc-sep h" />
-        <button className={`vc-floor${!focus ? ' on' : ''}`} onClick={goOverview}>
+        <button className={`vc-floor${!focus ? ' on' : ''}${thermal ? ' dim' : ''}`} onClick={goOverview} title={thermal ? '온도 보기를 끄고 건물 전체 보기' : '건물 전체 보기'}>
           전체
         </button>
-        {[...FLOORS].reverse().map((f) => (
-          <button key={f.id} className={`vc-floor${focus === f.id ? ' on' : ''}`} onClick={() => goFloor(f.id as FloorId)} title={`${f.name} · ${f.summary}`}>
-            {f.id}
-          </button>
-        ))}
+        {[...FLOORS].reverse().map((f) => {
+          // 온도 보기 중: 서버실 층은 그 서버실 온도로 전환, 다른 층은 흐리게(누르면 온도 보기를 끄고 이동)
+          const room = thermal ? (Object.keys(AIR_LAYOUT) as RoomLabel[]).find((r) => AIR_LAYOUT[r].floor === f.id) : undefined;
+          const title = !thermal ? `${f.name} · ${f.summary}` : room ? `서버실 ${room} 온도 보기 · ${SR_BY_LABEL[room].coolName}` : `${f.name} · 온도 보기를 끄고 이동`;
+          return (
+            <button key={f.id} className={`vc-floor${focus === f.id ? ' on' : ''}${thermal && !room ? ' dim' : ''}`} onClick={() => goFloor(f.id as FloorId)} title={title}>
+              {f.id}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

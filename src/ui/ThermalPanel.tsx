@@ -1,4 +1,5 @@
 // 온도 카드 (3D 위 왼쪽 위, 상단 [온도]를 켰을 때). 서버실 온도에 관한 조작을 한 곳에 모은다.
+// 서버실 전환은 왼쪽 층 이동 막대(3F · 4F · 5F)가 맡고, 카드 머리글에는 지금 서버실 이름만 둔다
 //   표시: 히트맵 · 기류 입자 (둘 중 하나는 켜 둔다) · 시점(위에서 / 통로 단면)
 //   히트맵: 단면 높이 · 구간별 온도 바 · 이 단면 통계 · 표시 옵션 · 커서 위치 온도
 //   공조 조건: 컨테인먼트 · 블랭킹 · 투시 · 플레넘
@@ -10,8 +11,8 @@ import { ChevronDown, Eye, MoveDown } from 'lucide-react';
 import { fieldStats, HEIGHT_M, HEIGHT_NAME } from '../data/heatField';
 import { RACKS } from '../data/racks';
 import { AIR_LAYOUT, RECOMMENDED, statusOf, STATUS_META, TEMP_BANDS, tempColor, tempGradient, type AirCfg, type Containment , type RoomLabel } from '../data/thermal';
-import { ROOM_LABELS, SR_BY_LABEL } from '../data/building';
-import { exitThermal, focusItem, heatView, switchRoom, viewRoom } from '../scene/focus';
+import { SR_BY_LABEL } from '../data/building';
+import { exitThermal, focusItem, heatView, viewRoom } from '../scene/focus';
 import { useView, type HeatHeight } from '../store/useView';
 import { InfoTip, TipSwatch, TipTable, ToggleTag } from './kit';
 import { useHeatField, useRoomTherm } from './useStatus';
@@ -127,13 +128,10 @@ export function ThermalPanel() {
             }
           />
         </b>
-        <div className="seg small">
-          {ROOM_LABELS.map((r) => (
-            <button key={r} className={room === r ? 'on' : ''} onClick={() => switchRoom(r)} title={`${AIR_LAYOUT[r].floor} ${SR_BY_LABEL[r].coolName}`}>
-              서버실 {r} · {AIR_LAYOUT[r].floor}
-            </button>
-          ))}
-        </div>
+        <span className="room-name" title={`${SR_BY_LABEL[room].coolName} · 서버실은 왼쪽 층 이동 막대(3F · 4F · 5F)로 바꿉니다`}>
+          서버실 {room} · {AIR_LAYOUT[room].floor}
+          <small>{SR_BY_LABEL[room].coolName}</small>
+        </span>
         <button className={`icon heat-fold${card ? ' open' : ''}`} onClick={toggleCard} title={card ? '접기' : '펼치기'} aria-expanded={card}>
           <ChevronDown size={14} />
         </button>
@@ -369,7 +367,7 @@ export function SupplyCard() {
             }
           />
         </b>
-        <span className="supply-room">
+        <span className="room-name">
           서버실 {room} · {AIR_LAYOUT[room].floor}
         </span>
         <button className={`icon heat-fold${open ? ' open' : ''}`} onClick={toggle} title={open ? '접기' : '펼치기'} aria-expanded={open}>
