@@ -1,4 +1,4 @@
-// 3D 연결선. 평상시엔 얇게, 선택 · 추적 중엔 관련 선만 굵게 하고 흐름 방향으로 움직이는 점선을 보여준다.
+// 3D 연결선. 평상시엔 얇게, 선택 · 추적 중엔 관련 선만 굵게 하고 흐름 방향으로 움직이는 꺾쇠(>>>)를 보여준다.
 
 import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
@@ -19,6 +19,27 @@ interface Drawn {
   mat: LineMaterial;
   base: Color; // 원래 색 (시나리오가 끝나면 되돌림)
   flow: boolean; // 흐름 애니메이션 중
+  chev: Line2; // 흐름 방향 꺾쇠 (같은 좌표를 쓰는 덧그림 선)
+  chevMat: LineMaterial;
+}
+
+// 꺾쇠 크기 (월드 단위 m): 확대 · 축소해도 모양 비율이 그대로
+const CHEV = { width: 0.55, period: 1.1, tip: 0.7, slope: 1.5, thick: 0.14 };
+
+// 점선 재질의 끊김 판정을 꺾쇠 무늬로 바꾼다. 화살 끝은 선 거리가 커지는 쪽(흐름 방향)
+//   t: 한 주기 안의 위치, x: 선 중심에서 옆으로 떨어진 거리 → 끝(tip)에서 x만큼 뒤로 물러난 자리가 꺾쇠 팔
+function chevronMaterial(color: Color) {
+  const mat = new LineMaterial({ color, linewidth: CHEV.width, worldUnits: true, dashed: true, dashSize: CHEV.period, gapSize: 0, transparent: true, depthWrite: false, depthTest: false });
+  mat.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace(
+      'if ( mod( vLineDistance + dashOffset, dashSize + gapSize ) > dashSize ) discard; // todo - FIX',
+      `float chT = mod( vLineDistance + dashOffset, dashSize + gapSize );
+				float chX = abs( vUv.x ) * linewidth * 0.5;
+				if ( abs( chT - ( ${(CHEV.period * CHEV.tip).toFixed(2)} - chX * ${CHEV.slope.toFixed(2)} ) ) > ${(CHEV.thick / 2).toFixed(3)} ) discard;`,
+    );
+  };
+  mat.customProgramCacheKey = () => 'chevron';
+  return mat;
 }
 
 // 시나리오 재생 중 연결 상태별 표시: 어떤 전원으로 흐르는지 색으로
@@ -31,6 +52,16 @@ function positions(l: LinkLine) {
     arr[i * 3 + 2] = p.z;
   });
   return arr;
+}
+
+// 흐르는 선: 바탕 선은 실선으로 흐리게 두고 위에 같은 색 꺾쇠를 얹는다
+function showChevron(d: Drawn) {
+  d.chev.visible = d.flow && d.obj.visible;
+  if (!d.chev.visible) return;
+  d.chevMat.color.copy(d.mat.color);
+  d.chevMat.depthTest = d.mat.depthTest;
+  d.chevMat.opacity = Math.min(1, d.mat.opacity + 0.1);
+  d.mat.opacity *= 0.45;
 }
 
 export function Connections() {
@@ -46,7 +77,12 @@ export function Connections() {
         obj.computeLineDistances();
         obj.raycast = () => {};
         obj.renderOrder = 2;
-        return { line, obj, mat, base: color.clone(), flow: false };
+        const chevMat = chevronMaterial(color.clone());
+        const chev = new Line2(geo, chevMat);
+        chev.raycast = () => {};
+        chev.visible = false;
+        chev.renderOrder = 6;
+        return { line, obj, mat, base: color.clone(), flow: false, chev, chevMat };
       }),
     [],
   );
@@ -74,11 +110,10 @@ export function Connections() {
         mat.opacity = st === 'none' ? 0.35 : st === 'idle' ? 0.25 : line.ret ? 0.7 : 1;
         mat.linewidth = live ? (line.ret ? 1.8 : 2.8) : 1.5;
         d.flow = live && !line.ret;
-        mat.dashed = d.flow || st === 'idle';
-        mat.dashSize = d.flow ? 0.6 : 0.35;
-        mat.gapSize = d.flow ? 0.45 : 0.3;
+        mat.dashed = st === 'idle';
         mat.depthTest = true;
         obj.renderOrder = live ? 4 : 2;
+        showChevron(d);
         continue;
       }
       mat.color.copy(d.base);
@@ -96,11 +131,10 @@ export function Connections() {
       mat.opacity = on ? 1 : dim ? (highlight ? 0.06 : 0.35) : line.ret ? 0.5 : 0.75;
       mat.linewidth = on ? (line.ret ? 2.5 : 3.5) : line.ret ? 1.2 : 2;
       d.flow = on && !line.standby;
-      mat.dashed = line.standby || d.flow;
-      mat.dashSize = d.flow ? 0.6 : 0.35;
-      mat.gapSize = d.flow ? 0.45 : 0.3;
+      mat.dashed = line.standby;
       mat.depthTest = !on;
       obj.renderOrder = on ? 5 : 2;
+      showChevron(d);
     }
   }, [drawn, layersOn, filter, focus, selectedId, highlight, airOn, snap]);
 
@@ -112,13 +146,13 @@ export function Connections() {
       lastY.current = sig;
       for (const d of drawn) {
         d.obj.geometry.setPositions(positions(d.line));
-        d.obj.computeLineDistances();
+        d.obj.computeLineDistances(); // 꺾쇠 선도 같은 geometry라 함께 갱신
       }
     }
     let flowing = false;
     for (const d of drawn)
       if (d.flow) {
-        d.mat.dashOffset -= dt * 1.6;
+        d.chevMat.dashOffset -= dt * 1.6;
         flowing = true;
       }
     // 시나리오에서 전기가 흐르는 점선은 계속 움직인다
@@ -130,6 +164,7 @@ export function Connections() {
       for (const d of drawn) {
         d.obj.geometry.dispose();
         d.mat.dispose();
+        d.chevMat.dispose();
       }
     },
     [drawn],
@@ -138,7 +173,10 @@ export function Connections() {
   return (
     <group>
       {drawn.map((d) => (
-        <primitive key={d.line.key} object={d.obj} />
+        <group key={d.line.key}>
+          <primitive object={d.obj} />
+          <primitive object={d.chev} />
+        </group>
       ))}
     </group>
   );
