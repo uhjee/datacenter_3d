@@ -931,14 +931,7 @@ button.on {
 .air-body h5 b {
   color: var(--text);
   margin-left: 6px;
-}
-.air-toggles {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 8px;
-}
-.range {
+}.range {
   width: 100%;
   accent-color: var(--accent);
 }
@@ -3396,46 +3389,7 @@ button.co-tr:hover {
 }
 .plan-unit-s.down {
   fill: var(--crit);
-}
-
-/* ── 히트맵 카드 (3D 왼쪽 아래) ───────────────── */
-.heat-panel {
-  position: absolute;
-  left: 10px;
-  bottom: 10px;
-  width: 300px;
-  max-height: calc(100% - 270px); /* 위쪽 층 이동 막대와 겹치지 않게 */
-  min-height: 0;
-  overflow-y: auto;
-  background: rgba(21, 27, 35, 0.94);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  z-index: 7;
-  font-size: 12px;
-}
-.heat-panel header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 10px;
-  border-bottom: 1px solid var(--line);
-}
-.heat-panel header .heat-where {
-  flex: 1;
-  color: var(--ink-3);
-}
-.heat-panel header .icon {
-  padding: 2px 7px;
-}
-.heat-fold svg {
-  transition: transform 0.15s;
-}
-.heat-fold:not(.open) svg {
-  transform: rotate(180deg);
-}
-.heat-body {
-  padding: 8px 10px 10px;
-}
+}/* ── 온도 카드: 단면 높이 · 온도 바 ───────────────── */
 .heat-h {
   display: flex;
 }
@@ -3513,101 +3467,7 @@ button.co-tr:hover {
   text-align: center;
   white-space: nowrap;
   overflow: hidden;
-}
-.heat-stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-top: 8px;
-}
-.heat-stats > div {
-  padding: 4px 6px;
-  border-radius: 6px;
-  background: var(--s2);
-}
-.heat-stats small {
-  display: block;
-  font-size: 10px;
-  color: var(--ink-3);
-}
-.heat-stats b {
-  font-size: 13px;
-}
-.heat-hot {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  margin-top: 6px;
-  padding: 5px 8px;
-  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--warn) 8%, transparent);
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 12px;
-  cursor: pointer;
-  text-align: left;
-}
-.heat-hot b {
-  color: var(--ink);
-}
-.heat-hot span {
-  margin-left: auto;
-  color: var(--warn);
-}
-.heat-opts {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-  color: var(--ink-2);
-}
-.heat-opts label:first-child {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.heat-opts input[type='range'] {
-  flex: 1;
-}
-.heat-probe {
-  margin-top: 8px;
-  padding-top: 7px;
-  border-top: 1px solid var(--line);
-  min-height: 18px;
-  color: var(--ink-2);
-}
-.heat-probe b {
-  font-size: 13px;
-}
-.heat-opts label {
-  white-space: nowrap;
-}
-.air-sum {
-  display: block;
-  width: 100%;
-  padding: 7px 10px;
-  border: 0;
-  background: none;
-  color: var(--ink-2);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.air-sum:hover {
-  background: var(--s2);
-}
-/* 기류 카드는 위에서 아래로 펼쳐지므로 화살표 방향이 히트맵 카드(아래에서 위)와 반대 */
-.air-panel .heat-fold:not(.open) svg {
-  transform: none;
-}
-.air-panel .heat-fold.open svg {
-  transform: rotate(180deg);
-}
-.lp-sect-h {
+}.lp-sect-h {
   cursor: pointer;
   outline: none;
 }
@@ -3629,17 +3489,7 @@ button.co-tr:hover {
   font-size: var(--fs-sm);
   font-weight: 700;
   color: var(--ink-2);
-}
-.heat-h5 {
-  margin: 10px 0 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--ink-3);
-}
-.heat-h5 + .heat-stats {
-  margin-top: 0;
-}
-.plan-legend-n {
+}.plan-legend-n {
   align-items: center;
 }
 
@@ -3818,12 +3668,6 @@ button.co-tr:hover {
 .th-row .grow {
   flex: 1;
 }
-.th-cam {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
 .thermal-panel .heat-h {
   display: flex;
   margin-bottom: 2px;
@@ -3831,16 +3675,7 @@ button.co-tr:hover {
 .thermal-panel .heat-h button {
   flex: 1;
 }
-/* 급기 · 수치 카드 (3D 오른쪽 아래). 왼쪽 위 온도 카드와 같은 모양 */
-.air-panel.supply-card {
-  top: auto;
-  left: auto;
-  right: 10px; /* 오른쪽 위 카메라 막대와 같은 오른쪽 선 */
-  bottom: 10px;
-  width: 300px;
-  max-height: calc(100% - 242px); /* 위쪽 카메라 막대(약 222px) 아래까지만, 넘치면 스크롤 */
-}
-/* 온도 카드 · 급기 카드 머리글의 지금 서버실 이름 (서버실 전환은 층 이동 막대) */
+/* 온도 카드 머리글의 지금 서버실 이름 (서버실 전환은 층 이동 막대) */
 .air-panel header .room-name {
   flex: 1;
   min-width: 0;
@@ -3861,18 +3696,113 @@ button.co-tr:hover {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.supply-card .air-body h5:first-child {
-  margin-top: 2px;
+.air-panel header .icon.on {
+  color: var(--ink);
+  background: var(--s2);
+}
+/* 시점 아이콘 두 개 (위에서 · 통로 단면) */
+.th-cam {
+  flex-wrap: nowrap;
+  gap: 2px;
+}
+.th-cam button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 8px;
+}
+/* ⚙ 보기 옵션: 머리글 아래 띠 */
+.th-opts {
+  margin: -8px -10px 10px;
+  padding: 8px 10px;
+  background: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+.th-opacity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.th-opacity input {
+  flex: 1;
+  accent-color: var(--accent);
+}
+.th-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+/* 이 단면 수치 · 커서 위치 (온도 바 바로 위 한 줄) */
+.th-cap {
   display: flex;
   align-items: baseline;
+  gap: 4px;
+  margin-top: 8px;
+  min-height: 17px;
+  color: var(--ink-3);
+  font-size: 11px;
+  white-space: nowrap;
 }
-.supply-card .supply-sum {
-  margin-left: auto;
-  font-weight: 400;
+.th-cap b {
+  font-size: 12px;
+  margin-right: 4px;
 }
-.thermal-panel .air-sum {
-  margin: 6px -10px -2px;
-  width: calc(100% + 20px);
+.th-cap > span {
+  margin-left: 2px;
+}
+.thermal-panel .heat-bar {
+  margin-top: 3px;
+}
+.heat-range u {
+  position: absolute;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--panel);
+}
+/* 요약: 최고 흡기 · 핫스팟 */
+.th-sum {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.th-sum b {
+  font-size: 13px;
+}
+.th-hot {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.th-hot.ok {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, transparent);
+}
+button.th-hot.warn {
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line));
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  cursor: pointer;
+}
+button.th-hot.warn:hover {
+  background: color-mix(in srgb, var(--warn) 20%, transparent);
+}
+.th-cond h5:first-child {
+  margin-top: 10px;
+}
+.th-cond .th-tags {
+  margin-top: 6px;
 }
 .thermal-panel h5 .k-help {
   vertical-align: -2px;
