@@ -70,7 +70,7 @@ export function App() {
           <button
             className={thermal ? 'on' : ''}
             aria-pressed={thermal}
-            onClick={() => (thermal ? exitThermal() : enterHeat(heatRoom()))}
+            onClick={() => (thermal ? exitThermal() : enterHeat(heatRoom(), true))}
             title="서버실 온도 보기: 히트맵 · 에어 플로우 (하단에 2D 상면도)"
           >
             <Thermometer size={15} /> 온도

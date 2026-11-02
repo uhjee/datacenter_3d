@@ -54,7 +54,7 @@ function buildItems(): Item[] {
   for (const [icon, name, desc, start] of SCENARIO_ITEMS)
     if (start) add({ key: `sc-${name}`, kind: '시나리오 시작', icon: icon ?? Siren, color: 'var(--crit)', name, sub: desc, run: start }, '시나리오 사고');
   for (const r of ROOM_LABELS)
-    add({ key: `th-${r}`, kind: '보기', icon: Thermometer, color: '#ff922b', name: `온도 보기 · 서버실 ${r}`, sub: `${AIR_LAYOUT[r].floor} 히트맵 · 에어 플로우 · 2D 상면도`, run: () => enterHeat(r) }, '히트맵 기류 에어 플로우 온도');
+    add({ key: `th-${r}`, kind: '보기', icon: Thermometer, color: '#ff922b', name: `온도 보기 · 서버실 ${r}`, sub: `${AIR_LAYOUT[r].floor} 히트맵 · 에어 플로우 · 2D 상면도`, run: () => enterHeat(r, true) }, '히트맵 기류 에어 플로우 온도');
   add({ key: 'dg-power', kind: '보기', icon: Workflow, name: '전력 단선도 열기', sub: '하단 도면', run: () => openDiagram('power') }, '흐름도 도면 단선도');
   add({ key: 'dg-cool', kind: '보기', icon: Workflow, name: '공조 흐름도 열기', sub: '하단 도면', run: () => openDiagram('cooling') }, '흐름도 도면 냉수 냉매');
   return out;

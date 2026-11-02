@@ -227,11 +227,12 @@ export function enterAir(room: RoomLabel) {
   viewRoom(room);
 }
 
-// 온도 보기 켜기 (상단 [온도]): 히트맵을 켜고 위에서 내려다본다
-export function enterHeat(room: RoomLabel) {
+// 온도 보기 켜기: 히트맵을 켜고 위에서 내려다본다. 상단 [온도] · 검색에서 켤 때는 에어 플로우도 함께 켠다(air)
+export function enterHeat(room: RoomLabel, air = false) {
   const s = useView.getState();
   const was = thermalOn();
   s.setHeatOn(true);
+  if (air && !was) s.setAirOn(true);
   if (!was) beginThermal();
   if (!was || s.airRoom !== room) heatView(room);
 }
