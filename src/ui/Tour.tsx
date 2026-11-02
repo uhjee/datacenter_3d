@@ -368,7 +368,8 @@ export function TourCard() {
         </div>
       )}
       <div className="tour-foot">
-        <div className="tour-dots">
+        {/* 단계 막대: 칸 폭이 남은 폭을 나눠 가져 단계가 늘거나 패널이 좁아도 넘치지 않는다 */}
+        <div className="tour-steps">
           {STEPS.map((s, i) => (
             <button key={s.title} className={i === step ? 'on' : i < step ? 'done' : ''} onClick={() => goStep(i)} title={s.title} aria-label={`${i + 1}단계 ${s.title}`} />
           ))}

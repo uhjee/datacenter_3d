@@ -1222,25 +1222,42 @@ button.link {
   opacity: 0.4;
   cursor: default;
 }
-.tour-dots {
+/* 단계 막대: 단계마다 한 칸, 칸 폭은 남은 폭을 나눠 가진다 (단계 수 · 패널 폭과 무관하게 한 줄에 들어감) */
+.tour-steps {
   display: flex;
-  gap: 4px;
+  gap: 2px;
   flex: 1;
+  min-width: 0;
+  margin-right: 4px;
 }
-.tour-dots button {
-  width: 8px;
-  height: 8px;
+.tour-steps button {
+  flex: 1 1 0;
+  min-width: 0;
+  height: 14px; /* 누르기 쉬운 높이, 막대는 가운데 4px */
   padding: 0;
-  border-radius: 50%;
   border: 0;
+  background: none;
+  position: relative;
+}
+.tour-steps button::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--line-2);
 }
-.tour-dots button.done {
+.tour-steps button:hover::after {
+  background: var(--ink-2);
+}
+.tour-steps button.done::after {
   background: var(--ink-3);
 }
-.tour-dots button.on {
-  width: 16px;
-  border-radius: 4px;
+.tour-steps button.on::after {
+  top: 4px;
+  height: 6px;
   background: var(--info);
 }
 /* 투어 중에는 투어 카드만 위에 고정 */
