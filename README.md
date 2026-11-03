@@ -125,7 +125,7 @@ src/
   store/      화면 상태 (Zustand), 설정 기억 · 장면 링크(persist.ts)
 docs/
   PLAN.md          기획안 · 구현 규칙 · 결정 사항
-  research/        조사 자료
+  research/        조사 자료 (03-mobile-responsive.md: 휴대폰 반응형 조사 · 계획)
   ui-proposal.html UI 개선안 시안
 ```
 
