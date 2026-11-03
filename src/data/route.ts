@@ -11,6 +11,7 @@
 import { FLOORS, ROOMS, SERVER_ROOMS, SHAFTS, RACK, BLOCK_LEN, ROW_OFFSETS, AISLE_W, type FloorId, type Room } from './building';
 import { EQUIPMENT, EQUIP_BY_ID } from './equipment';
 import { RACK_BY_ID, RACKS, type Rack } from './racks';
+import { incoming } from './graph';
 
 export type Face = 'N' | 'S' | 'E' | 'W';
 export interface Place {
@@ -68,6 +69,11 @@ const roomShort = (r: Room) => r.name.replace(/\s*\(.*\)$/, '');
 const inRect = (x: number, z: number, r: { x: [number, number]; z: [number, number] }, m = 0) =>
   x >= r.x[0] + m && x <= r.x[1] - m && z >= r.z[0] + m && z <= r.z[1] - m;
 const roomAt = (floor: FloorId, x: number, z: number) => ROOMS.find((r) => r.floor === floor && inRect(x, z, r));
+// 그 자리 바닥 윗면 높이 (층 바닥 기준, 이중마루 서버실이면 마루 위)
+export const floorTopAt = (floor: FloorId, x: number, z: number) => {
+  const r = roomAt(floor, x, z);
+  return r ? (SERVER_ROOMS.find((s) => s.roomId === r.id)?.raised ?? 0) : 0;
+};
 
 // ── 장애물 ──
 interface Box {
@@ -158,7 +164,8 @@ function roomNodes(room: Room): GNode[] {
   const ns: GNode[] = [];
   const cf = coreFront(room.floor);
   if (cf && cf.room.id === room.id) ns.push({ key: `core:${room.floor}`, floor: room.floor, rooms: [room.id], x: cf.x, z: cf.z, kind: 'core' });
-  for (const d of DOORS) if (d.a === room.id || d.b === room.id) ns.push({ key: `door:${d.id}`, floor: room.floor, rooms: [d.a, d.b], x: d.x, z: d.z, kind: 'door' });
+  for (const d of DOORS)
+    if (d.a === room.id || d.b === room.id) ns.push({ key: `door:${d.id}`, floor: room.floor, rooms: [d.a, d.b], x: d.x, z: d.z, kind: 'door' });
   obstacles(room.id).forEach((b, i) => {
     const g = grow(b, CORNER);
     [
@@ -167,7 +174,8 @@ function roomNodes(room: Room): GNode[] {
       [g.x[0], g.z[1]],
       [g.x[1], g.z[1]],
     ].forEach(([x, z], j) => {
-      if (inRect(x, z, room, 0.3) && freeAt(room.id, x, z)) ns.push({ key: `c:${room.id}:${i}:${j}`, floor: room.floor, rooms: [room.id], x, z, kind: 'corner' });
+      if (inRect(x, z, room, 0.3) && freeAt(room.id, x, z))
+        ns.push({ key: `c:${room.id}:${i}:${j}`, floor: room.floor, rooms: [room.id], x, z, kind: 'corner' });
     });
   });
   roomNodeCache.set(room.id, ns);
@@ -322,7 +330,9 @@ export function route(fromId: string, toId: string): Route | null {
   const path: GNode[] = [t];
   while (path[0].key !== 'start') path.unshift(prev.get(path[0].key)!);
   // 같은 자리에 겹친 점(출발이 코어 앞 등)은 하나로
-  const points = path.map((n) => ({ floor: n.floor, x: n.x, z: n.z })).filter((p, i, a) => i === 0 || p.floor !== a[i - 1].floor || Math.hypot(p.x - a[i - 1].x, p.z - a[i - 1].z) > 0.05);
+  const points = path
+    .map((n) => ({ floor: n.floor, x: n.x, z: n.z }))
+    .filter((p, i, a) => i === 0 || p.floor !== a[i - 1].floor || Math.hypot(p.x - a[i - 1].x, p.z - a[i - 1].z) > 0.05);
   return { from, to, points, steps: stepsOf(path, from, to), length: Math.round(dist.get('goal')!) };
 }
 
@@ -376,6 +386,24 @@ function stepsOf(path: GNode[], from: Place, to: Place): RouteStep[] {
     push(`도착: ${to.name} 앞`, to);
   }
   return steps;
+}
+
+// 따라가기: 이 장비 · 랙에 전원 · 냉기를 보내는 곳 (연결 지점(hub)은 건너 그 앞 장비로). 현장 모드 '전원 따라가기'
+export function upstreamOf(id: string): { id: string; kind: string; sys?: 'A' | 'B' }[] {
+  const out = new Map<string, { id: string; kind: string; sys?: 'A' | 'B' }>();
+  const seen = new Set<string>();
+  const walk = (n: string, kind?: string, sys?: 'A' | 'B') => {
+    for (const c of incoming(n)) {
+      if (c.standby || seen.has(c.from)) continue;
+      seen.add(c.from);
+      const k = kind ?? c.kind;
+      const s2 = sys ?? c.sys;
+      if (placeOf(c.from)) out.set(c.from, { id: c.from, kind: k, sys: s2 });
+      else walk(c.from, k, s2);
+    }
+  };
+  walk(id);
+  return [...out.values()];
 }
 
 // 개발용 점검: 모든 랙 · 장비가 층마다 코어 앞에서 닿는지 (콘솔 __route.check())

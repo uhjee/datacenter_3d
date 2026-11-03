@@ -5324,3 +5324,119 @@ kbd {
   font-size: 16px;
   font-weight: 700;
 }
+/* 길 안내 패널 */
+.fp-go {
+  padding: 12px 16px 4px;
+}
+.fp-go button,
+.fp-nav button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--field-btn, 56px);
+  font-size: 16px;
+  font-weight: 700;
+}
+.fp-dist {
+  flex: none;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+.fp-steps {
+  list-style: none;
+  margin: 0;
+  padding: 10px 10px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.fp-steps button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--r);
+  background: none;
+  color: var(--ink-2);
+  text-align: left;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.fp-steps li.on button {
+  background: var(--s3);
+  border-color: color-mix(in srgb, var(--sel) 55%, transparent);
+  color: var(--ink);
+  font-weight: 700;
+}
+.fp-steps li.done button {
+  color: var(--ink-3);
+}
+.fp-n {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--s2);
+  border: 1px solid var(--line-2);
+  font-size: 13px;
+  font-weight: 700;
+}
+.fp-steps li.on .fp-n {
+  background: var(--sel);
+  border-color: var(--sel);
+  color: #0d1117;
+}
+.fp-steps li.done .fp-n {
+  color: var(--ok);
+}
+/* 엄지 자리: 패널 맨 아래 [이전] [다음] */
+.fp-nav {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1.6fr;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+.fp-nav button.primary {
+  background: var(--sel);
+  border-color: var(--sel);
+  color: #0d1117;
+}
+.fp-arrive h4 {
+  margin: 8px 16px 6px;
+  font-size: 16px;
+}
+.fp-follow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 16px 10px;
+}
+.fp-follow > span {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+.fp-follow button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
+  text-align: left;
+  font-size: 14px;
+}
+.fp-follow i {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}

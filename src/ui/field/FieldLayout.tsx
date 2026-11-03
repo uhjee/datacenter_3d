@@ -5,7 +5,7 @@
 //   3D는 층 하나만 보이게 한다 (현장에서는 지금 있는 층 · 가려는 층만 보면 된다)
 
 import { useCallback, useEffect, useState } from 'react';
-import { GraduationCap, MapPin, Scan, Search } from 'lucide-react';
+import { Eye, GraduationCap, Map as MapIcon, MapPin, Scan, Search } from 'lucide-react';
 import { FLOORS, type FloorId } from '../../data/building';
 import { exitThermal, focusFloor, goFloor } from '../../scene/focus';
 import { htmlPortal } from '../../scene/htmlPortal';
@@ -16,9 +16,17 @@ import { useView } from '../../store/useView';
 import { SearchPalette, useSearchHotkey } from '../SearchPalette';
 import { Toast } from '../Toast';
 import { FieldPanel } from './FieldPanel';
+import { setView, showStep } from './guide';
 
 // 현장 모드 첫 층: 정해진 층이 없으면 1층(출입 · 코어에서 출발)
 const START_FLOOR: FloorId = '1F';
+
+// 화면 맞춤: 길 안내 중이면 지금 단계 시점으로, 아니면 지금 층
+function fit() {
+  const s = useView.getState();
+  if (s.fieldGuide) showStep(s.fieldGuide.step);
+  else focusFloor(s.floorFocus ?? START_FLOOR);
+}
 
 export function FieldLayout() {
   const [search, setSearch] = useState(false);
@@ -64,18 +72,31 @@ export function FieldLayout() {
   );
 }
 
-// 왼쪽 엄지 줄: 층 버튼(아래층이 왼쪽) · 화면 맞춤
+// 왼쪽 엄지 줄: 층 버튼(아래층이 왼쪽) · 화면 맞춤, 길 안내 중이면 시점(위에서 · 눈높이)
 function ThumbBar() {
   const focus = useView((s) => s.floorFocus);
+  const guiding = useView((s) => !!s.fieldGuide);
+  const view = useView((s) => s.fieldView);
   return (
-    <div className="thumb-bar" role="group" aria-label="층 이동">
+    <div className="thumb-bar" role="group" aria-label="층 이동 · 시점">
+      {guiding && (
+        <>
+          <button className={view === 'plan' ? 'on' : ''} onClick={() => setView('plan')} aria-label="위에서 보기" title="위에서 보기 (내 위치 가운데)">
+            <MapIcon size={22} />
+          </button>
+          <button className={view === 'eye' ? 'on' : ''} onClick={() => setView('eye')} aria-label="눈높이로 보기" title="눈높이로 보기 (그 자리에서 둘러보기)">
+            <Eye size={22} />
+          </button>
+          <span className="thumb-sep" />
+        </>
+      )}
       {FLOORS.map((f) => (
         <button key={f.id} className={focus === f.id ? 'on' : ''} onClick={() => goFloor(f.id)} title={`${f.name} · ${f.summary}`}>
           {f.id}
         </button>
       ))}
       <span className="thumb-sep" />
-      <button onClick={() => focusFloor(useView.getState().floorFocus ?? START_FLOOR)} aria-label="화면 맞춤 (지금 층)" title="화면 맞춤 (지금 층)">
+      <button onClick={fit} aria-label="화면 맞춤" title="화면 맞춤 (길 안내 중이면 지금 단계)">
         <Scan size={20} />
       </button>
     </div>

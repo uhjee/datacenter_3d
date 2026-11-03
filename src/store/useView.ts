@@ -118,6 +118,12 @@ interface ViewState {
   tourStep: number | null;
   setTourStep: (n: number | null) => void;
 
+  // 현장 모드 길 안내 (null = 안내 없음): 출발 · 목적지 장소 id(data/route.ts)와 지금 단계. 시점은 위에서(평면) · 눈높이
+  fieldGuide: { from: string; to: string; step: number } | null;
+  setFieldGuide: (g: { from: string; to: string; step: number } | null) => void;
+  fieldView: 'plan' | 'eye';
+  setFieldView: (v: 'plan' | 'eye') => void;
+
   // 시나리오 (한전 완전 정전 · UPS 고장). scenSnap은 장비 · 연결 상태가 바뀔 때만 새로 만든다
   scenario: (ScenarioRun & { t: number; playing: boolean; speed: number }) | null;
   scenSnap: Snapshot | null;
@@ -247,6 +253,11 @@ export const useView = create<ViewState>((set, get) => ({
 
   tourStep: null,
   setTourStep: (n) => set({ tourStep: n }),
+
+  fieldGuide: null,
+  setFieldGuide: (g) => set({ fieldGuide: g }),
+  fieldView: 'plan',
+  setFieldView: (v) => set({ fieldView: v }),
 
   scenario: null,
   scenSnap: null,

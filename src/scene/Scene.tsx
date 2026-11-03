@@ -11,6 +11,7 @@ import { BuildingFloors } from './Building';
 import { Connections } from './Connections';
 import { CAMERA_FOV, overviewPose } from './focus';
 import { LabelProjector } from './HoverLabel';
+import { RouteLine } from './RouteLine';
 
 // 숨긴 층·레이어의 물체는 클릭되지 않도록 걸러낸다
 function shown(o: Object3D | null): boolean {
@@ -30,7 +31,7 @@ const TOUCH_DPR_MAX = 1.5;
 
 export function Scene() {
   const [ready, setReady] = useState(false);
-  const { device } = useDevice();
+  const { device, mode } = useDevice();
   const touch = device !== 'desktop';
   // 회전 중 프레임이 떨어져 낮춘 픽셀 비율 (null이면 기본 범위). Canvas가 다시 그려져도 되돌아가지 않게 여기서 들고 있는다
   const [dprCap, setDprCap] = useState<number | null>(null);
@@ -73,6 +74,7 @@ export function Scene() {
         <BuildingFloors />
         <Connections />
         <OrbitPing />
+        {mode === 'field' && <RouteLine />}
         {touch && <AdaptiveDpr onDecline={setDprCap} />}
         {!ready && <FirstFrames onReady={() => setReady(true)} />}
         {import.meta.env.DEV && <DevHandle />}
@@ -192,7 +194,7 @@ function CameraRig() {
   }, [goal]);
 
   // 더블클릭 · 더블탭한 지점을 회전 중심으로 (카메라는 그 자리에 둔다)
-  const { gl, camera, scene } = useThree();
+  const { gl, camera, scene, invalidate } = useThree();
   useEffect(() => {
     const el = gl.domElement;
     const ray = new Raycaster();
@@ -273,8 +275,33 @@ function CameraRig() {
     c.dolly(c.distance * 0.25 * zoom.dir, true);
   }, [zoom]);
 
+  // 현장 모드 눈높이: 거의 붙은 목표를 둘레로 돌게 해 그 자리에서 둘러보기만 (확대 · 이동 끔, 끄는 방향은 보는 방향과 같게)
+  const eye = useView((s) => s.fieldView === 'eye' && !!s.fieldGuide);
+  // 눈높이는 사람 시야처럼 넓게 (좁은 화각으로는 통로에서 랙 문 한두 개만 보인다)
+  useEffect(() => {
+    const cam = camera as PerspectiveCamera;
+    cam.fov = eye ? 65 : CAMERA_FOV;
+    cam.updateProjectionMatrix();
+    invalidate();
+  }, [eye, camera, invalidate]);
   // dollyToCursor: 휠은 화면 가운데가 아니라 마우스가 가리키는 곳으로 다가간다
-  return <CameraControls ref={ref} makeDefault dollyToCursor minDistance={3} maxDistance={220} maxPolarAngle={Math.PI * 0.62} smoothTime={0.45} />;
+  // (같은 컨트롤의 설정만 바꾼다: 새로 만들면 카메라가 튄다)
+  return (
+    <CameraControls
+      ref={ref}
+      makeDefault
+      dollyToCursor={!eye}
+      minDistance={eye ? 0.05 : 3}
+      maxDistance={eye ? 0.2 : 220}
+      dollySpeed={eye ? 0 : 1}
+      truckSpeed={eye ? 0 : 2}
+      azimuthRotateSpeed={eye ? -0.35 : 1}
+      polarRotateSpeed={eye ? -0.35 : 1}
+      minPolarAngle={eye ? Math.PI * 0.3 : 0}
+      maxPolarAngle={eye ? Math.PI * 0.7 : Math.PI * 0.62}
+      smoothTime={0.45}
+    />
+  );
 }
 
 // 지면 (건물 자리에 구멍 → 지하층이 보이도록)
