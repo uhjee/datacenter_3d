@@ -10,7 +10,8 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
-import { deviceOf } from './store/device';
+import { deviceOf, useDevice } from './store/device';
+import { MoreMenu } from './ui/MoreMenu';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -54,60 +55,98 @@ export function App() {
     setLeft(true);
     setRight(true);
   }, [touring]);
+  const { device } = useDevice();
+  const toggleThermal = () => (thermal ? exitThermal() : enterHeat(heatRoom(), true));
+  const toggleDiagram = () => useView.getState().setDiagramMode(diagram === 'off' ? 'half' : 'off');
+  const openScenario = () => {
+    setRight(true);
+    useView.getState().setRightTab('scenario');
+  };
+  const leftBtn = <IconButton icon={PanelLeft} label={left ? '왼쪽 패널 닫기' : '왼쪽 패널 열기'} active={left} onClick={() => setLeft((v) => !v)} />;
+  const thermalBtn = (
+    <button className={thermal ? 'on' : ''} aria-pressed={thermal} onClick={toggleThermal} title="서버실 온도 보기: 히트맵 · 에어 플로우 (하단에 2D 상면도)">
+      <Thermometer size={15} /> 온도
+    </button>
+  );
   return (
     <div className={`app ${left ? '' : 'no-left'} ${right ? '' : 'no-right'}${touring ? ' touring' : ''}`}>
-      <header className="topbar">
-        <IconButton icon={PanelLeft} label={left ? '왼쪽 패널 닫기' : '왼쪽 패널 열기'} active={left} onClick={() => setLeft((v) => !v)} />
-        <span className="tb-logo">
-          <Building2 size={16} />
-        </span>
-        <h1>데이터센터 3D 시뮬레이터</h1>
-        <span className="stage">v0.9</span>
-        <div className="spacer" />
-        <button className="tb-search" onClick={() => setSearch(true)} title="장비 · 랙 · 고객사 · 계통 · 층 · 시나리오 검색">
-          <Search size={14} />
-          <span>검색</span>
-          <kbd>⌘K</kbd>
-        </button>
-        {/* 상단 바 영역: 검색 │ 보기(화면 전환 켜기 · 끄기) │ 학습(시나리오 · 가이드 투어) */}
-        <span className="tb-cap">보기</span>
-        <div className="tb-group" role="group" aria-label="보기">
-          <button
-            className={thermal ? 'on' : ''}
-            aria-pressed={thermal}
-            onClick={() => (thermal ? exitThermal() : enterHeat(heatRoom(), true))}
-            title="서버실 온도 보기: 히트맵 · 에어 플로우 (하단에 2D 상면도)"
-          >
-            <Thermometer size={15} /> 온도
+      {device === 'phone' ? (
+        // 휴대폰: ☰ · 짧은 제목 · 검색 · 온도 · ⋯(도면 · 시나리오 · 가이드 투어 · 정보 패널)
+        <header className="topbar">
+          {leftBtn}
+          <h1>데이터센터 3D</h1>
+          <div className="spacer" />
+          <IconButton icon={Search} label="검색" onClick={() => setSearch(true)} />
+          <div className="tb-group">{thermalBtn}</div>
+          <MoreMenu
+            items={[
+              {
+                icon: Workflow,
+                label: diagram !== 'off' ? '도면 닫기' : '도면',
+                on: diagram !== 'off',
+                onSelect: toggleDiagram,
+              },
+              {
+                icon: Siren,
+                label: scenario ? '시나리오 재생 중' : '시나리오',
+                on: scenario,
+                onSelect: openScenario,
+              },
+              {
+                icon: Compass,
+                label: '가이드 투어',
+                on: touring,
+                onSelect: startTour,
+              },
+              {
+                icon: PanelRight,
+                label: right ? '정보 패널 닫기' : '정보 패널',
+                on: right,
+                onSelect: () => setRight((v) => !v),
+              },
+            ]}
+          />
+        </header>
+      ) : (
+        <header className="topbar">
+          {leftBtn}
+          <span className="tb-logo">
+            <Building2 size={16} />
+          </span>
+          <h1>데이터센터 3D 시뮬레이터</h1>
+          <span className="stage">v0.9</span>
+          <div className="spacer" />
+          <button className="tb-search" onClick={() => setSearch(true)} title="장비 · 랙 · 고객사 · 계통 · 층 · 시나리오 검색">
+            <Search size={14} />
+            <span>검색</span>
+            <kbd>⌘K</kbd>
           </button>
-          <button
-            className={diagram !== 'off' ? 'on' : ''}
-            aria-pressed={diagram !== 'off'}
-            onClick={() => useView.getState().setDiagramMode(diagram === 'off' ? 'half' : 'off')}
-            title="하단 도면: 전력 단선도 · 공조 흐름도 (온도 보기 중에는 2D 상면도)"
-          >
-            <Workflow size={15} /> 도면
-          </button>
-        </div>
-        <span className="tb-sep" />
-        <span className="tb-cap">학습</span>
-        <div className="tb-group learn" role="group" aria-label="학습">
-          <button
-            className={`tb-btn${scenario ? ' on' : ''}`}
-            onClick={() => {
-              setRight(true);
-              useView.getState().setRightTab('scenario');
-            }}
-            title="사고 시나리오 목록 · 재생 화면"
-          >
-            <Siren size={15} /> {scenario ? '시나리오 재생 중' : '시나리오'}
-          </button>
-          <button className={`tb-btn primary tour-btn${touring ? ' on' : ''}`} onClick={startTour} title="전력 · 공조 흐름을 단계별로 따라가는 안내">
-            <Compass size={15} /> 가이드 투어
-          </button>
-        </div>
-        <IconButton icon={PanelRight} label={right ? '정보 패널 닫기' : '정보 패널 열기'} active={right} onClick={() => setRight((v) => !v)} />
-      </header>
+          {/* 상단 바 영역: 검색 │ 보기(화면 전환 켜기 · 끄기) │ 학습(시나리오 · 가이드 투어) */}
+          <span className="tb-cap">보기</span>
+          <div className="tb-group" role="group" aria-label="보기">
+            {thermalBtn}
+            <button
+              className={diagram !== 'off' ? 'on' : ''}
+              aria-pressed={diagram !== 'off'}
+              onClick={toggleDiagram}
+              title="하단 도면: 전력 단선도 · 공조 흐름도 (온도 보기 중에는 2D 상면도)"
+            >
+              <Workflow size={15} /> 도면
+            </button>
+          </div>
+          <span className="tb-sep" />
+          <span className="tb-cap">학습</span>
+          <div className="tb-group learn" role="group" aria-label="학습">
+            <button className={`tb-btn${scenario ? ' on' : ''}`} onClick={openScenario} title="사고 시나리오 목록 · 재생 화면">
+              <Siren size={15} /> {scenario ? '시나리오 재생 중' : '시나리오'}
+            </button>
+            <button className={`tb-btn primary tour-btn${touring ? ' on' : ''}`} onClick={startTour} title="전력 · 공조 흐름을 단계별로 따라가는 안내">
+              <Compass size={15} /> 가이드 투어
+            </button>
+          </div>
+          <IconButton icon={PanelRight} label={right ? '정보 패널 닫기' : '정보 패널 열기'} active={right} onClick={() => setRight((v) => !v)} />
+        </header>
+      )}
       {search && <SearchPalette onClose={() => setSearch(false)} />}
       {left && <LeftPanel />}
       <main className={`viewport diagram-${diagram}`}>
