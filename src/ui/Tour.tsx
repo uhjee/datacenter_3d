@@ -3,7 +3,7 @@
 // 카드는 3D 왼쪽 아래에 떠 있고, 단계마다 핵심 한 줄 + 흐름도 · 표 · 범례로 보여 준다 (긴 글 대신)
 
 import { ChevronDown, ChevronUp, Compass, Hand, X } from 'lucide-react';
-import { IconButton } from './kit';
+import { IconButton, Switch } from './kit';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { FLOORS } from '../data/building';
 import { ALLOWABLE_MAX, computeRoom, DEFAULT_AIR_BY_ROOM, RECOMMENDED, tempColor, type AirCfg, type RoomLabel } from '../data/thermal';
@@ -15,7 +15,7 @@ type Hue = 'power' | 'heat' | 'cool' | 'fire' | 'a' | 'b';
 // 단계 본문을 이루는 시각 블록
 type Block =
   | { k: 'flow'; label?: string; hue?: Hue; nodes: string[]; at?: number[]; note?: string } // 화살표로 잇는 흐름, at은 강조할 칸
-  | { k: 'dual'; a: string[]; b: string[]; to: string } // A · B 두 줄이 하나로 모이는 그림 (2N)
+  | { k: 'dual'; a: string[]; b: string[]; to: string; groups?: { a: string; b: string } } // A · B 두 줄이 하나로 모이는 그림 (2N). groups: 줄마다 켜고 끌 계통 묶음
   | { k: 'facts'; rows: [string, string][] } // 항목 : 값
   | { k: 'table'; head: string[]; rows: string[][]; col?: number } // col: 강조할 열
   | { k: 'legend'; items: ['solid' | 'dash' | 'chev', string][] } // 3D 선 모양 범례
@@ -203,10 +203,10 @@ export const STEPS: Step[] = [
     route: { line: 'power', at: 'all' },
     lead: '같은 길이 A · B 두 줄이라, 한쪽이 통째로 멈춰도 서버는 계속 돕니다.',
     blocks: [
-      { k: 'dual', a: ['특고압반', 'TR-A', 'UPS-A', 'EPS-A', 'rPDU-A'], b: ['특고압반', 'TR-B', 'UPS-B', 'EPS-B', 'rPDU-B'], to: '랙 (전원 2개)' },
+      { k: 'dual', a: ['특고압반', 'TR-A', 'UPS-A', 'EPS-A', 'rPDU-A'], b: ['특고압반', 'TR-B', 'UPS-B', 'EPS-B', 'rPDU-B'], to: '랙 (전원 2개)', groups: { a: 'sys-A', b: 'sys-B' } },
     ],
     points: ['두 줄은 서로 다른 전기 샤프트(EPS-A · EPS-B)로 올라갑니다.'],
-    try: '왼쪽 "계통 묶음"에서 B계통을 눌러 반대쪽 길도 보세요.',
+    try: '그림의 B계통 스위치(또는 왼쪽 "계통 묶음"의 B계통)를 켜서 반대쪽 길도 보세요.',
     run: () => {
       clean();
       tab('power');
@@ -594,6 +594,12 @@ function RoomCompare() {
   );
 }
 
+// 계통 묶음 켜기 · 끄기 (왼쪽 패널 '계통 묶음' 버튼과 같은 동작: 다른 묶음을 켜면 그쪽으로 바뀐다)
+function GroupSwitch({ id }: { id: string }) {
+  const on = useView((s) => s.groupId === id);
+  return <Switch checked={on} onChange={() => activateGroup(on ? null : id)} label="계통 묶음" />;
+}
+
 function TourBlock({ b }: { b: Block }) {
   switch (b.k) {
     case 'flow':
@@ -603,7 +609,10 @@ function TourBlock({ b }: { b: Block }) {
         <div className="tb-dual">
           {(['a', 'b'] as const).map((s) => (
             <div key={s} className={`tb-flow h-${s}`}>
-              <span className="tb-label">{s.toUpperCase()}계통</span>
+              <div className="tb-flow-head">
+                <span className="tb-label">{s.toUpperCase()}계통</span>
+                {b.groups && <GroupSwitch id={b.groups[s]} />}
+              </div>
               <div className="tb-nodes">
                 {b[s].map((n, i) => (
                   <Fragment key={i}>

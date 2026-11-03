@@ -4613,3 +4613,16 @@ kbd {
 .plan-room.edge {
   fill: none;
 }
+
+/* 투어 그림 줄 머리: 제목 왼쪽, 계통 묶음 스위치 오른쪽 */
+.tb-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.tb-flow-head .k-switch {
+  margin-left: auto;
+  padding: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
