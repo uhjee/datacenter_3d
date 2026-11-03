@@ -109,6 +109,19 @@ button.on {
 .app.no-left.no-right {
   grid-template-columns: 0 1fr 0;
 }
+/* 가이드 투어 중: 왼쪽 패널에 투어 카드가 들어가므로 넓힌다 (투어를 끝내면 원래 280px) */
+.app.touring {
+  grid-template-columns: 380px 1fr 360px;
+}
+.app.touring.no-right {
+  grid-template-columns: 380px 1fr 0;
+}
+.app.touring.no-left {
+  grid-template-columns: 0 1fr 360px;
+}
+.app.touring.no-left.no-right {
+  grid-template-columns: 0 1fr 0;
+}
 
 .topbar {
   grid-area: top;
@@ -489,7 +502,9 @@ button.on {
 @media (max-width: 900px) {
   .app,
   .app.no-left,
-  .app.no-right {
+  .app.no-right,
+  .app.touring,
+  .app.touring.no-right {
     grid-template-columns: 0 1fr 0;
   }
   .panel.left,
@@ -1127,24 +1142,24 @@ button.link {
   margin-left: 6px;
 }
 
-/* 가이드 투어: 3D 왼쪽 아래 카드. 머리 · 단계 막대는 고정, 본문만 스크롤 */
+/* 가이드 투어: 투어 중 왼쪽 패널(탐색 · 표시 자리)을 채우는 카드. 머리 · 목차 · 제목 · 이전/다음은 고정, 본문만 스크롤 */
+.panel.left.touring {
+  overflow: hidden;
+}
 .tour-card {
-  position: absolute;
-  left: 60px; /* 왼쪽 세로 층 이동 막대 옆 (온도 카드와 같은 선) */
-  bottom: 10px;
-  z-index: 9; /* 온도 카드 · 칩 줄 위 */
-  width: min(400px, calc(100% - 70px));
-  max-height: calc(100% - 20px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  background: rgba(26, 34, 44, 0.97);
-  border: 1px solid var(--line-2);
   border-top: 3px solid var(--info);
-  border-radius: var(--r-lg);
-  padding: 10px 12px;
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+}
+.tour-card > * {
+  flex: none;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 .tour-head {
+  padding-top: 8px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1183,19 +1198,95 @@ button.link {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tour-card h3 {
-  margin: 8px 0 8px;
+/* 목차: 장 탭 한 줄 + 지금 장의 단계 목록 */
+.tour-toc {
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.toc-chs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--r);
+  background: var(--s1);
+}
+.toc-chs button {
+  flex: 1 1 auto;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.toc-chs button.done {
+  color: var(--ink-2);
+}
+.toc-chs button.on {
+  background: var(--s3);
+  color: var(--ink);
+  font-weight: 700;
+}
+.toc-steps {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.toc-steps button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: none;
+  text-align: left;
+  font-size: var(--fs-sm);
+  color: var(--ink-3);
+}
+.toc-steps button:hover {
+  background: var(--s2);
+  color: var(--ink-2);
+}
+.toc-steps button.done {
+  color: var(--ink-2);
+}
+.toc-steps button.on {
+  background: color-mix(in srgb, var(--info) 14%, transparent);
+  color: var(--ink);
+  font-weight: 700;
+}
+.toc-steps .num {
+  flex: none;
+  width: 16px;
+  text-align: right;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.tour-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  padding-top: 10px;
+  padding-bottom: 8px;
+}
+.tour-title h3 {
+  margin: 0;
   font-size: var(--fs-md);
   color: var(--ink);
 }
-.tour-body {
-  flex: 1 1 auto;
+.tour-card > .tour-body {
+  flex: 1 1 auto; /* 남은 높이를 채우고 넘치면 스크롤 */
   min-height: 0;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding-right: 2px;
+  gap: 12px;
+  padding-bottom: 12px;
 }
 .tour-lead {
   margin: 0;
@@ -1476,14 +1567,12 @@ button.link {
 }
 
 .tour-foot {
-  flex: none;
   display: flex;
-  align-items: center;
+  justify-content: flex-end;
   gap: 6px;
-  margin-top: 10px;
-}
-.tour-card.folded .tour-foot {
-  margin-top: 2px;
+  padding-top: 8px;
+  padding-bottom: 10px;
+  border-top: 1px solid var(--line);
 }
 .tour-foot > button {
   white-space: nowrap;
@@ -1492,57 +1581,9 @@ button.link {
   opacity: 0.4;
   cursor: default;
 }
-/* 단계 막대: 단계마다 한 칸, 칸 폭은 남은 폭을 나눠 가진다 (단계 수 · 카드 폭과 무관하게 한 줄에 들어감) */
-.tour-steps {
-  display: flex;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
-  margin-right: 4px;
-}
-.tour-steps button {
-  flex: 1 1 0;
-  min-width: 0;
-  height: 14px; /* 누르기 쉬운 높이, 막대는 가운데 4px */
-  padding: 0;
-  border: 0;
-  background: none;
-  position: relative;
-}
-.tour-steps button::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 5px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--line-2);
-}
-.tour-steps button:hover::after {
-  background: var(--ink-2);
-}
-.tour-steps button.done::after {
-  background: var(--ink-3);
-}
-.tour-steps button.on::after {
-  top: 4px;
-  height: 6px;
-  background: var(--info);
-}
-/* 투어 중: 온도 카드는 위쪽 45%까지, 투어 카드는 그 아래 남은 높이 (Tour.tsx useFitBelowThermal).
-   칩 줄은 투어 카드 오른쪽으로, 급기 카드가 있으면 그 왼쪽까지 */
-.view3d.touring .air-panel:not(.supply-card) {
-  max-height: calc(45% - 20px);
-}
-.view3d.touring .act-bar {
-  left: 470px;
-  transform: none;
-  max-width: calc(100% - 480px);
-  justify-content: flex-start;
-}
-.view3d.touring:has(.supply-card) .act-bar {
-  max-width: calc(100% - 790px);
+/* 짝 표: 칸마다 장비 이름표 */
+.tb-pairs td {
+  padding: 3px 4px;
 }
 
 /* 시나리오 */
@@ -4653,7 +4694,19 @@ kbd {
 }
 .tb-hub .tb-node {
   background: var(--s2);
-  white-space: normal;
+}
+/* 보내는 곳이 많으면 남은 폭 안에서 줄을 바꿔 칸을 채운다 (예: UPS-A1 → PDU 9대 · STS) */
+.tb-hub .tb-col:last-child {
+  flex: 1;
+  flex-direction: row;
+  flex-wrap: wrap;
+}
+.tb-hub .tb-col:last-child .tb-cap {
+  flex-basis: 100%;
+}
+.tb-hub .tb-col.mid,
+.tb-hub .tb-col:first-child {
+  flex: none;
 }
 .tb-cap {
   font-size: var(--fs-xs);
@@ -4692,4 +4745,17 @@ kbd {
   height: 8px;
   margin-right: 6px;
   border-radius: 2px;
+}
+
+/* 왼쪽 패널 바탕(--s1) 위에서는 블록 바탕을 한 단계 밝게, 그 안의 칸은 패널 바탕색으로 */
+.tour-card .tb-facts,
+.tour-card .tb-hub,
+.tour-card .tb-dual,
+.tour-card .tb-formula,
+.tour-card .toc-chs {
+  background: var(--s2);
+}
+.tour-card .tb-hub .tb-node,
+.tour-card .tb-dual .tb-node {
+  background: var(--s1);
 }

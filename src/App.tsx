@@ -10,7 +10,7 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
-import { startTour, TourCard } from './ui/Tour';
+import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
 import { Toast } from './ui/Toast';
@@ -45,12 +45,14 @@ export function App() {
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
-  // 투어 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 패널을 연다
+  // 투어 카드는 왼쪽 패널에 있고, 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 양쪽 패널을 연다
   useEffect(() => {
-    if (touring) setRight(true);
+    if (!touring) return;
+    setLeft(true);
+    setRight(true);
   }, [touring]);
   return (
-    <div className={`app ${left ? '' : 'no-left'} ${right ? '' : 'no-right'}`}>
+    <div className={`app ${left ? '' : 'no-left'} ${right ? '' : 'no-right'}${touring ? ' touring' : ''}`}>
       <header className="topbar">
         <IconButton icon={PanelLeft} label={left ? '왼쪽 패널 닫기' : '왼쪽 패널 열기'} active={left} onClick={() => setLeft((v) => !v)} />
         <span className="tb-logo">
@@ -107,7 +109,7 @@ export function App() {
       {left && <LeftPanel />}
       <main className={`viewport diagram-${diagram}`}>
         <div
-          className={`view3d${touring ? ' touring' : ''}`}
+          className="view3d"
           ref={(el) => {
             if (el) htmlPortal.current = el;
           }}
@@ -118,7 +120,6 @@ export function App() {
           <Toast />
           <ThermalPanel />
           <SupplyCard />
-          <TourCard />
           <FloorBar />
           <CameraButtons />
         </div>

@@ -11,6 +11,7 @@ import { LAYER_META, useView, type RackColorMode } from "../store/useView";
 import { InfoTip, keyToggle, TipTable, ToggleTag } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
+import { TourCard } from "./Tour";
 
 const TEMP_CSS = tempGradient(15, 40); // 온도 카드 · 히트맵과 같은 척도
 
@@ -39,6 +40,7 @@ export function LeftPanel() {
   const linkFilter = useView((s) => s.linkFilter);
   const groupId = useView((s) => s.groupId);
   const rackColor = useView((s) => s.rackColor);
+  const touring = useView((s) => s.tourStep != null);
   const [filter, setFilter] = useState<Domain | "all">("all");
   const [query, setQuery] = useState("");
   const [treeMode, setTreeMode] = useState<"equip" | "rack">("equip");
@@ -67,6 +69,14 @@ export function LeftPanel() {
       return { floor: f, rooms, count: items.length };
     });
   }, [filter, query]);
+
+  // 가이드 투어 중에는 탐색 · 표시 대신 투어 카드 (3D를 가리지 않도록 왼쪽 사이드에)
+  if (touring)
+    return (
+      <aside className="panel left touring">
+        <TourCard />
+      </aside>
+    );
 
   return (
     <aside className="panel left">

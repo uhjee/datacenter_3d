@@ -3,11 +3,12 @@
 // 카드는 3D 왼쪽 아래에 떠 있고, 단계마다 핵심 한 줄 + 흐름도 · 표 · 범례로 보여 준다 (긴 글 대신)
 // 그림의 칸은 3D에 실제 놓인 장비 ID('@id')로 적어, 이름 · 층 · 사양을 장비 데이터에서 그대로 가져온다
 
-import { ChevronDown, ChevronUp, Compass, X } from 'lucide-react';
+import { Compass, X } from 'lucide-react';
 import { IconButton, Switch } from './kit';
-import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { FLOORS } from '../data/building';
 import { CIRCUIT, CUSTOMERS } from '../data/customers';
+import { CONNECTIONS } from '../data/connections';
 import { EQUIP_BY_ID, EQUIPMENT } from '../data/equipment';
 import { nodeInfo } from '../data/graph';
 import { RACKS } from '../data/racks';
@@ -27,6 +28,7 @@ type Block =
   | { k: 'dual'; a: Node[]; b: Node[]; to: Node; groups?: { a: string; b: string } } // A · B 두 줄이 하나로 모이는 그림 (2N). groups: 줄마다 켜고 끌 계통 묶음
   | { k: 'specs'; of: [string, string[]][] } // 장비 사양 (장비 데이터의 specs에서 고른 항목). 'ID|표시 이름'으로 이름만 바꿀 수 있다
   | { k: 'equips'; rows: [string, string[]][] } // 이름표 묶음: 같은 역할의 장비들
+  | { k: 'pairs'; head: string[]; rows: string[][] } // 짝 표: 한 줄에 서로 짝인 장비 ID들
   | { k: 'table'; head: string[]; rows: string[][]; col?: number } // col: 강조할 열
   | { k: 'legend'; items: ['solid' | 'dash' | 'chev', string][] } // 3D 선 모양 범례
   | { k: 'formula'; top: string; bottom: string; name: string }
@@ -198,7 +200,7 @@ export const STEPS: Step[] = [
     route: { line: 'power', at: 4 },
     lead: '발전기가 뜨기 전 비는 몇 초를 배터리가 메우고, UPS가 끊김 없이 서버실 A로 보냅니다.',
     blocks: [
-      { k: 'hub', hue: 'power', ins: ['@ats-a', '@bat-a1'], node: '@ups-a1', outs: ['PDU-A1-1 ~ A1-9', '@sts-1'] },
+      { k: 'hub', hue: 'power', ins: ['@ats-a', '@bat-a1'], node: '@ups-a1', outs: [...Array.from({ length: 9 }, (_, i) => `@pdu-a1-${i + 1}`), '@sts-1'] },
       {
         k: 'specs',
         of: [
@@ -334,7 +336,8 @@ export const STEPS: Step[] = [
           ['cond-c1', ['방열 용량', '외기 대응']],
         ],
       },
-      { k: 'table', head: ['공냉식 항온항습기', '대수'], rows: [['서버실 B · C', countByFloor(['crac', 'cracFront'])]] },
+      // 냉매 배관으로 이어진 짝 전부 (연결 데이터에서)
+      { k: 'pairs', head: ['공냉식 항온항습기', '옥상 실외기'], rows: CONNECTIONS.filter((c) => c.kind === 'refrig').map((c) => [c.to, c.from]) },
     ],
     points: ['실외기가 멈추면 짝인 항온항습기도 냉각을 못 합니다. 외기가 더울수록 효율이 떨어집니다.'],
     run: () => {
@@ -360,8 +363,9 @@ export const STEPS: Step[] = [
           ['ct-1', ['방열 용량', '냉각수']],
         ],
       },
+      { k: 'pairs', head: ['냉동기', '냉각수 펌프', '냉각탑'], rows: [1, 2, 3, 4].map((n) => [`chiller-${n}`, `pump-cw-${n}`, `ct-${n}`]) },
     ],
-    points: ['냉동기 4대가 냉수 헤더에 모아 항온항습기 9대(3F 6대 · 4F 3대)로 나눕니다. 냉동기 · 냉각수 펌프 · 냉각탑은 1 : 1 : 1 짝입니다.'],
+    points: ['냉동기 4대가 냉수 헤더에 모아 항온항습기(수냉식) 9대로 나눕니다: ' + countByFloor(['crah']) + '.'],
     run: () => {
       clean();
       tab('cooling');
@@ -790,6 +794,29 @@ function TourBlock({ b }: { b: Block }) {
           ))}
         </div>
       );
+    case 'pairs':
+      return (
+        <table className="tb-table tb-pairs">
+          <thead>
+            <tr>
+              {b.head.map((h) => (
+                <th key={h}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {b.rows.map((row) => (
+              <tr key={row[0]}>
+                {row.map((id) => (
+                  <td key={id}>
+                    <NodeChip n={`@${id}`} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      );
     case 'table':
       return (
         <table className="tb-table">
@@ -879,43 +906,52 @@ function TourBlock({ b }: { b: Block }) {
   }
 }
 
-// 왼쪽 위 온도 카드가 떠 있으면 그 아래 남은 높이만큼만 차지한다 (두 카드가 겹치지 않게)
-function useFitBelowThermal(card: RefObject<HTMLDivElement | null>, on: boolean) {
-  useLayoutEffect(() => {
-    const el = card.current;
-    const view = el?.parentElement;
-    if (!on || !el || !view) return;
-    let air: Element | null = null;
-    const fit = () => {
-      const top = air ? air.getBoundingClientRect().bottom - view.getBoundingClientRect().top + 10 : 10;
-      // 3D 영역이 낮아 남는 높이가 300px보다 작으면 온도 카드 아래쪽을 덮더라도 300px은 확보한다 (본문이 읽히도록)
-      el.style.maxHeight = `${Math.max(Math.min(300, view.clientHeight - 20), view.clientHeight - top - 10)}px`;
-    };
-    const ro = new ResizeObserver(fit);
-    // 온도 카드는 투어 단계에 따라 생기고 없어지므로 3D 영역의 자식이 바뀔 때마다 다시 찾는다
-    const watch = () => {
-      if (air) ro.unobserve(air);
-      air = view.querySelector('.air-panel:not(.supply-card)');
-      if (air) ro.observe(air);
-      fit();
-    };
-    ro.observe(view);
-    const mo = new MutationObserver(watch);
-    mo.observe(view, { childList: true });
-    watch();
-    return () => {
-      ro.disconnect();
-      mo.disconnect();
-      el.style.maxHeight = '';
-    };
-  }, [card, on]);
+// 장(章): 첫 단계는 시작, 길 띠가 있는 단계는 그 길(전기 · 열), 나머지는 운영 · 정리
+const CHAPTERS = (() => {
+  const out: { name: string; from: number; to: number }[] = [];
+  STEPS.forEach((s, i) => {
+    const name = i === 0 ? '시작' : s.route ? ROUTES[s.route.line].name : '운영 · 정리';
+    const last = out[out.length - 1];
+    if (last?.name === name) last.to = i;
+    else out.push({ name, from: i, to: i });
+  });
+  return out;
+})();
+
+// 목차: 장 탭 한 줄 + 지금 장의 단계 목록 (왼쪽 패널은 세로가 넉넉해 앞으로 볼 단계 제목까지 보여 준다)
+function TourToc({ step }: { step: number }) {
+  const ch = CHAPTERS.find((c) => step >= c.from && step <= c.to)!;
+  return (
+    <nav className="tour-toc" aria-label="투어 단계">
+      <div className="toc-chs">
+        {CHAPTERS.map((c) => (
+          <button key={c.name} className={c === ch ? 'on' : step > c.to ? 'done' : ''} onClick={() => goStep(c.from)}>
+            {c.name}
+          </button>
+        ))}
+      </div>
+      {ch.to > ch.from && (
+        <ol className="toc-steps">
+          {STEPS.slice(ch.from, ch.to + 1).map((s, k) => {
+            const i = ch.from + k;
+            return (
+              <li key={s.title}>
+                <button className={i === step ? 'on' : i < step ? 'done' : ''} onClick={() => goStep(i)}>
+                  <span className="num">{i + 1}</span>
+                  {s.title}
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </nav>
+  );
 }
 
+// 왼쪽 패널을 채우는 투어 카드: 머리 · 목차 · 단계 제목 · 본문(스크롤) · 이전 / 다음
 export function TourCard() {
   const step = useView((s) => s.tourStep);
-  const [folded, setFolded] = useState(false); // 3D를 넓게 보려고 본문을 접는다
-  const ref = useRef<HTMLDivElement>(null);
-  useFitBelowThermal(ref, step != null);
 
   // ← → 로 이동, Esc로 끝내기 (입력 칸에 글을 쓰는 중이면 무시)
   useEffect(() => {
@@ -930,11 +966,17 @@ export function TourCard() {
     return () => window.removeEventListener('keydown', onKey);
   }, [step]);
 
+  // 단계를 바꾸면 본문을 맨 위부터
+  const body = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    body.current?.scrollTo(0, 0);
+  }, [step]);
+
   if (step == null) return null;
   const st = STEPS[step];
   const last = step === STEPS.length - 1;
   return (
-    <div ref={ref} className={`tour-card${folded ? ' folded' : ''}`} role="dialog" aria-label="가이드 투어">
+    <div className="tour-card" role="dialog" aria-label="가이드 투어">
       <div className="tour-head">
         <span className="tour-ico">
           <Compass size={14} />
@@ -942,36 +984,30 @@ export function TourCard() {
         <span className="tour-n num">
           가이드 투어 · {step + 1} / {STEPS.length}
         </span>
-        <span className="tour-place">{st.place}</span>
         <span className="tour-acts">
-          <IconButton icon={folded ? ChevronUp : ChevronDown} label={folded ? '펼치기' : '접기 (3D 넓게 보기)'} onClick={() => setFolded((v) => !v)} />
           <IconButton icon={X} label="투어 끝내기 (Esc)" onClick={endTour} />
         </span>
       </div>
-      <h3>{st.title}</h3>
-      {!folded && (
-        <div className="tour-body">
-          {st.route && <RouteStrip route={st.route} />}
-          <p className="tour-lead">{st.lead}</p>
-          {st.blocks.map((b, i) => (
-            <TourBlock key={i} b={b} />
-          ))}
-          {st.points && (
-            <ul className="tour-points">
-              {st.points.map((p) => (
-                <li key={p}>{p}</li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
+      <TourToc step={step} />
+      <div className="tour-title">
+        <h3>{st.title}</h3>
+        <span className="tour-place">{st.place}</span>
+      </div>
+      <div className="tour-body" ref={body}>
+        {st.route && <RouteStrip route={st.route} />}
+        <p className="tour-lead">{st.lead}</p>
+        {st.blocks.map((b, i) => (
+          <TourBlock key={i} b={b} />
+        ))}
+        {st.points && (
+          <ul className="tour-points">
+            {st.points.map((p) => (
+              <li key={p}>{p}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div className="tour-foot">
-        {/* 단계 막대: 칸 폭이 남은 폭을 나눠 가져 단계가 늘거나 카드가 좁아도 넘치지 않는다 */}
-        <div className="tour-steps">
-          {STEPS.map((s, i) => (
-            <button key={s.title} className={i === step ? 'on' : i < step ? 'done' : ''} onClick={() => goStep(i)} title={s.title} aria-label={`${i + 1}단계 ${s.title}`} />
-          ))}
-        </div>
         <button className="small" onClick={() => goStep(step - 1)} disabled={step === 0}>
           ← 이전
         </button>
