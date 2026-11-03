@@ -1213,26 +1213,6 @@ button.link {
   line-height: 1.55;
   color: var(--ink-2);
 }
-.tour-try {
-  display: flex;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--r);
-  background: color-mix(in srgb, var(--info) 8%, var(--s1));
-  border: 1px solid color-mix(in srgb, var(--info) 25%, var(--line));
-  font-size: var(--fs-sm);
-  line-height: 1.55;
-  color: var(--ink-2);
-}
-.tour-try svg {
-  flex: none;
-  margin-top: 2px;
-  color: var(--info);
-}
-.tour-try b {
-  color: var(--ink);
-  margin-right: 4px;
-}
 
 /* 투어 블록 색: 길 · 흐름의 종류 */
 .h-power {

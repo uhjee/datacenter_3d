@@ -2,7 +2,7 @@
 // 각 단계는 기존 기능(장비 선택 · 추적 · 계통 묶음 · 온도 보기 · 고객사 · 지표)을 그대로 불러 쓴다.
 // 카드는 3D 왼쪽 아래에 떠 있고, 단계마다 핵심 한 줄 + 흐름도 · 표 · 범례로 보여 준다 (긴 글 대신)
 
-import { ChevronDown, ChevronUp, Compass, Hand, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Compass, X } from 'lucide-react';
 import { IconButton, Switch } from './kit';
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { FLOORS } from '../data/building';
@@ -37,7 +37,6 @@ interface Step {
   lead: string; // 이 단계의 핵심 한 문장
   blocks: Block[];
   points?: string[]; // 덧붙이는 짧은 설명
-  try?: string; // 이 단계에서 직접 해 볼 것
   run: () => void;
 }
 
@@ -143,7 +142,6 @@ export const STEPS: Step[] = [
         ],
       },
     ],
-    try: '정보 카드의 "받는 곳 · 보내는 곳"에서 장비 이름을 누르면 그 장비로 이동합니다.',
     run: () => {
       clean();
       tab('power');
@@ -206,7 +204,6 @@ export const STEPS: Step[] = [
       { k: 'dual', a: ['특고압반', 'TR-A', 'UPS-A', 'EPS-A', 'rPDU-A'], b: ['특고압반', 'TR-B', 'UPS-B', 'EPS-B', 'rPDU-B'], to: '랙 (rPDU-A · rPDU-B 두 전원으로 받음)', groups: { a: 'sys-A', b: 'sys-B' } },
     ],
     points: ['두 줄은 서로 다른 전기 샤프트(EPS-A · EPS-B)로 올라갑니다.'],
-    try: '그림의 B계통 스위치(또는 왼쪽 "계통 묶음"의 B계통)를 켜서 반대쪽 길도 보세요.',
     run: () => {
       clean();
       tab('power');
@@ -223,7 +220,6 @@ export const STEPS: Step[] = [
       { k: 'flow', label: 'rPDU-B', hue: 'b', nodes: ['B계통 같은 순서', '…', '한전'] },
       { k: 'legend', items: [['dash', '발전기 · 예비선 · 연계반 = 대기 경로']] },
     ],
-    try: '아무 장비나 고르고 정보 카드에서 "상류 추적 · 하류 추적"을 눌러 보세요.',
     run: () => {
       clean();
       tab('power');
@@ -273,7 +269,6 @@ export const STEPS: Step[] = [
       { k: 'temps' },
     ],
     points: ['노랑 · 빨강으로 바뀐 랙이 권장 흡기 온도를 넘은 랙입니다. 왼쪽 위 온도 카드 요약도 함께 바뀝니다.'],
-    try: '온도 카드 [공조 조건]에서 컨테인먼트 · 블랭킹을, 오른쪽 아래 급기 · 수치 카드에서 급기 온도를 바꿔 보세요.',
     run: () => {
       air('A', { containment: 'none', blanking: false });
       enterAir('A');
@@ -296,7 +291,6 @@ export const STEPS: Step[] = [
       { k: 'temps' },
     ],
     points: ['판정은 랙 흡기 기준입니다. 열복도가 빨간 것은 정상 배기입니다.', '서버실 B는 봉쇄가 없어 열복도 공기가 랙 위와 열 끝으로 넘어옵니다.'],
-    try: '2D 상면도의 [비교]로 봉쇄 방식을 바꿨을 때 온도를 나란히 보세요.',
     run: () => {
       clean();
       restoreAir();
@@ -310,7 +304,6 @@ export const STEPS: Step[] = [
     lead: '찬 공기가 방을 건너는 동안 배기와 섞여, 같은 급기 20°C에도 흡기가 가장 높습니다.',
     blocks: [{ k: 'rooms' }],
     points: ['서버실 C는 벽면 항온항습기가 정면으로 바람을 불고, 멀리 있는 서쪽 랙 · 랙 위쪽이 가장 덥습니다.'],
-    try: '오른쪽 지표 탭의 [비교]에서 세 서버실의 냉각 전력 ÷ IT를 비교해 보세요.',
     run: () => {
       clean();
       restoreAir();
@@ -350,7 +343,6 @@ export const STEPS: Step[] = [
       { k: 'flow', label: '냉각수 고리', hue: 'heat', nodes: ['냉동기', '펌프', '냉각탑'], note: '1 : 1 : 1 짝' },
     ],
     points: ['외기가 차가우면 냉동기 대신 판형 열교환기로 냉수를 만듭니다 (프리쿨링).'],
-    try: '아래 공조 흐름도에서 장비를 눌러 3D 위치를 확인해 보세요.',
     run: () => {
       clean();
       tab('cooling');
@@ -395,7 +387,6 @@ export const STEPS: Step[] = [
       },
     ],
     points: ['공냉식만 쓰는 5F는 프리쿨링이 없습니다.'],
-    try: '오른쪽 지표 탭에서 외기 온도 · IT 부하율 슬라이더를 움직여 보세요.',
     run: () => {
       clean();
       focusOverview();
@@ -427,7 +418,6 @@ export const STEPS: Step[] = [
       },
     ],
     points: ['계약 초과 · 주의는 지표 탭과 [주의] 탭에도 모입니다.'],
-    try: '3D의 케이지나 고객사 이름표를 눌러 다른 고객사도 보세요.',
     run: () => {
       clean();
       focusItem('customer:B');
@@ -810,14 +800,6 @@ export function TourCard() {
                 <li key={p}>{p}</li>
               ))}
             </ul>
-          )}
-          {st.try && (
-            <div className="tour-try">
-              <Hand size={14} />
-              <span>
-                <b>해 보기</b> {st.try}
-              </span>
-            </div>
           )}
         </div>
       )}
