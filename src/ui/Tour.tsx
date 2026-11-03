@@ -203,7 +203,7 @@ export const STEPS: Step[] = [
     route: { line: 'power', at: 'all' },
     lead: '같은 길이 A · B 두 줄이라, 한쪽이 통째로 멈춰도 서버는 계속 돕니다.',
     blocks: [
-      { k: 'dual', a: ['특고압반', 'TR-A', 'UPS-A', 'EPS-A', 'rPDU-A'], b: ['특고압반', 'TR-B', 'UPS-B', 'EPS-B', 'rPDU-B'], to: '랙 (전원 2개)', groups: { a: 'sys-A', b: 'sys-B' } },
+      { k: 'dual', a: ['특고압반', 'TR-A', 'UPS-A', 'EPS-A', 'rPDU-A'], b: ['특고압반', 'TR-B', 'UPS-B', 'EPS-B', 'rPDU-B'], to: '랙 (rPDU-A · rPDU-B 두 전원으로 받음)', groups: { a: 'sys-A', b: 'sys-B' } },
     ],
     points: ['두 줄은 서로 다른 전기 샤프트(EPS-A · EPS-B)로 올라갑니다.'],
     try: '그림의 B계통 스위치(또는 왼쪽 "계통 묶음"의 B계통)를 켜서 반대쪽 길도 보세요.',
@@ -595,9 +595,10 @@ function RoomCompare() {
 }
 
 // 계통 묶음 켜기 · 끄기 (왼쪽 패널 '계통 묶음' 버튼과 같은 동작: 다른 묶음을 켜면 그쪽으로 바뀐다)
-function GroupSwitch({ id }: { id: string }) {
+// 라벨은 화면에 보이지 않고 화면 낭독기에만 읽힌다 (제목 바로 옆 스위치라 제목이 곧 라벨)
+function GroupSwitch({ id, name }: { id: string; name: string }) {
   const on = useView((s) => s.groupId === id);
-  return <Switch checked={on} onChange={() => activateGroup(on ? null : id)} label="계통 묶음" />;
+  return <Switch checked={on} onChange={() => activateGroup(on ? null : id)} label={`${name} 계통 묶음 강조`} />;
 }
 
 function TourBlock({ b }: { b: Block }) {
@@ -611,7 +612,7 @@ function TourBlock({ b }: { b: Block }) {
             <div key={s} className={`tb-flow h-${s}`}>
               <div className="tb-flow-head">
                 <span className="tb-label">{s.toUpperCase()}계통</span>
-                {b.groups && <GroupSwitch id={b.groups[s]} />}
+                {b.groups && <GroupSwitch id={b.groups[s]} name={`${s.toUpperCase()}계통`} />}
               </div>
               <div className="tb-nodes">
                 {b[s].map((n, i) => (
@@ -624,7 +625,8 @@ function TourBlock({ b }: { b: Block }) {
             </div>
           ))}
           <div className="tb-merge">
-            <span className="tb-arrow">⤵</span>
+            <span className="tb-label">A + B</span>
+            <span className="tb-arrow">→</span>
             <span className="tb-node on">{b.to}</span>
           </div>
         </div>

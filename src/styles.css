@@ -4614,15 +4614,20 @@ kbd {
   fill: none;
 }
 
-/* 투어 그림 줄 머리: 제목 왼쪽, 계통 묶음 스위치 오른쪽 */
+/* 투어 그림 줄 머리: 제목 바로 오른쪽에 계통 묶음 스위치 (라벨은 화면 낭독기용으로만) */
 .tb-flow-head {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 .tb-flow-head .k-switch {
-  margin-left: auto;
   padding: 0;
-  font-size: var(--fs-xs);
-  color: var(--ink-3);
+}
+.tb-flow-head .k-switch-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
