@@ -1,0 +1,14 @@
+{
+  "name": "데이터센터 3D 시뮬레이터",
+  "short_name": "데이터센터 3D",
+  "description": "데이터센터 전력 · 공조 3D 학습, 태블릿 현장 모드 길 안내",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#141a22",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

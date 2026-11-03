@@ -5150,6 +5150,11 @@ kbd {
    걸으면서 누르므로 글자 · 버튼을 크게(버튼 56px), 자주 쓰는 버튼은 3D 아래 왼쪽 모서리(엄지 자리) ── */
 .field-app {
   --field-btn: 56px;
+  /* 현장: 밝은 냉복도 · 어두운 열복도에서도 읽히게 보조 글자를 밝게, 본문 16px */
+  --ink-2: #c3ccd6;
+  --ink-3: #9aa7b6;
+  --fs-sm: 13px;
+  --fs: 15px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   grid-template-rows: var(--top-h) minmax(0, 1fr);
@@ -5159,7 +5164,7 @@ kbd {
   height: 100%;
   height: 100dvh;
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  font-size: 15px;
+  font-size: 16px;
 }
 @media (orientation: portrait) {
   .field-app {
@@ -5364,7 +5369,7 @@ kbd {
   background: none;
   color: var(--ink-2);
   text-align: left;
-  font-size: 15px;
+  font-size: 16px;
   line-height: 1.4;
 }
 .fp-steps li.on button {

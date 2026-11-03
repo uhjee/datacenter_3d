@@ -17,6 +17,7 @@ import { useView } from '../../store/useView';
 import { SearchPalette, useSearchHotkey } from '../SearchPalette';
 import { Toast } from '../Toast';
 import { FieldPanel } from './FieldPanel';
+import { useWakeLock } from './useWakeLock';
 import { reaim, setView } from './guide';
 
 // 현장 모드 첫 층: 정해진 층이 없으면 1층(출입 · 코어에서 출발)
@@ -30,6 +31,8 @@ function fit() {
 export function FieldLayout() {
   const [search, setSearch] = useState(false);
   useSearchHotkey(useCallback(() => setSearch(true), []));
+  // 길 안내 중에는 화면이 꺼지지 않게
+  useWakeLock(useView((s) => !!s.fieldGuide));
   // 현장 모드에는 온도 카드 · 도면이 없으므로 끄고, 주소(#here= · sel= · floor=)의 장면을 열거나 층 하나를 보여 준다.
   // 주소를 먼저 읽어 둔다: 아래에서 층을 바꾸면 주소가 그 층으로 다시 쓰이기 때문 (QR 라벨 주소를 잃지 않게)
   useEffect(() => {

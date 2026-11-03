@@ -19,6 +19,7 @@ npm run dev        # http://localhost:5173
 | 명령 | 설명 |
 |---|---|
 | `npm run dev` | 개발 서버 |
+| `npm run dev:https` | 개발 서버(HTTPS, 같은 와이파이의 태블릿 · 휴대폰에서 화면 꺼짐 방지 · 오프라인 시험용) |
 | `npm run build` | 타입 검사 후 `dist/`에 빌드 |
 | `npm run preview` | 빌드 결과 미리보기 |
 | `npm run typecheck` | 타입 검사만 |
