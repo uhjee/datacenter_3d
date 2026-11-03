@@ -3049,6 +3049,38 @@ button.primary:hover {
   overscroll-behavior: contain;
 }
 
+/* 휴대폰: 3D 위 칩 줄 · 알림은 바텀 시트 위로 비켜 선다 (--sheet-h는 Sheet.tsx가 알린다).
+   칩 줄은 한 줄로 두고 넘치면 옆으로 넘긴다. 시트를 끝까지 올리면 칩 줄은 숨긴다 */
+[data-device='phone'] .act-bar {
+  bottom: calc(var(--sheet-h, 0px) + 10px);
+  left: 68px; /* 시트를 올리면 층 막대 아래쪽과 높이가 겹치므로 층 막대 오른쪽부터 */
+  right: 8px;
+  transform: none;
+  max-width: none;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  overflow-x: auto;
+  scrollbar-width: none;
+  pointer-events: auto;
+}
+[data-device='phone'] .act-bar::-webkit-scrollbar {
+  display: none;
+}
+[data-device='phone'] .act-chip {
+  flex: none;
+}
+[data-sheet='full'] .act-bar {
+  display: none;
+}
+[data-device='phone'] .toast {
+  bottom: calc(var(--sheet-h, 0px) + 62px);
+  max-width: calc(100% - 16px);
+}
+/* 휴대폰 층 막대: 바텀 시트를 절반 올려도 다 보이게 칸 높이를 줄인다 (폭은 44px 그대로) */
+[data-device='phone'] .vc-floors .vc-floor {
+  height: 36px;
+}
+
 /* ── 3D 위 조작 ── */
 .vc-bar {
   display: flex;

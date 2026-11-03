@@ -1,6 +1,9 @@
 // 3D 화면 위에 떠 있는 조작: 왼쪽 세로 막대 층 이동 · 보기 방식(위층이 위), 오른쪽 위 화면 맞춤 · 확대 · 축소 · 조작 안내
+// 휴대폰: 층 막대는 층 버튼만 남기고, 보기 방식 · 링크 · 확대 · 축소는 카메라 막대 ⋯ 메뉴로 (3D 가운데를 넓게)
 
 import { FoldVertical, House, Link2, Minus, Plus, Scan, UnfoldVertical } from 'lucide-react';
+import { useDevice } from '../store/device';
+import { MoreMenu } from './MoreMenu';
 import { FLOORS, SR_BY_LABEL, type FloorId } from '../data/building';
 import { AIR_LAYOUT, type RoomLabel } from '../data/thermal';
 import { exitThermal, focusFloor, focusOverview, goFloor, goOverview, startTrace, switchRoom, thermalOn } from '../scene/focus';
@@ -10,22 +13,28 @@ import { endTour } from './Tour';
 import { sceneHash } from '../store/persist';
 import { IconButton, InfoTip, TipTable } from './kit';
 
+function changeMode(m: 'stack' | 'explode') {
+  useView.getState().setViewMode(m);
+  // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
+  requestAnimationFrame(fitView);
+}
+
 export function FloorBar() {
   const focus = useView((s) => s.floorFocus);
   const viewMode = useView((s) => s.viewMode);
   const thermal = useView((s) => s.airOn || s.heatOn);
   const floorSet = useView((s) => s.floorSet);
-  const changeMode = (m: 'stack' | 'explode') => {
-    useView.getState().setViewMode(m);
-    // 모드 전환 후 카메라 재배치 (기류 보기 중이면 기류 시점 유지)
-    requestAnimationFrame(fitView);
-  };
+  const phone = useDevice().device === 'phone';
   return (
     <div className="vc-floors">
       <div className="vc-bar col">
-        <IconButton icon={UnfoldVertical} label="층 벌려 보기" active={viewMode === 'explode'} onClick={() => changeMode('explode')} />
-        <IconButton icon={FoldVertical} label="겹쳐 보기" active={viewMode === 'stack'} onClick={() => changeMode('stack')} />
-        <span className="vc-sep h" />
+        {!phone && (
+          <>
+            <IconButton icon={UnfoldVertical} label="층 벌려 보기" active={viewMode === 'explode'} onClick={() => changeMode('explode')} />
+            <IconButton icon={FoldVertical} label="겹쳐 보기" active={viewMode === 'stack'} onClick={() => changeMode('stack')} />
+            <span className="vc-sep h" />
+          </>
+        )}
         <button className={`vc-floor${!focus && !floorSet ? ' on' : ''}${thermal ? ' dim' : ''}`} onClick={goOverview} title={thermal ? '온도 보기를 끄고 건물 전체 보기' : '건물 전체 보기'}>
           전체
         </button>
@@ -95,7 +104,44 @@ function copySceneLink() {
   navigator.clipboard?.writeText(url).then(done, () => useView.getState().showToast(`복사하지 못했습니다. 주소창의 주소를 직접 복사해 주세요.`));
 }
 
+// 휴대폰 조작 안내 (손가락)
+const TOUCH_HELP = [
+  ['한 손가락 끌기', '회전'],
+  ['두 손가락 벌리기 · 오므리기', '확대 · 축소'],
+  ['두 손가락 끌기', '이동'],
+  ['더블탭', '그 지점을 회전 중심으로'],
+  ['탭', '선택만 · 아래 요약 줄이 바뀜 (카메라는 그대로)'],
+  ['길게 누르기', '마우스를 올린 것처럼 이름 · 온도 보기'],
+  ['아래 요약 줄 탭 · 끌기', '정보 · 지표 · 주의 · 시나리오 펼치기'],
+  ['홈 버튼', '처음 화면으로: 보기 설정 · 층 · 레이어 · 선택 · 온도 보기 · 도면 · 시나리오를 모두 초기화'],
+  ['화면 맞춤 버튼', '선택한 층(전체면 건물 전체)으로 카메라 되돌리기'],
+  ['⋯ 버튼', '층 벌려 보기 · 겹쳐 보기, 링크 복사, 확대 · 축소'],
+];
+
 export function CameraButtons() {
+  const phone = useDevice().device === 'phone';
+  const viewMode = useView((s) => s.viewMode);
+  if (phone)
+    return (
+      <div className="vc-cam vc-bar col">
+        <IconButton icon={House} label="처음 화면으로 (보기 설정 · 층 · 레이어 모두 초기화)" onClick={resetAll} />
+        <IconButton icon={Scan} label="화면에 맞춤 (선택한 층 기준)" onClick={fitView} />
+        <MoreMenu
+          label="3D 보기 메뉴"
+          items={[
+            viewMode === 'explode'
+              ? { icon: FoldVertical, label: '겹쳐 보기', onSelect: () => changeMode('stack') }
+              : { icon: UnfoldVertical, label: '층 벌려 보기', onSelect: () => changeMode('explode') },
+            { icon: Link2, label: '지금 장면 링크 복사', onSelect: copySceneLink },
+            { icon: Plus, label: '확대', onSelect: () => useView.getState().zoomStep(1) },
+            { icon: Minus, label: '축소', onSelect: () => useView.getState().zoomStep(-1) },
+          ]}
+        />
+        <span className="vc-help">
+          <InfoTip label="3D 조작 방법" text={<TipTable head={['조작', '동작']} rows={TOUCH_HELP} />} />
+        </span>
+      </div>
+    );
   return (
     <div className="vc-cam vc-bar col">
       <IconButton icon={House} label="처음 화면으로 (보기 설정 · 층 · 레이어 모두 초기화)" onClick={resetAll} />

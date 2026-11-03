@@ -35,11 +35,14 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
   }, []);
   const h = drag ?? snapPx(snap);
   useEffect(() => {
-    if (drag == null) document.documentElement.style.setProperty('--sheet-h', `${h}px`);
-  }, [drag, h]);
+    if (drag != null) return;
+    document.documentElement.style.setProperty('--sheet-h', `${h}px`);
+    document.documentElement.dataset.sheet = snap;
+  }, [drag, h, snap]);
   useEffect(
     () => () => {
       document.documentElement.style.removeProperty('--sheet-h');
+      delete document.documentElement.dataset.sheet;
     },
     [],
   );

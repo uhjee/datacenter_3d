@@ -1,7 +1,7 @@
 import { CameraControls } from '@react-three/drei';
 import { Canvas, events as defaultEvents, useFrame, useThree, type RootState } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Path, Plane, Raycaster, Shape, Vector2, Vector3, type Intersection, type Mesh, type MeshBasicMaterial, type Object3D } from 'three';
+import { Path, Plane, Raycaster, Shape, Vector2, Vector3, type Intersection, type Mesh, type MeshBasicMaterial, type Object3D, type PerspectiveCamera } from 'three';
 import type { UseBoundStore, StoreApi } from 'zustand';
 import { FOOTPRINT } from '../data/building';
 import { useView } from '../store/useView';
@@ -178,10 +178,17 @@ function CameraRig() {
   }, []);
 
   useEffect(() => {
-    if (!goal || !ref.current) return;
-    // 더블클릭으로 옮긴 회전 중심(초점 어긋남)을 풀고 목표를 화면 가운데로
-    ref.current.setFocalOffset(0, 0, 0, true);
-    ref.current.setLookAt(...goal.position, ...goal.target, true);
+    const c = ref.current;
+    if (!goal || !c) return;
+    // 더블클릭으로 옮긴 회전 중심(초점 어긋남)을 풀고 목표를 화면 가운데로.
+    // 휴대폰 바텀 시트가 아래를 덮고 있으면 그 절반만큼 목표를 화면 위쪽으로 올려 시트에 가리지 않게 (초점 오프셋 y+ = 장면이 위로)
+    const sheet = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sheet-h')) || 0;
+    const h = document.querySelector<HTMLCanvasElement>('.view3d canvas')?.clientHeight ?? 0;
+    const fov = (c.camera as PerspectiveCamera).fov;
+    const dist = new Vector3(...goal.position).distanceTo(new Vector3(...goal.target));
+    const lift = sheet && h ? ((sheet / 2) * 2 * dist * Math.tan((fov * Math.PI) / 360)) / h : 0;
+    c.setFocalOffset(0, lift, 0, true);
+    c.setLookAt(...goal.position, ...goal.target, true);
   }, [goal]);
 
   // 더블클릭 · 더블탭한 지점을 회전 중심으로 (카메라는 그 자리에 둔다)
