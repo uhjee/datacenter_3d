@@ -102,7 +102,7 @@ export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
   );
 }
 
-function InfoBody({ id, groupId }: { id: string | null; groupId: string | null }) {
+export function InfoBody({ id, groupId }: { id: string | null; groupId: string | null }) {
   return (
     <>
       {!id && groupId && <GroupCard id={groupId} />}

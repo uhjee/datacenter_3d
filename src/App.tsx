@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { DiagramPanel } from './diagram/DiagramPanel';
-import { Building2, Compass, PanelLeft, PanelRight, Search, Siren, Thermometer, Workflow } from 'lucide-react';
+import { Building2, Compass, MapPin, PanelLeft, PanelRight, Search, Siren, Thermometer, Workflow } from 'lucide-react';
 import { enterHeat, exitThermal } from './scene/focus';
 import { AIR_LAYOUT, type RoomLabel } from './data/thermal';
 import { htmlPortal } from './scene/htmlPortal';
@@ -10,7 +10,8 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
-import { deviceOf, useDevice } from './store/device';
+import { deviceOf, setMode, useDevice } from './store/device';
+import { FieldLayout } from './ui/field/FieldLayout';
 import { MoreMenu } from './ui/MoreMenu';
 import { Sheet, type SheetSnap } from './ui/Sheet';
 import { startTour, TourCard } from './ui/Tour';
@@ -50,8 +51,10 @@ export function App() {
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
-  const { device } = useDevice();
+  const { device, mode } = useDevice();
   const phone = device === 'phone';
+  // 현장 모드로 돌아가는 버튼: 태블릿이거나 주소로 모드를 시험 중일 때
+  const fieldOK = device === 'tablet' || new URLSearchParams(location.search).has('mode');
   // 휴대폰은 오른쪽 패널 대신 바텀 시트. '오른쪽 패널을 연다'는 시트를 절반 높이로 올리는 것
   const [sheet, setSheet] = useState<SheetSnap>('peek');
   const openRight = useCallback(() => (phone ? setSheet((s) => (s === 'peek' ? 'half' : s)) : setRight(true)), [phone]);
@@ -81,6 +84,8 @@ export function App() {
       <Thermometer size={15} /> 온도
     </button>
   );
+  // 태블릿 현장 모드: 장비를 찾아가는 다른 화면 틀 (주소 ?mode=field 로 PC에서도 시험)
+  if (mode === 'field') return <FieldLayout />;
   return (
     <div className={`app ${left ? '' : 'no-left'} ${right ? '' : 'no-right'}${touring ? ' touring' : ''}`}>
       {device === 'phone' ? (
@@ -151,6 +156,11 @@ export function App() {
               <Compass size={15} /> 가이드 투어
             </button>
           </div>
+          {fieldOK && (
+            <button className="tb-btn" onClick={() => setMode('field')} title="현장 모드: 들고 다니며 3D로 장비를 찾아가는 화면">
+              <MapPin size={15} /> 현장 모드
+            </button>
+          )}
           <IconButton icon={PanelRight} label={right ? '정보 패널 닫기' : '정보 패널 열기'} active={right} onClick={() => setRight((v) => !v)} />
         </header>
       )}
