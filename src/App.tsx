@@ -10,6 +10,7 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
+import { deviceOf } from './store/device';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -32,8 +33,9 @@ function heatRoom(): RoomLabel {
 }
 
 export function App() {
-  const [left, setLeft] = useState(true);
-  const [right, setRight] = useState(true);
+  // 휴대폰 · 태블릿은 3D를 가리지 않게 좌우 패널을 닫고 시작한다
+  const [left, setLeft] = useState(() => deviceOf() === 'desktop');
+  const [right, setRight] = useState(() => deviceOf() === 'desktop');
   const [search, setSearch] = useState(false);
   const openSearch = useCallback(() => setSearch(true), []);
   useSearchHotkey(openSearch);

@@ -30,6 +30,8 @@
   --warn: #ff922b;
   --crit: #ff6b6b;
   --info: #74c0fc;
+  /* 상단 바 높이 (노치 · 상태 표시줄 포함) */
+  --top-h: calc(48px + env(safe-area-inset-top));
   /* 모서리 · 글자 크기 */
   --r-sm: 6px;
   --r: 8px;
@@ -70,6 +72,8 @@ body,
   height: 100%;
   overflow: hidden;
   background: var(--bg);
+  /* 휴대폰 · 태블릿에서 당겨서 새로 고침 · 바운스로 화면이 흔들리지 않게 */
+  overscroll-behavior: none;
 }
 
 button {
@@ -93,12 +97,17 @@ button.on {
 .app {
   display: grid;
   grid-template-columns: 280px 1fr 360px;
-  /* minmax(0, …): 3D 캔버스의 이전 높이 때문에 칸이 늘어나 흐름도 패널이 밀려나지 않도록 */
-  grid-template-rows: 48px minmax(0, 1fr);
+  /* minmax(0, …): 3D 캔버스의 이전 높이 때문에 칸이 늘어나 흐름도 패널이 밀려나지 않도록.
+     상단 바는 노치 · 상태 표시줄 높이(safe-area)만큼 위로 늘어난다 (viewport-fit=cover) */
+  grid-template-rows: var(--top-h) minmax(0, 1fr);
   grid-template-areas:
     'top top top'
     'left view right';
+  /* 휴대폰 주소창이 나타나고 사라져도 화면에 맞게 (dvh를 모르는 브라우저는 100%) */
   height: 100%;
+  height: 100dvh;
+  /* 노치 · 홈 표시줄 쪽 가장자리를 비운다 (PC는 0) */
+  padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 .app.no-left {
   grid-template-columns: 0 1fr 360px;
@@ -128,7 +137,7 @@ button.on {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 10px;
+  padding: env(safe-area-inset-top) 10px 0;
   border-bottom: 1px solid var(--line);
   background: var(--panel);
 }
@@ -499,7 +508,8 @@ button.on {
   display: flex;
 }
 
-@media (max-width: 900px) {
+/* 좁은 화면 · 휴대폰(가로 휴대폰 포함): 좌우 패널을 3D 위에 겹쳐 띄운다. 휴대폰은 바텀 시트(S5) 전까지 이 방식 */
+@media (max-width: 900px), (max-height: 499px) and (pointer: coarse) {
   .app,
   .app.no-left,
   .app.no-right,
@@ -510,8 +520,8 @@ button.on {
   .panel.left,
   .panel.right {
     position: fixed;
-    top: 48px;
-    bottom: 0;
+    top: var(--top-h);
+    bottom: env(safe-area-inset-bottom);
     width: min(320px, 85vw);
     z-index: 20;
   }

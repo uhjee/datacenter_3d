@@ -2,10 +2,14 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import { loadSettings, watchHash, watchSettings } from './store/persist';
+import { watchDevice } from './store/device';
 import './styles.css';
 
 // 개발 중 브라우저 콘솔에서 상태를 다룰 수 있게
 if (import.meta.env.DEV) import('./store/useView').then(({ useView }) => Object.assign(window, { __view: useView }));
+
+// 기기(휴대폰 · 태블릿 · PC) · 모드를 먼저 정해 <html>에 단다 (첫 그림부터 맞는 배치로)
+watchDevice();
 
 // 지난번 보기 설정을 먼저 되살린 뒤 그리고, 바뀌면 저장 · 주소(장면)를 갱신
 loadSettings();
