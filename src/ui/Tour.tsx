@@ -77,14 +77,17 @@ export const STEPS: Step[] = [
     title: '한전에서 전기를 받는 곳',
     place: 'B1 · 특고압 수전실',
     route: { line: 'power', at: 0 },
-    lead: '한전의 22.9kV 특고압을 지중 케이블 두 회선으로 받습니다.',
+    lead: '한전의 22.9kV 특고압을 두 회선으로 받아, 특고압 수배전반 수전부에서 하나를 고릅니다.',
     blocks: [
-      { k: 'flow', hue: 'power', nodes: ['한전 본선', 'ALTS', '특고압 수배전반'], at: [1], note: '본선이 끊기면 ALTS가 예비선으로 자동 절체' },
+      // 선택한 장비(수전부)를 강조: ALTS는 따로 있는 장비가 아니라 수전부 안의 절체 개폐기
+      { k: 'flow', label: '평상시', hue: 'power', nodes: ['한전 본선', '수전부 (ALTS)', 'VCB → TR'], at: [1] },
+      { k: 'flow', label: '본선 정전 시', hue: 'power', nodes: ['한전 예비선', '수전부 (ALTS)', 'VCB → TR'], at: [1], note: 'ALTS가 예비선 쪽으로 자동 절체' },
       {
         k: 'facts',
         rows: [
           ['받는 전압', '22.9kV (특고압)'],
-          ['인입', '본선 · 예비선 2회선'],
+          ['인입', '지중 케이블 2회선 (서로 다른 변전소)'],
+          ['ALTS 위치', '특고압 수배전반 수전부 안'],
         ],
       },
       {
@@ -98,7 +101,7 @@ export const STEPS: Step[] = [
     run: () => {
       clean();
       tab('power');
-      focusItem('kepco-main');
+      focusItem('hv-in'); // 받는 곳: 본선 · 예비선(점선)이 함께 보인다
     },
   },
   {
@@ -435,7 +438,7 @@ export const STEPS: Step[] = [
     place: '2F 소화약제실 · 각 층',
     lead: '불이 나면 물 대신 가스로 꺼서 장비를 보호합니다.',
     blocks: [
-      { k: 'flow', hue: 'fire', nodes: ['감지기 회로 A', '+ 회로 B', '소화 수신반', '20~30초 뒤 가스 방출'], at: [1], note: '두 회로가 모두 동작해야 방출 (교차회로)' },
+      { k: 'flow', hue: 'fire', nodes: ['감지기 회로 A', '+ 회로 B', '소화 수신반', '20~30초 뒤 가스 소화설비 방출'], at: [3], note: '두 회로가 모두 동작해야 방출 (교차회로)' },
       {
         k: 'facts',
         rows: [
