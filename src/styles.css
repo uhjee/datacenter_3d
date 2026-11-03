@@ -4769,3 +4769,17 @@ kbd {
 .tour-card .tb-dual .tb-node {
   background: var(--s1);
 }
+
+/* 3D 오른쪽 아래 PUE 카드 ([전체] 보기일 때만). 오른쪽 패널의 PUE 카드와 같은 내용, 3D 위라 반투명 바탕 */
+.pue-float {
+  position: absolute;
+  right: 10px; /* 오른쪽 위 카메라 막대와 같은 오른쪽 선 */
+  bottom: 10px;
+  width: 340px;
+  max-width: calc(100% - 80px);
+  z-index: 7;
+}
+.pue-float .rp-hero {
+  background: rgba(21, 27, 35, 0.94);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}

@@ -105,12 +105,48 @@ function Slider(p: { name: string; value: string; min: number; max: number; step
   );
 }
 
+// 3D 오른쪽 아래에 띄우는 PUE 카드: 층 막대에서 [전체]를 볼 때만 (온도 보기 중엔 그 자리에 급기 · 수치 카드가 뜬다)
+export function PueFloat() {
+  const overview = useView((s) => !s.floorFocus && !s.floorSet && !s.airOn && !s.heatOn);
+  const m = useMetrics();
+  const [hover, setHover] = useState<string | null>(null);
+  if (!overview) return null;
+  return (
+    <div className="pue-float">
+      <PueHero m={m} hover={hover} setHover={setHover} />
+    </div>
+  );
+}
+
 // ── PUE: 큰 숫자 + 분해 막대 (조각에 마우스를 올리면 값) ──
 function Pue({ m }: { m: Metrics }) {
   const [hover, setHover] = useState<string | null>(null);
-  const h = m.parts.find((p) => p.key === hover);
   return (
     <>
+      <PueHero m={m} hover={hover} setHover={setHover} />
+      <Section id="pue-parts" title="전력 분해" count={`${m.parts.length}항목`} defaultOpen={false}>
+        <table className="specs parts">
+          <tbody>
+            {m.parts.map((p) => (
+              <tr key={p.key} onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)} className={hover === p.key ? 'on' : ''}>
+                <th>
+                  <span className="dot" style={{ background: PART_COLOR[p.key] }} /> {p.name}
+                </th>
+                <td className="num">{f0(p.kw)}kW</td>
+                <td className="num">{pct(p.kw / m.total)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Section>
+    </>
+  );
+}
+
+// PUE 큰 숫자 + 분해 막대 카드 (오른쪽 패널 · 3D 위 카드가 함께 쓴다)
+function PueHero({ m, hover, setHover }: { m: Metrics; hover: string | null; setHover: (k: string | null) => void }) {
+  const h = m.parts.find((p) => p.key === hover);
+  return (
       <div className="rp-hero">
         <div>
           <div className="rp-hero-k">
@@ -151,22 +187,6 @@ function Pue({ m }: { m: Metrics }) {
           <div className="stack-tip num">{h ? `${h.name} ${f0(h.kw)}kW (${pct(h.kw / m.total)})` : '\u00a0'}</div>
         </div>
       </div>
-      <Section id="pue-parts" title="전력 분해" count={`${m.parts.length}항목`} defaultOpen={false}>
-        <table className="specs parts">
-          <tbody>
-            {m.parts.map((p) => (
-              <tr key={p.key} onMouseEnter={() => setHover(p.key)} onMouseLeave={() => setHover(null)} className={hover === p.key ? 'on' : ''}>
-                <th>
-                  <span className="dot" style={{ background: PART_COLOR[p.key] }} /> {p.name}
-                </th>
-                <td className="num">{f0(p.kw)}kW</td>
-                <td className="num">{pct(p.kw / m.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Section>
-    </>
   );
 }
 

@@ -18,6 +18,7 @@ import { LeftPanel } from './ui/LeftPanel';
 import { useView } from './store/useView';
 import { IconButton } from './ui/kit';
 import { CameraButtons, FloorBar } from './ui/ViewControls';
+import { PueFloat } from './ui/MetricsPanel';
 
 // 히트맵을 켤 서버실: 공조 시나리오가 재생 중이면 그 서버실, 아니면 지금 보고 있는 층의 서버실, 아니면 마지막으로 본 서버실
 function heatRoom(): RoomLabel {
@@ -120,6 +121,7 @@ export function App() {
           <Toast />
           <ThermalPanel />
           <SupplyCard />
+          <PueFloat />
           <FloorBar />
           <CameraButtons />
         </div>
