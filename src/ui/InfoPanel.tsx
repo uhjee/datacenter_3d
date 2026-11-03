@@ -16,7 +16,6 @@ import { ConnSection, GroupsSection, ShaftLinks } from './ConnPanel';
 import { GroupCard } from './GroupCard';
 import { MetricsPanel } from './MetricsPanel';
 import { ScenarioPanel } from '../scenario/ScenarioPanel';
-import { TourCard } from './Tour';
 import { rackKw } from '../data/thermal';
 import { incoming, nodeName, outgoing } from '../data/graph';
 import { RackTempSection, SensorTemps, TEMP_TONE, UnitTemps } from './ThermInfo';
@@ -39,7 +38,6 @@ export function InfoPanel() {
   }, [id, groupId]);
   return (
     <aside className="panel right">
-      <TourCard />
       <div className="right-tabs">
         <button className={tab === 'info' ? 'on' : ''} onClick={() => useView.getState().setRightTab('info')}>
           정보

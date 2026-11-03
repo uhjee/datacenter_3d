@@ -10,7 +10,7 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
-import { startTour } from './ui/Tour';
+import { startTour, TourCard } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
 import { Toast } from './ui/Toast';
@@ -45,7 +45,7 @@ export function App() {
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
-  // 투어 안내는 오른쪽 패널에 붙으므로 투어를 시작하면 패널을 연다
+  // 투어 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 패널을 연다
   useEffect(() => {
     if (touring) setRight(true);
   }, [touring]);
@@ -107,7 +107,7 @@ export function App() {
       {left && <LeftPanel />}
       <main className={`viewport diagram-${diagram}`}>
         <div
-          className="view3d"
+          className={`view3d${touring ? ' touring' : ''}`}
           ref={(el) => {
             if (el) htmlPortal.current = el;
           }}
@@ -118,6 +118,7 @@ export function App() {
           <Toast />
           <ThermalPanel />
           <SupplyCard />
+          <TourCard />
           <FloorBar />
           <CameraButtons />
         </div>

@@ -1127,17 +1127,21 @@ button.link {
   margin-left: 6px;
 }
 
-/* 가이드 투어 */
+/* 가이드 투어: 3D 왼쪽 아래 카드. 머리 · 단계 막대는 고정, 본문만 스크롤 */
 .tour-card {
-  position: sticky;
-  top: 0;
-  z-index: 3;
-  margin: 8px;
-  background: var(--s2);
+  position: absolute;
+  left: 60px; /* 왼쪽 세로 층 이동 막대 옆 (온도 카드와 같은 선) */
+  bottom: 10px;
+  z-index: 9; /* 온도 카드 · 칩 줄 위 */
+  width: min(400px, calc(100% - 70px));
+  max-height: calc(100% - 20px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(26, 34, 44, 0.97);
   border: 1px solid var(--line-2);
   border-top: 3px solid var(--info);
   border-radius: var(--r-lg);
-  padding: 10px 12px 12px;
+  padding: 10px 12px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
 }
 .tour-head {
@@ -1147,14 +1151,18 @@ button.link {
   font-size: var(--fs-xs);
   color: var(--ink-3);
 }
-.tour-head .k-icon-btn {
+.tour-acts {
   margin-left: auto;
+  display: flex;
+}
+.tour-head .k-icon-btn {
   border-color: transparent;
   background: none;
 }
 .tour-ico {
   width: 22px;
   height: 22px;
+  flex: none;
   display: grid;
   place-items: center;
   border-radius: var(--r-sm);
@@ -1164,27 +1172,50 @@ button.link {
 .tour-n {
   color: var(--ink-2);
   font-weight: 700;
+  white-space: nowrap;
 }
 .tour-place {
+  min-width: 0;
   border: 1px solid var(--line-2);
   border-radius: 999px;
   padding: 0 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .tour-card h3 {
-  margin: 8px 0 6px;
+  margin: 8px 0 8px;
   font-size: var(--fs-md);
   color: var(--ink);
 }
-.tour-card p {
-  margin: 0 0 6px;
-  line-height: 1.6;
+.tour-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 2px;
+}
+.tour-lead {
+  margin: 0;
+  padding-left: 8px;
+  border-left: 3px solid var(--info);
+  font-size: var(--fs);
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.tour-points {
+  margin: 0;
+  padding-left: 16px;
   font-size: var(--fs-sm);
+  line-height: 1.55;
   color: var(--ink-2);
 }
 .tour-try {
   display: flex;
   gap: 8px;
-  margin-top: 8px;
   padding: 8px 10px;
   border-radius: var(--r);
   background: color-mix(in srgb, var(--info) 8%, var(--s1));
@@ -1202,11 +1233,277 @@ button.link {
   color: var(--ink);
   margin-right: 4px;
 }
+
+/* 투어 블록 색: 길 · 흐름의 종류 */
+.h-power {
+  --hue: var(--power);
+}
+.h-heat,
+.h-fire {
+  --hue: var(--fire);
+}
+.h-cool {
+  --hue: var(--cool);
+}
+.h-a {
+  --hue: var(--a);
+}
+.h-b {
+  --hue: var(--b);
+}
+
+/* 길 띠: 지난 곳은 흐리게, 지금 칸은 색으로 */
+.tour-route {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-xs);
+}
+.tour-route .tr-name {
+  flex: none;
+  color: var(--hue);
+  font-weight: 700;
+}
+.tour-route ol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tour-route li {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 2px;
+  border-top: 3px solid var(--line-2);
+  color: var(--ink-3);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tour-route li.done {
+  border-top-color: color-mix(in srgb, var(--hue) 40%, var(--line-2));
+}
+.tour-route li.on {
+  border-top-color: var(--hue);
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* 흐름도: 칸 → 칸, 좁으면 줄을 바꿔 이어진다 */
+.tb-flow {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tb-label {
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  color: var(--hue);
+}
+.tb-nodes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+.tb-node {
+  padding: 3px 8px;
+  border: 1px solid color-mix(in srgb, var(--hue, var(--ink-3)) 45%, var(--line-2));
+  border-radius: var(--r-sm);
+  background: var(--s1);
+  font-size: var(--fs-sm);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.tb-node.on {
+  border-color: var(--hue, var(--info));
+  background: color-mix(in srgb, var(--hue, var(--info)) 22%, var(--s1));
+  font-weight: 700;
+}
+.tb-arrow {
+  color: var(--hue, var(--ink-3));
+  font-size: var(--fs-sm);
+}
+.tb-flow small {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.tb-dual {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--s1);
+}
+.tb-dual .tb-node {
+  background: var(--s2);
+}
+.tb-merge {
+  --hue: var(--it);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 항목 : 값 */
+.tb-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 10px;
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--r);
+  background: var(--s1);
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.tb-facts dt {
+  color: var(--ink-3);
+}
+.tb-facts dd {
+  margin: 0;
+  color: var(--ink);
+}
+
+/* 표 */
+.tb-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+.tb-table th,
+.tb-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+.tb-table thead th {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--ink-3);
+  border-bottom-color: var(--line-2);
+}
+.tb-table td {
+  color: var(--ink);
+}
+.tb-table td small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.tb-table td b + small {
+  display: inline;
+}
+.tb-table .r {
+  text-align: right;
+}
+.tb-table .hl {
+  background: color-mix(in srgb, var(--info) 10%, transparent);
+}
+.tb-table thead th.hl {
+  color: var(--info);
+}
+.tb-table tfoot td {
+  border-bottom: 0;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.tb-table.floors th {
+  width: 34px;
+  color: var(--ink-2);
+  font-weight: 700;
+}
+.tb-table.floors td {
+  color: var(--ink-2);
+}
+
+/* 범례 */
+.tb-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: var(--fs-xs);
+  color: var(--ink-2);
+}
+.tb-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.tb-legend .tb-cap {
+  color: var(--ink-3);
+}
+.tb-legend i {
+  display: inline-block;
+  flex: none;
+  font-style: normal;
+}
+.tb-legend .sw-solid {
+  width: 22px;
+  border-top: 3px solid var(--power);
+}
+.tb-legend .sw-dash {
+  width: 22px;
+  border-top: 3px dashed var(--power);
+}
+.tb-legend .sw-chev::before {
+  content: '›››';
+  color: var(--power);
+  font-weight: 700;
+  letter-spacing: -1px;
+}
+.tb-legend .sw-box {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+/* 공식: 이름 = 분자 / 분모 */
+.tb-formula {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: var(--r);
+  background: var(--s1);
+  font-size: var(--fs);
+}
+.tb-formula b {
+  font-size: var(--fs-md);
+  color: var(--info);
+}
+.tb-formula .frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.tb-formula .frac span:first-child {
+  padding: 0 6px 2px;
+  border-bottom: 1px solid var(--ink-2);
+}
+.tb-formula .frac span:last-child {
+  padding-top: 2px;
+}
+
 .tour-foot {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 10px;
+}
+.tour-card.folded .tour-foot {
+  margin-top: 2px;
 }
 .tour-foot > button {
   white-space: nowrap;
@@ -1215,7 +1512,7 @@ button.link {
   opacity: 0.4;
   cursor: default;
 }
-/* 단계 막대: 단계마다 한 칸, 칸 폭은 남은 폭을 나눠 가진다 (단계 수 · 패널 폭과 무관하게 한 줄에 들어감) */
+/* 단계 막대: 단계마다 한 칸, 칸 폭은 남은 폭을 나눠 가진다 (단계 수 · 카드 폭과 무관하게 한 줄에 들어감) */
 .tour-steps {
   display: flex;
   gap: 2px;
@@ -1253,9 +1550,19 @@ button.link {
   height: 6px;
   background: var(--info);
 }
-/* 투어 중에는 투어 카드만 위에 고정 */
-.tour-card + .right-tabs {
-  position: static;
+/* 투어 중: 온도 카드는 위쪽 45%까지, 투어 카드는 그 아래 남은 높이 (Tour.tsx useFitBelowThermal).
+   칩 줄은 투어 카드 오른쪽으로, 급기 카드가 있으면 그 왼쪽까지 */
+.view3d.touring .air-panel:not(.supply-card) {
+  max-height: calc(45% - 20px);
+}
+.view3d.touring .act-bar {
+  left: 470px;
+  transform: none;
+  max-width: calc(100% - 480px);
+  justify-content: flex-start;
+}
+.view3d.touring:has(.supply-card) .act-bar {
+  max-width: calc(100% - 790px);
 }
 
 /* 시나리오 */
