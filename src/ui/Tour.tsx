@@ -189,11 +189,11 @@ export const STEPS: Step[] = [
         ],
       },
     ],
-    points: ['UPS-A1에서 내려가는 길을 하류 추적으로 보여 줍니다.'],
+    points: ['리튬이온 배터리 A1에서 UPS-A1을 거쳐 랙까지 내려가는 길을 하류 추적으로 보여 줍니다.'],
     run: () => {
       clean();
       tab('power');
-      focusItem('ups-a1');
+      focusItem('bat-a1'); // 배터리 → UPS 선도 보이도록 배터리에서 하류 추적 (UPS에서 하류 추적하면 배터리 선은 상류라 빠진다)
       startTrace('down');
     },
   },
