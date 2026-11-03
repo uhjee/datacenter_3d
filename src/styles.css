@@ -1198,13 +1198,11 @@ button.link {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* 목차: 장 탭 한 줄 + 지금 장의 단계 목록 */
-.tour-toc {
-  margin-top: 8px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
+/* 장 탭 (카드 위) · 단계 목록 (카드 아래) */
 .toc-chs {
+  margin-top: 8px;
+  margin-left: 12px;
+  margin-right: 12px;
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -1230,9 +1228,11 @@ button.link {
   font-weight: 700;
 }
 .toc-steps {
-  margin: 6px 0 0;
-  padding: 0;
+  margin: 0;
+  padding-top: 6px !important;
+  padding-bottom: 8px !important;
   list-style: none;
+  border-top: 1px solid var(--line);
 }
 .toc-steps button {
   display: flex;
@@ -1566,18 +1566,15 @@ button.link {
   padding-top: 2px;
 }
 
-.tour-foot {
-  display: flex;
-  justify-content: flex-end;
-  gap: 6px;
-  padding-top: 8px;
-  padding-bottom: 10px;
-  border-top: 1px solid var(--line);
+/* 머리의 이전 · 다음 · 닫기 */
+.tour-acts {
+  gap: 4px;
+  align-items: center;
 }
-.tour-foot > button {
+.tour-acts > button.small {
   white-space: nowrap;
 }
-.tour-foot > button:disabled {
+.tour-acts > button:disabled {
   opacity: 0.4;
   cursor: default;
 }

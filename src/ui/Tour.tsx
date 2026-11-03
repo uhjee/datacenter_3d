@@ -40,8 +40,8 @@ type Block =
 
 // 투어가 따라가는 두 길. 단계마다 지금 어디쯤인지 위에 띠로 보여 준다
 const ROUTES = {
-  power: { name: '전기의 길', hue: 'power', stops: ['한전', '변압', 'ATS', '발전기', 'UPS', '랙'] },
-  heat: { name: '열의 길', hue: 'heat', stops: ['랙', '실내 기류', '항온항습기', '배관', '옥상', '대기'] },
+  power: { name: '전력 운영', hue: 'power', stops: ['한전', '변압', 'ATS', '발전기', 'UPS', '랙'] },
+  heat: { name: '냉각 운영', hue: 'heat', stops: ['랙', '실내 기류', '항온항습기', '배관', '옥상', '대기'] },
 } as const;
 
 interface Step {
@@ -256,7 +256,7 @@ export const STEPS: Step[] = [
     },
   },
   {
-    title: '이제 열의 길: 서버실 A 기류',
+    title: '이제 냉각 운영: 서버실 A 기류',
     place: '3F · 서버실 A',
     route: { line: 'heat', at: 1 },
     lead: '찬 공기는 바닥 아래로, 더운 공기는 천장으로. 열복도를 막아 둘이 섞이지 않습니다.',
@@ -918,38 +918,41 @@ const CHAPTERS = (() => {
   return out;
 })();
 
-// 목차: 장 탭 한 줄 + 지금 장의 단계 목록 (왼쪽 패널은 세로가 넉넉해 앞으로 볼 단계 제목까지 보여 준다)
-function TourToc({ step }: { step: number }) {
-  const ch = CHAPTERS.find((c) => step >= c.from && step <= c.to)!;
+// 장 탭 한 줄 (카드 위): 누르면 그 장의 첫 단계로
+function ChapterTabs({ step }: { step: number }) {
   return (
-    <nav className="tour-toc" aria-label="투어 단계">
-      <div className="toc-chs">
-        {CHAPTERS.map((c) => (
-          <button key={c.name} className={c === ch ? 'on' : step > c.to ? 'done' : ''} onClick={() => goStep(c.from)}>
-            {c.name}
-          </button>
-        ))}
-      </div>
-      {ch.to > ch.from && (
-        <ol className="toc-steps">
-          {STEPS.slice(ch.from, ch.to + 1).map((s, k) => {
-            const i = ch.from + k;
-            return (
-              <li key={s.title}>
-                <button className={i === step ? 'on' : i < step ? 'done' : ''} onClick={() => goStep(i)}>
-                  <span className="num">{i + 1}</span>
-                  {s.title}
-                </button>
-              </li>
-            );
-          })}
-        </ol>
-      )}
+    <nav className="toc-chs" aria-label="투어 장">
+      {CHAPTERS.map((c) => (
+        <button key={c.name} className={step >= c.from && step <= c.to ? 'on' : step > c.to ? 'done' : ''} onClick={() => goStep(c.from)}>
+          {c.name}
+        </button>
+      ))}
     </nav>
   );
 }
 
-// 왼쪽 패널을 채우는 투어 카드: 머리 · 목차 · 단계 제목 · 본문(스크롤) · 이전 / 다음
+// 지금 장의 단계 목록 (카드 아래): 지난 단계 · 지금 · 앞으로 볼 단계 제목
+function StepList({ step }: { step: number }) {
+  const ch = CHAPTERS.find((c) => step >= c.from && step <= c.to)!;
+  if (ch.to === ch.from) return null;
+  return (
+    <ol className="toc-steps" aria-label={`${ch.name} 단계`}>
+      {STEPS.slice(ch.from, ch.to + 1).map((s, k) => {
+        const i = ch.from + k;
+        return (
+          <li key={s.title}>
+            <button className={i === step ? 'on' : i < step ? 'done' : ''} onClick={() => goStep(i)}>
+              <span className="num">{i + 1}</span>
+              {s.title}
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+// 왼쪽 패널을 채우는 투어 카드: 머리(이전 · 다음 · 닫기) · 장 탭 · 단계 제목 · 본문(스크롤) · 단계 목록
 export function TourCard() {
   const step = useView((s) => s.tourStep);
 
@@ -985,10 +988,22 @@ export function TourCard() {
           가이드 투어 · {step + 1} / {STEPS.length}
         </span>
         <span className="tour-acts">
+          <button className="small" onClick={() => goStep(step - 1)} disabled={step === 0} title="이전 단계 (←)">
+            ← 이전
+          </button>
+          {last ? (
+            <button className="small primary" onClick={endTour}>
+              끝내기
+            </button>
+          ) : (
+            <button className="small primary" onClick={() => goStep(step + 1)} title="다음 단계 (→)">
+              다음 →
+            </button>
+          )}
           <IconButton icon={X} label="투어 끝내기 (Esc)" onClick={endTour} />
         </span>
       </div>
-      <TourToc step={step} />
+      <ChapterTabs step={step} />
       <div className="tour-title">
         <h3>{st.title}</h3>
         <span className="tour-place">{st.place}</span>
@@ -1007,20 +1022,7 @@ export function TourCard() {
           </ul>
         )}
       </div>
-      <div className="tour-foot">
-        <button className="small" onClick={() => goStep(step - 1)} disabled={step === 0}>
-          ← 이전
-        </button>
-        {last ? (
-          <button className="small primary" onClick={endTour}>
-            투어 끝내기
-          </button>
-        ) : (
-          <button className="small primary" onClick={() => goStep(step + 1)}>
-            다음 →
-          </button>
-        )}
-      </div>
+      <StepList step={step} />
     </div>
   );
 }
