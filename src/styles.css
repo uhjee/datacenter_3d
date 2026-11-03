@@ -2970,6 +2970,85 @@ button.primary:hover {
   color: var(--sel);
 }
 
+/* ── 휴대폰 바텀 시트 (Sheet.tsx): 오른쪽 패널을 아래에서 올라오게. 덮개 없이 3D를 그대로 만진다 ── */
+.sheet {
+  position: fixed;
+  left: env(safe-area-inset-left);
+  right: env(safe-area-inset-right);
+  bottom: 0;
+  z-index: 15; /* 3D 위 막대(8) 위, 겹쳐 띄운 왼쪽 서랍(20) · ⋯ 메뉴(30) 아래 */
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--s1);
+  border-top: 1px solid var(--line-2);
+  border-radius: 14px 14px 0 0;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+  transition: height 0.25s ease;
+}
+.sheet.dragging {
+  transition: none;
+}
+/* 손잡이 + 요약 한 줄: 여기를 끌거나 탭한다 (3D 회전 · 페이지 스크롤과 다투지 않게 touch-action: none) */
+.sheet-grip {
+  flex: none;
+  height: 64px;
+  padding: 6px 14px 0;
+  touch-action: none;
+  cursor: grab;
+}
+.sheet-grip i {
+  display: block;
+  width: 36px;
+  height: 4px;
+  margin: 0 auto 8px;
+  border-radius: 2px;
+  background: var(--line-3);
+}
+.sheet-peek {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 38px;
+}
+.sheet-peek b {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--fs-md);
+}
+.sheet-peek > span {
+  flex: none;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+.sheet-peek > .sheet-aside {
+  margin-left: auto;
+}
+.sheet-pue {
+  color: var(--ink-3);
+}
+.sheet-pue b {
+  margin-left: 4px;
+  color: var(--ink);
+  font-size: var(--fs-lg);
+}
+.sheet-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+}
+/* 시트 안쪽만 스크롤하고, 끝에 닿아도 페이지 · 3D로 번지지 않게 */
+.sheet-panel {
+  flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
 /* ── 3D 위 조작 ── */
 .vc-bar {
   display: flex;

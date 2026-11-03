@@ -457,11 +457,11 @@
 - 파일: `src/App.tsx`, `src/ui/MoreMenu.tsx`(새 파일), `src/styles.css`
 - **확인:** 375px에서 상단 바 내용 폭 ≤ 화면 폭, 모든 버튼을 누를 수 있음.
 
-#### S5 바텀 시트 — 큼 (나눠서 커밋)
+#### S5 바텀 시트 — 큼 ✅ (2026-11-03)
 
-1. 시트 부품: 손잡이 끌기 · 3단계 높이(peek 72px · 50dvh · 90dvh) · 덮개 없음 · 안쪽 스크롤 `overscroll-behavior: contain`. `src/ui/Sheet.tsx`(새 파일)
+1. 시트 부품: 손잡이 끌기 · 3단계 높이(peek 64px · 화면 절반 · 상단 바 아래까지) · 덮개 없음 · 안쪽 스크롤 `overscroll-behavior: contain`. 지금 높이를 CSS 변수 `--sheet-h`로 알린다(S6에서 칩 줄 · 알림 위치에 사용). `src/ui/Sheet.tsx`(새 파일)
 2. 오른쪽 패널 내용을 휴대폰에서는 시트에 담기: 탭(정보 · 지표 · 주의 · 시나리오)은 그대로. `src/App.tsx`, `src/ui/InfoPanel.tsx`
-3. peek 요약 줄: 선택 대상 이름 · 상태 · 핵심 수치 1줄, 없으면 PUE. `src/ui/SheetPeek.tsx`(새 파일)
+3. peek 요약 줄: 선택 대상 이름 · 층 · 운전 상태, 계통 묶음이면 묶음 이름, 없으면 '건물 개요 · PUE'. 휴대폰에서는 3D 위 PUE 카드를 띄우지 않는다. `src/ui/Sheet.tsx`
 4. 왼쪽 서랍: 목록에서 고르면 자동으로 닫힘. `src/ui/LeftPanel.tsx`, `RackTree.tsx`
 
 **확인:** 시트를 끌어 세 높이를 오가고, 시트를 끄는 동안 3D가 회전하지 않음. 장비를 탭하면 peek가 바뀌고 시트는 저절로 펼쳐지지 않음.

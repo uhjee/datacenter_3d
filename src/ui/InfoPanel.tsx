@@ -25,7 +25,8 @@ import { BAT_KWH, values } from '../scenario/outage';
 import { values as upsFailValues } from '../scenario/upsFail';
 import { upsLoad } from '../data/metrics';
 
-export function InfoPanel() {
+// inSheet: 휴대폰 바텀 시트 안에 담을 때 (오른쪽 칸 · 겹쳐 띄우기 배치를 쓰지 않는다)
+export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
   const tab = useView((s) => s.rightTab);
@@ -37,7 +38,7 @@ export function InfoPanel() {
     if (id || groupId) useView.getState().setRightTab('info');
   }, [id, groupId]);
   return (
-    <aside className="panel right">
+    <aside className={inSheet ? 'panel sheet-panel' : 'panel right'}>
       <div className="right-tabs">
         <button className={tab === 'info' ? 'on' : ''} onClick={() => useView.getState().setRightTab('info')}>
           정보

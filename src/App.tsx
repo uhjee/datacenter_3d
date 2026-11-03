@@ -12,6 +12,7 @@ import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
 import { deviceOf, useDevice } from './store/device';
 import { MoreMenu } from './ui/MoreMenu';
+import { Sheet, type SheetSnap } from './ui/Sheet';
 import { startTour } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
@@ -49,17 +50,27 @@ export function App() {
   const thermal = useView((s) => s.airOn || s.heatOn);
   const touring = useView((s) => s.tourStep != null);
   const scenario = useView((s) => !!s.scenario);
+  const { device } = useDevice();
+  const phone = device === 'phone';
+  // 휴대폰은 오른쪽 패널 대신 바텀 시트. '오른쪽 패널을 연다'는 시트를 절반 높이로 올리는 것
+  const [sheet, setSheet] = useState<SheetSnap>('peek');
+  const openRight = useCallback(() => (phone ? setSheet((s) => (s === 'peek' ? 'half' : s)) : setRight(true)), [phone]);
   // 투어 카드는 왼쪽 패널에 있고, 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 양쪽 패널을 연다
   useEffect(() => {
     if (!touring) return;
     setLeft(true);
-    setRight(true);
-  }, [touring]);
-  const { device } = useDevice();
+    openRight();
+  }, [touring, openRight]);
+  // 휴대폰: 왼쪽 서랍(탐색 · 표시)에서 장비 · 묶음을 고르면 서랍을 닫아 3D와 시트 요약이 보이게 (투어 중엔 투어 카드라 그대로)
+  const selectedId = useView((s) => s.selectedId);
+  const groupId = useView((s) => s.groupId);
+  useEffect(() => {
+    if (phone && !useView.getState().tourStep && (selectedId || groupId)) setLeft(false);
+  }, [phone, selectedId, groupId]);
   const toggleThermal = () => (thermal ? exitThermal() : enterHeat(heatRoom(), true));
   const toggleDiagram = () => useView.getState().setDiagramMode(diagram === 'off' ? 'half' : 'off');
   const openScenario = () => {
-    setRight(true);
+    openRight();
     useView.getState().setRightTab('scenario');
   };
   const leftBtn = <IconButton icon={PanelLeft} label={left ? '왼쪽 패널 닫기' : '왼쪽 패널 열기'} active={left} onClick={() => setLeft((v) => !v)} />;
@@ -71,7 +82,7 @@ export function App() {
   return (
     <div className={`app ${left ? '' : 'no-left'} ${right ? '' : 'no-right'}${touring ? ' touring' : ''}`}>
       {device === 'phone' ? (
-        // 휴대폰: ☰ · 짧은 제목 · 검색 · 온도 · ⋯(도면 · 시나리오 · 가이드 투어 · 정보 패널)
+        // 휴대폰: ☰ · 짧은 제목 · 검색 · 온도 · ⋯(도면 · 시나리오 · 가이드 투어). 오른쪽 패널은 바텀 시트
         <header className="topbar">
           {leftBtn}
           <h1>데이터센터 3D</h1>
@@ -97,12 +108,6 @@ export function App() {
                 label: '가이드 투어',
                 on: touring,
                 onSelect: startTour,
-              },
-              {
-                icon: PanelRight,
-                label: right ? '정보 패널 닫기' : '정보 패널',
-                on: right,
-                onSelect: () => setRight((v) => !v),
               },
             ]}
           />
@@ -162,13 +167,20 @@ export function App() {
           <Toast />
           <ThermalPanel />
           <SupplyCard />
-          <PueFloat />
+          {/* 휴대폰은 시트 요약 줄에 PUE가 보인다 */}
+          {!phone && <PueFloat />}
           <FloorBar />
           <CameraButtons />
         </div>
         <DiagramPanel />
       </main>
-      {right && <InfoPanel />}
+      {phone ? (
+        <Sheet snap={sheet} onSnap={setSheet}>
+          <InfoPanel inSheet />
+        </Sheet>
+      ) : (
+        right && <InfoPanel />
+      )}
       <ScenarioClock />
     </div>
   );
