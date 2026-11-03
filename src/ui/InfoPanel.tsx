@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, type MouseEvent, type ReactNode } from 'react';
 import { ArrowUpDown, Building2, Crosshair, Network, X } from 'lucide-react';
 import { FLOOR_BY_ID, FLOORS, ROOM_BY_ID, SERVER_ROOMS, SHAFTS, SR_BY_LABEL, roomOfId } from '../data/building';
 import { EQUIP_BY_ID, EQUIPMENT, type Equip } from '../data/equipment';
@@ -11,7 +11,9 @@ import { CustomerAlert } from './CustomerSummary';
 import { AlertPanel, useAlerts } from './AlertPanel';
 import { HUB_BY_ID, type Hub } from '../data/connections';
 import { focusItem, goFloor } from '../scene/focus';
-import { useView } from '../store/useView';
+import { useView, type RightTab } from '../store/useView';
+import { SupplyBody, ThermalSheet } from './ThermalPanel';
+import { FloorPlan } from '../diagram/FloorPlan';
 import { ConnSection, GroupsSection, ShaftLinks } from './ConnPanel';
 import { GroupCard } from './GroupCard';
 import { MetricsPanel } from './MetricsPanel';
@@ -25,34 +27,59 @@ import { BAT_KWH, values } from '../scenario/outage';
 import { values as upsFailValues } from '../scenario/upsFail';
 import { upsLoad } from '../data/metrics';
 
-// inSheet: 휴대폰 바텀 시트 안에 담을 때 (오른쪽 칸 · 겹쳐 띄우기 배치를 쓰지 않는다)
+// inSheet: 휴대폰 바텀 시트 안에 담을 때 (오른쪽 칸 · 겹쳐 띄우기 배치를 쓰지 않는다).
+//   온도 보기 중에는 시트 탭을 온도 · 급기 · 수치 · 2D 상면도 · 정보 · 시나리오로 바꾼다 (PC의 온도 카드 · 급기 카드 · 하단 도면 자리)
 export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
   const tab = useView((s) => s.rightTab);
+  const thermal = useView((s) => s.airOn || s.heatOn);
   const alerts = useAlerts();
   const alertN = alerts.length;
   const alertTone = alerts.some((a) => a.tone === 'crit') ? 'crit' : 'warn';
+  const therm = inSheet && thermal;
   // 장비 · 묶음을 새로 고르면 정보 탭으로
   useEffect(() => {
     if (id || groupId) useView.getState().setRightTab('info');
   }, [id, groupId]);
+  // 시트: 온도 보기를 켜면 [온도] 탭(고른 장비가 있으면 정보), 끄면 온도용 탭에 있던 것을 정보로
+  // (PC 오른쪽 패널에는 온도용 탭이 없으므로 휴대폰에서 창을 넓혀 온 경우 정보로)
+  useEffect(() => {
+    const v = useView.getState();
+    const thermTab = v.rightTab === 'temp' || v.rightTab === 'supply' || v.rightTab === 'plan';
+    if (inSheet && thermal) v.setRightTab(v.selectedId ? 'info' : 'temp');
+    else if (thermTab) v.setRightTab('info');
+  }, [inSheet, thermal]);
+  const tabs: { id: RightTab; name: ReactNode }[] = therm
+    ? [
+        { id: 'temp', name: '온도' },
+        { id: 'supply', name: '급기 · 수치' },
+        { id: 'plan', name: '2D 상면도' },
+        { id: 'info', name: '정보' },
+        { id: 'scenario', name: '시나리오' },
+      ]
+    : [
+        { id: 'info', name: '정보' },
+        { id: 'metrics', name: '지표 · 용량' },
+        {
+          id: 'alerts',
+          name: (
+            <>
+              주의
+              {alertN > 0 && <span className={`rt-badge ${alertTone}`}>{alertN}</span>}
+            </>
+          ),
+        },
+        { id: 'scenario', name: '시나리오' },
+      ];
   return (
-    <aside className={inSheet ? 'panel sheet-panel' : 'panel right'}>
+    <aside className={inSheet ? `panel sheet-panel${therm && tab === 'plan' ? ' tab-plan' : ''}` : 'panel right'}>
       <div className="right-tabs">
-        <button className={tab === 'info' ? 'on' : ''} onClick={() => useView.getState().setRightTab('info')}>
-          정보
-        </button>
-        <button className={tab === 'metrics' ? 'on' : ''} onClick={() => useView.getState().setRightTab('metrics')}>
-          지표 · 용량
-        </button>
-        <button className={tab === 'alerts' ? 'on' : ''} onClick={() => useView.getState().setRightTab('alerts')}>
-          주의
-          {alertN > 0 && <span className={`rt-badge ${alertTone}`}>{alertN}</span>}
-        </button>
-        <button className={tab === 'scenario' ? 'on' : ''} onClick={() => useView.getState().setRightTab('scenario')}>
-          시나리오
-        </button>
+        {tabs.map((t) => (
+          <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => useView.getState().setRightTab(t.id)}>
+            {t.name}
+          </button>
+        ))}
       </div>
       {tab === 'metrics' ? (
         <MetricsPanel />
@@ -60,6 +87,14 @@ export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
         <ScenarioPanel />
       ) : tab === 'alerts' ? (
         <AlertPanel />
+      ) : therm && tab === 'temp' ? (
+        <ThermalSheet />
+      ) : therm && tab === 'supply' ? (
+        <SupplyBody open />
+      ) : therm && tab === 'plan' ? (
+        <div className="sheet-plan">
+          <FloorPlan fitKey={0} compact />
+        </div>
       ) : (
         <InfoBody id={id} groupId={groupId} />
       )}

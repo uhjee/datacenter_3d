@@ -8,7 +8,8 @@ import { GROUP_BY_ID } from '../data/groups';
 import { nodeInfo } from '../data/graph';
 import { useView } from '../store/useView';
 import { Pill } from './kit';
-import { useMetrics, useNodeStatus } from './useStatus';
+import { useMetrics, useNodeStatus, useRoomTherm } from './useStatus';
+import { AIR_LAYOUT, tempColor } from '../data/thermal';
 
 export type SheetSnap = 'peek' | 'half' | 'full';
 
@@ -85,11 +86,13 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
   );
 }
 
-// 접혀 있을 때 보이는 한 줄: 고른 대상(이름 · 층 · 상태) → 계통 묶음 → 건물 PUE
+// 접혀 있을 때 보이는 한 줄: 고른 대상(이름 · 층 · 상태) → 온도 보기 → 계통 묶음 → 건물 PUE
 function SheetPeek() {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
+  const thermal = useView((s) => s.airOn || s.heatOn);
   if (id) return <PickedPeek id={id} />;
+  if (thermal) return <ThermalPeek />;
   if (groupId && GROUP_BY_ID[groupId]) return <Peek title={GROUP_BY_ID[groupId].name} sub="계통 묶음" />;
   return <PuePeek />;
 }
@@ -107,6 +110,23 @@ function PickedPeek({ id }: { id: string }) {
             {st.label}
           </Pill>
         )
+      }
+    />
+  );
+}
+
+// 온도 보기 중: 서버실 · 냉각 방식 · 최고 흡기
+function ThermalPeek() {
+  const room = useView((s) => s.airRoom);
+  const th = useRoomTherm(room);
+  return (
+    <Peek
+      title={`온도 · 서버실 ${room}`}
+      sub={AIR_LAYOUT[room].floor}
+      aside={
+        <span className="sheet-pue num">
+          최고 흡기 <b style={{ color: tempColor(th.maxInlet) }}>{th.maxInlet}°C</b>
+        </span>
       }
     />
   );

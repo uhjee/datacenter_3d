@@ -3081,6 +3081,77 @@ button.primary:hover {
   height: 36px;
 }
 
+/* 휴대폰 온도 보기 (ThermalPanel.tsx): 3D 위에는 층 막대 · 카메라 막대 사이에 얇은 머리(서버실 · 높이 · 온도 바)만 */
+.air-panel.thermal-head {
+  left: 66px;
+  right: 66px;
+  width: auto;
+  padding: 7px 9px 3px;
+}
+.th-head-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.th-head-row b {
+  white-space: nowrap;
+  font-size: var(--fs-sm);
+}
+.th-height {
+  margin-left: auto;
+  flex-wrap: nowrap;
+}
+.thermal-head .th-height button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0 6px;
+}
+.thermal-head .th-cap {
+  margin-top: 5px;
+}
+/* 바텀 시트 [온도] 탭 */
+.th-sheet {
+  padding: 4px 14px 16px;
+}
+.th-sheet h5 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 8px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.th-sheet-room {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-weight: 400;
+}
+.th-sheet .th-cond h5 {
+  margin-top: 0;
+}
+.th-off {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 18px;
+  color: var(--ink-2);
+}
+/* 바텀 시트 [2D 상면도] 탭: 시트 높이를 다 쓰고, 끌기 · 확대는 도면이 받는다 */
+.sheet-panel.tab-plan {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.sheet-plan {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-plan .plan-box {
+  touch-action: none;
+}
+
 /* ── 3D 위 조작 ── */
 .vc-bar {
   display: flex;

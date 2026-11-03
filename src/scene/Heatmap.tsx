@@ -7,6 +7,8 @@ import { HEAT_RES, heatAlpha, sampleField } from '../data/heatField';
 import { SR_BY_LABEL } from '../data/building';
 import { tempRGB, type RoomLabel } from '../data/thermal';
 import { useView } from '../store/useView';
+import { deviceOf } from '../store/device';
+import { TAP_SLOP } from '../ui/touch';
 import { useHeatField } from '../ui/useStatus';
 
 // 바닥 평면은 1×1 하나를 같이 쓰고 크기만 늘린다 (켤 때마다 새 지오메트리를 만들지 않도록)
@@ -37,6 +39,13 @@ export function Heatmap({ label }: { label: RoomLabel }) {
     return t;
   }, [f, hotOnly]);
   useEffect(() => () => tex?.dispose(), [tex]);
+  // 누른 곳 고정값은 온도 분포(높이 · 공조 조건 · 서버실)가 바뀌거나 히트맵이 꺼지면 지운다 (값이 낡으므로)
+  useEffect(
+    () => () => {
+      if (useView.getState().heatProbe?.pinned) useView.getState().setHeatProbe(null);
+    },
+    [f],
+  );
   if (!f || !tex) return null;
   const w = f.nx * HEAT_RES;
   const d = f.nz * HEAT_RES;
@@ -49,13 +58,25 @@ export function Heatmap({ label }: { label: RoomLabel }) {
       scale={[w, -d, 1]}
       renderOrder={1}
       // 바닥을 가리키면 그 지점 온도를 히트맵 카드에 보여 준다 (층 그룹은 y만 옮기므로 x · z는 그대로)
+      // 손가락으로 끄는 것은 회전이므로 값을 바꾸지 않는다 (누른 곳 고정값을 지우지 않게)
       onPointerMove={(e) => {
+        if (e.pointerType === 'touch') return;
         const t = sampleField(f, e.point.x, e.point.z);
         useView.getState().setHeatProbe(t == null ? null : { t, x: e.point.x, z: e.point.z });
       }}
-      onPointerOut={() => useView.getState().setHeatProbe(null)}
-      // 처리기가 붙은 물체를 누르면 빈 곳 클릭(선택 해제)이 불리지 않으므로 직접 푼다
-      onClick={(e) => e.delta <= 2 && useView.getState().select(null)}
+      onPointerOut={() => !useView.getState().heatProbe?.pinned && useView.getState().setHeatProbe(null)}
+      // 처리기가 붙은 물체를 누르면 빈 곳 클릭(선택 해제)이 불리지 않으므로 직접 푼다.
+      // 터치 기기: 누른 곳 온도를 고정해 보여 주고, 같은 곳을 다시 누르면 지운다 (hover가 없으므로)
+      onClick={(e) => {
+        if (e.delta > TAP_SLOP) return;
+        const v = useView.getState();
+        v.select(null);
+        if (deviceOf() === 'desktop') return;
+        const p = v.heatProbe;
+        const t = sampleField(f, e.point.x, e.point.z);
+        const same = p?.pinned && Math.hypot(p.x - e.point.x, p.z - e.point.z) < 0.6;
+        v.setHeatProbe(same || t == null ? null : { t, x: e.point.x, z: e.point.z, pinned: true });
+      }}
     >
       <meshBasicMaterial map={tex} transparent opacity={opacity} depthWrite={false} toneMapped={false} side={DoubleSide} />
     </mesh>

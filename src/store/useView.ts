@@ -99,10 +99,10 @@ interface ViewState {
   setHeatValue: (v: HeatValue) => void;
   heatOpacity: number; // 3D 바닥 히트맵 불투명도
   heatHotOnly: boolean; // 권장 상한(27°C) 넘는 곳만 진하게
-  heatProbe: { t: number; x: number; z: number } | null; // 3D 바닥에서 마우스가 가리키는 지점 온도
+  heatProbe: HeatProbe | null; // 3D 바닥에서 마우스가 가리키는(휴대폰은 누른) 지점 온도
   setHeatOpacity: (v: number) => void;
   setHeatHotOnly: (v: boolean) => void;
-  setHeatProbe: (p: { t: number; x: number; z: number } | null) => void;
+  setHeatProbe: (p: HeatProbe | null) => void;
 
   // 지표 (운전 조건)
   itLoad: number; // IT 부하율 (1 = 기준)
@@ -150,7 +150,10 @@ export type HeatHeight = 0 | 1 | 2;
 export type HeatValue = 'inlet' | 'exhaust' | 'dT';
 
 export type RackColorMode = 'none' | 'u' | 'power' | 'temp';
-export type RightTab = 'info' | 'metrics' | 'alerts' | 'scenario';
+// temp · supply · plan: 휴대폰 바텀 시트에서 온도 보기 중에만 쓰는 탭 (온도 · 급기 · 수치 · 2D 상면도)
+export type RightTab = 'info' | 'metrics' | 'alerts' | 'scenario' | 'temp' | 'supply' | 'plan';
+// pinned: 손가락으로 눌러 고정한 값 (마우스를 떼도 남는다)
+export type HeatProbe = { t: number; x: number; z: number; pinned?: boolean };
 
 export interface Highlight {
   kind: 'trace' | 'group';

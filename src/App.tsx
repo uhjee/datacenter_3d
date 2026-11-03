@@ -154,7 +154,8 @@ export function App() {
       )}
       {search && <SearchPalette onClose={() => setSearch(false)} />}
       {left && <LeftPanel />}
-      <main className={`viewport diagram-${diagram}`}>
+      {/* 휴대폰 온도 보기: 2D 상면도는 바텀 시트 탭에 있으므로 아래 도면을 나눠 띄우지 않는다 */}
+      <main className={`viewport diagram-${phone && thermal ? 'off' : diagram}`}>
         <div
           className="view3d"
           ref={(el) => {
@@ -172,7 +173,7 @@ export function App() {
           <FloorBar />
           <CameraButtons />
         </div>
-        <DiagramPanel />
+        {!(phone && thermal) && <DiagramPanel />}
       </main>
       {phone ? (
         <Sheet snap={sheet} onSnap={setSheet}>
