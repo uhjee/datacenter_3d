@@ -1046,6 +1046,30 @@ button.link {
   z-index: 4;
   pointer-events: none;
 }
+/* 3D 그리기가 끊겼을 때(기기 메모리 부족 등) 안내 */
+.scene-lost {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  text-align: center;
+  background: rgba(13, 17, 23, 0.88);
+  color: var(--ink-2);
+}
+.scene-lost b {
+  color: var(--ink);
+  font-size: var(--fs-md);
+}
+.scene-lost button {
+  margin-top: 6px;
+  min-height: 40px;
+  padding: 0 16px;
+}
 
 /* 오른쪽 패널 탭 · 지표 */
 .right-tabs {

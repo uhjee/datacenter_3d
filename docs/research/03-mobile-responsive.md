@@ -439,12 +439,12 @@
 
 **확인:** 브라우저 `mobile` 크기에서 `pointerType: 'touch'` 이벤트를 스크립트로 보내 탭 · 더블탭 · 길게 누르기를 확인. 마우스 동작(PC)은 그대로인지 확인.
 
-#### S3 렌더링 품질 — 작음
+#### S3 렌더링 품질 — 작음 ✅ (2026-11-03)
 
 | 작업 | 파일 |
 |---|---|
-| 픽셀 비율: 휴대폰 · 태블릿 `[1, 1.5]`, PC `[1, 2]`. 휴대폰은 안티에일리어싱 끔 | `src/scene/Scene.tsx` |
-| `PerformanceMonitor`: 회전 중 프레임이 떨어지면 1.25 → 1로 | `src/scene/Scene.tsx` |
+| 픽셀 비율: 휴대폰 · 태블릿 `[1, 1.5]`, PC `[1, 2]`. 휴대폰은 안티에일리어싱 끔, 휴대폰 · 태블릿은 `powerPreference: 'default'` | `src/scene/Scene.tsx` |
+| 회전 중 프레임이 30fps 밑이면 픽셀 비율 0.25씩 낮춤(최저 1). drei `PerformanceMonitor`는 '변화가 있을 때만 그리기'에서 쉬는 빈틈까지 느린 프레임으로 세므로 이어 그린 프레임만 직접 잰다(`AdaptiveDpr`). 브라우저 창이 숨겨진 상태에서는 화면 갱신이 느려 재현하지 못해 S14 실기기에서 확인 | `src/scene/Scene.tsx` |
 | `webglcontextlost` → '3D 화면 다시 불러오기' 안내 | `src/scene/Scene.tsx`, `src/ui/Toast.tsx` |
 
 **확인:** `__three.gl.getPixelRatio()`가 기기별로 맞음. context lost는 `WEBGL_lose_context` 확장으로 일부러 일으켜 안내가 뜨는지.

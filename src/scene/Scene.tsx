@@ -6,6 +6,7 @@ import type { UseBoundStore, StoreApi } from 'zustand';
 import { FOOTPRINT } from '../data/building';
 import { useView } from '../store/useView';
 import { onLongPress, TAP_SLOP } from '../ui/touch';
+import { deviceOf, useDevice } from '../store/device';
 import { BuildingFloors } from './Building';
 import { Connections } from './Connections';
 import { CAMERA_FOV, overviewPose } from './focus';
@@ -21,18 +22,44 @@ const events = (store: UseBoundStore<StoreApi<RootState>>) => ({
   filter: (items: Intersection[]) => items.filter((h) => shown(h.object)),
 });
 
+// 휴대폰 · 태블릿 렌더링 품질 (docs/research/03-mobile-responsive.md §6)
+//   픽셀 비율 상한: PC 2, 휴대폰 · 태블릿 1.5 (devicePixelRatio 3 그대로면 픽셀이 4배 → 발열 · 메모리)
+//   휴대폰은 안티에일리어싱을 끄고(1.5배에서는 차이가 작다), 휴대폰 · 태블릿은 저전력 GPU 설정
+//   (iOS에서 메모리를 넘으면 Safari가 페이지를 말없이 새로 고친다는 보고가 있어 아낀다)
+const TOUCH_DPR_MAX = 1.5;
+
 export function Scene() {
   const [ready, setReady] = useState(false);
+  const { device } = useDevice();
+  const touch = device !== 'desktop';
+  // 회전 중 프레임이 떨어져 낮춘 픽셀 비율 (null이면 기본 범위). Canvas가 다시 그려져도 되돌아가지 않게 여기서 들고 있는다
+  const [dprCap, setDprCap] = useState<number | null>(null);
+  // Canvas gl 옵션은 처음 만들 때만 정해지므로 시작할 때 기기로 고른다
+  const [gl] = useState(() => (deviceOf() === 'desktop' ? {} : { antialias: deviceOf() !== 'phone', powerPreference: 'default' as const }));
+  const [lost, setLost] = useState(false);
   return (
     <>
       {!ready && <div className="scene-loading">3D 화면을 준비하고 있습니다…</div>}
+      {lost && (
+        <div className="scene-lost" role="alert">
+          <b>3D 화면이 멈췄습니다</b>
+          <span>기기 메모리가 부족했을 수 있습니다. 다시 불러오면 지금 보던 층 · 선택이 그대로 열립니다.</span>
+          <button onClick={() => location.reload()}>다시 불러오기</button>
+        </div>
+      )}
       <Canvas
         camera={{ position: overviewPose('explode').position, fov: CAMERA_FOV, near: 0.1, far: 600 }}
-        dpr={[1, 2]}
+        dpr={dprCap ?? [1, touch ? TOUCH_DPR_MAX : 2]}
+        gl={gl}
         // 변화가 있을 때만 그린다 (가만히 있으면 GPU · CPU를 쓰지 않음). 다시 그리는 때는 InvalidateOnChange · 각 애니메이션이 알린다
         frameloop="demand"
         events={events}
         onPointerMissed={() => useView.getState().select(null)}
+        onCreated={({ gl: r }) => {
+          // three가 복구를 기다리도록 기본 동작을 막아 두므로, 복구되면 안내를 거둔다
+          r.domElement.addEventListener('webglcontextlost', () => setLost(true));
+          r.domElement.addEventListener('webglcontextrestored', () => setLost(false));
+        }}
       >
         <color attach="background" args={['#0d1117']} />
         <fog attach="fog" args={['#0d1117', 140, 320]} />
@@ -46,11 +73,40 @@ export function Scene() {
         <BuildingFloors />
         <Connections />
         <OrbitPing />
+        {touch && <AdaptiveDpr onDecline={setDprCap} />}
         {!ready && <FirstFrames onReady={() => setReady(true)} />}
         {import.meta.env.DEV && <DevHandle />}
       </Canvas>
     </>
   );
+}
+
+// 회전 · 애니메이션으로 이어서 그리는 동안 프레임이 30fps 밑이면 픽셀 비율을 0.25씩 낮춘다(최저 1, 되올리지 않음).
+// drei PerformanceMonitor는 쉬는 동안의 빈틈까지 느린 프레임으로 세어 '변화가 있을 때만 그리기'와 맞지 않아 직접 잰다
+const SLOW_FPS = 30;
+const SAMPLE = 60; // 이어 그린 프레임 수
+function AdaptiveDpr({ onDecline }: { onDecline: (dpr: number) => void }) {
+  const run = useRef({ last: 0, n: 0, sum: 0 });
+  useFrame(({ viewport }) => {
+    const now = performance.now();
+    const r = run.current;
+    const dt = now - r.last;
+    r.last = now;
+    // 0.1초 넘게 쉬었다 그린 프레임은 쉬던 중이므로 새로 센다
+    if (dt > 100) {
+      r.n = 0;
+      r.sum = 0;
+      return;
+    }
+    r.n++;
+    r.sum += dt;
+    if (r.n < SAMPLE) return;
+    const fps = (1000 * r.n) / r.sum;
+    r.n = 0;
+    r.sum = 0;
+    if (fps < SLOW_FPS && viewport.dpr > 1) onDecline(Math.max(1, viewport.dpr - 0.25));
+  });
+  return null;
 }
 
 // 개발 중 브라우저 콘솔에서 렌더러 통계(그리기 호출 · 삼각형 · 텍스처)를 볼 수 있게
