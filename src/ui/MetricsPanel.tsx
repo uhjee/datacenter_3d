@@ -124,7 +124,7 @@ function Pue({ m }: { m: Metrics }) {
   return (
     <>
       <PueHero m={m} hover={hover} setHover={setHover} />
-      <Section id="pue-parts" title="전력 분해" count={`${m.parts.length}항목`} defaultOpen={false}>
+      <Section id="pue-parts" title="유형별 전력 사용현황" count={`${m.parts.length}항목`} defaultOpen={false}>
         <table className="specs parts">
           <tbody>
             {m.parts.map((p) => (
