@@ -8,6 +8,7 @@ import { computeMetrics, upsId, UPS_KW } from '../data/metrics';
 import { STATUS_META, statusOf, type RoomLabel } from '../data/thermal';
 import { enterHeat, exitThermal, focusFloor, focusOverview, startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
+import { deviceOf } from '../store/device';
 import { InfoTip, Meter, Pill, Section, Status, Switch, TipTable } from '../ui/kit';
 import { TEMP_TONE } from '../ui/ThermInfo';
 import { fmtT, scenEnd, SRC_META, STARTING_COLOR, FAULT_COLOR, type Src } from './core';
@@ -53,7 +54,8 @@ function beforeStart() {
 }
 function afterStart() {
   const s = useView.getState();
-  if (s.diagramMode === 'off') s.setDiagramMode('half');
+  // 휴대폰은 도면이 전체 화면이라 3D를 가리므로 저절로 열지 않는다 (⋯ 메뉴의 도면으로 연다)
+  if (s.diagramMode === 'off' && deviceOf() !== 'phone') s.setDiagramMode('half');
   s.setDiagramTab('power');
   s.setRightTab('scenario');
   focusOverview();

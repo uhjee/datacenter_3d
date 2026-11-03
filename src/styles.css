@@ -3136,6 +3136,32 @@ button.primary:hover {
   margin-top: 18px;
   color: var(--ink-2);
 }
+/* 휴대폰 가이드 투어 (바텀 시트 안): 제목 · 본문을 위에, 이전 · 다음 줄은 엄지가 닿는 맨 아래로. 장 탭 · 단계 목록은 뺀다(제목 줄의 n / 19로) */
+.sheet .tour-card {
+  flex: 1;
+  border-top: 0;
+}
+.sheet .tour-card > .tour-head {
+  order: 9;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-top: 1px solid var(--line);
+}
+.sheet .tour-card .toc-chs,
+.sheet .tour-card .toc-steps {
+  display: none;
+}
+.sheet .tour-acts button.small {
+  min-height: 40px;
+  padding: 0 14px;
+}
+/* 터치 화면 2D 도면: 끌기 · 두 손가락 확대를 도면이 받는다 (브라우저 스크롤 · 화면 확대로 새지 않게) */
+@media (pointer: coarse) {
+  .flow-box,
+  .plan-box {
+    touch-action: none;
+  }
+}
 /* 바텀 시트 [2D 상면도] 탭: 시트 높이를 다 쓰고, 끌기 · 확대는 도면이 받는다 */
 .sheet-panel.tab-plan {
   display: flex;
@@ -4703,6 +4729,40 @@ kbd {
 }
 .sp-empty {
   padding: 16px;
+}
+.sp-close {
+  display: none;
+}
+/* 휴대폰 검색: 화면 전체를 쓰고, 입력 글자 16px(iOS가 입력칸을 누를 때 화면을 확대하지 않게) · 결과 줄 44px */
+[data-device='phone'] .sp-back {
+  padding: 0;
+  align-items: stretch;
+}
+[data-device='phone'] .sp {
+  width: 100%;
+  max-height: none;
+  border: 0;
+  border-radius: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+[data-device='phone'] .sp-input input {
+  font-size: 16px;
+}
+[data-device='phone'] .sp-input kbd,
+[data-device='phone'] .sp-foot {
+  display: none;
+}
+[data-device='phone'] .sp-close {
+  display: block;
+  min-height: 40px;
+  padding: 0 12px;
+}
+[data-device='phone'] .sp-list {
+  flex: 1;
+}
+[data-device='phone'] .sp-item {
+  min-height: 44px;
 }
 .sp-foot {
   display: flex;

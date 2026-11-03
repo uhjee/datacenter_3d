@@ -15,6 +15,7 @@ import { RACKS } from '../data/racks';
 import { ALLOWABLE_MAX, computeRoom, DEFAULT_AIR_BY_ROOM, RECOMMENDED, tempColor, type AirCfg, type RoomLabel } from '../data/thermal';
 import { activateGroup, enterAir, enterHeat, exitThermal, focusFloor, focusItem, focusOverview, startTrace } from '../scene/focus';
 import { useView, type PanelTab, type RackColorMode } from '../store/useView';
+import { deviceOf } from '../store/device';
 
 type Hue = 'power' | 'heat' | 'cool' | 'fire' | 'a' | 'b';
 
@@ -72,7 +73,8 @@ function clean() {
   s.select(null);
   exitThermal(false);
   s.setRightTab('info');
-  if (s.diagramMode === 'off') s.setDiagramMode('half');
+  // 휴대폰은 도면이 전체 화면이라 3D를 가리므로 저절로 열지 않는다
+  if (s.diagramMode === 'off' && deviceOf() !== 'phone') s.setDiagramMode('half');
 }
 
 const air = (room: RoomLabel, patch: Partial<AirCfg>) => useView.getState().setAirCfg(room, patch);

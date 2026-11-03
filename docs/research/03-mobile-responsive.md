@@ -484,12 +484,12 @@
 
 **확인:** 온도 보기의 모든 조절(히트맵 · 에어 플로우 · 높이 · 시점 · 공조 조건 · 급기)을 휴대폰에서 할 수 있음.
 
-#### S8 도면 · 투어 · 시나리오 · 검색 — 중간
+#### S8 도면 · 투어 · 시나리오 · 검색 — 중간 ✅ (2026-11-03)
 
-- 도면: 3D와 나누지 않고 전체 화면으로. 2손가락 확대 · 1손가락 이동. `src/diagram/DiagramPanel.tsx`
-- 가이드 투어 카드: 왼쪽 패널 → 시트 절반 높이. 이전 · 다음은 아래쪽, 장 탭 · 단계 목록은 접기. `src/ui/Tour.tsx`, `LeftPanel.tsx`
-- 시나리오: 재생 막대를 peek 자리에, `ScenarioClock`은 상단 바 아래 띠로. `src/scenario/ScenarioPanel.tsx`
-- 검색: 전체 화면 모달, 입력 16px, 결과 줄 44px. `src/ui/SearchPalette.tsx`
+- 도면: 3D와 나누지 않고 전체 화면으로(✕로 닫으면 3D). 2D 도면 · 2D 상면도 모두 2손가락 확대 · 1손가락 이동(`usePinchZoom`). 시나리오 시작 · 투어 단계가 도면을 저절로 열지 않는다(3D를 가리므로). `src/diagram/DiagramPanel.tsx`, `FlowDiagram.tsx`, `FloorPlan.tsx`, `src/ui/touch.ts`
+- 가이드 투어 카드: 왼쪽 패널 → 시트(절반 높이로 열림). 이전 · 다음 줄은 맨 아래, 장 탭 · 단계 목록은 빼고 접힌 줄에 '가이드 투어 n / 19'. `src/ui/Tour.tsx`, `LeftPanel.tsx`, `src/App.tsx`
+- 시나리오: 접힌 줄에 이름 · 경과 시각 · 지금 단계 · 재생/일시정지. (`ScenarioClock`은 화면이 없는 시각 진행기라 옮길 것이 없다.) `src/ui/Sheet.tsx`
+- 검색: 전체 화면, 입력 16px, 결과 줄 44px, Esc 대신 [닫기] 버튼. `src/ui/SearchPalette.tsx`
 
 **확인:** 휴대폰만으로 투어 19단계를 끝까지 진행하고, 시나리오 하나를 재생 · 이동할 수 있음.
 

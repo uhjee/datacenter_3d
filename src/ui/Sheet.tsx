@@ -7,7 +7,11 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { GROUP_BY_ID } from '../data/groups';
 import { nodeInfo } from '../data/graph';
 import { useView } from '../store/useView';
-import { Pill } from './kit';
+import { Pause, Play } from 'lucide-react';
+import { IconButton, Pill } from './kit';
+import { fmtT } from '../scenario/core';
+import { defOf } from '../scenario/registry';
+import { STEPS } from './Tour';
 import { useMetrics, useNodeStatus, useRoomTherm } from './useStatus';
 import { AIR_LAYOUT, tempColor } from '../data/thermal';
 
@@ -86,12 +90,16 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
   );
 }
 
-// 접혀 있을 때 보이는 한 줄: 고른 대상(이름 · 층 · 상태) → 온도 보기 → 계통 묶음 → 건물 PUE
+// 접혀 있을 때 보이는 한 줄: 가이드 투어 단계 → 고른 대상(이름 · 층 · 상태) → 시나리오 재생 → 온도 보기 → 계통 묶음 → 건물 PUE
 function SheetPeek() {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
   const thermal = useView((s) => s.airOn || s.heatOn);
+  const tour = useView((s) => s.tourStep);
+  const scenario = useView((s) => !!s.scenario);
+  if (tour != null) return <Peek title={STEPS[tour].title} sub={`가이드 투어 ${tour + 1} / ${STEPS.length}`} />;
   if (id) return <PickedPeek id={id} />;
+  if (scenario) return <ScenarioPeek />;
   if (thermal) return <ThermalPeek />;
   if (groupId && GROUP_BY_ID[groupId]) return <Peek title={GROUP_BY_ID[groupId].name} sub="계통 묶음" />;
   return <PuePeek />;
@@ -110,6 +118,28 @@ function PickedPeek({ id }: { id: string }) {
             {st.label}
           </Pill>
         )
+      }
+    />
+  );
+}
+
+// 시나리오 재생 중: 이름 · 경과 시각 · 지금 단계 + 재생 · 일시정지 (버튼은 손잡이 끌기와 다투지 않게 누름을 막는다)
+function ScenarioPeek() {
+  const sc = useView((s) => s.scenario)!;
+  const phase = useView((s) => s.scenSnap?.phase ?? 0);
+  const def = defOf(sc.id);
+  return (
+    <Peek
+      title={def.name}
+      sub={
+        <>
+          <span className="num">T+{fmtT(sc.t)}</span> {def.phases(sc.params)[phase]?.title}
+        </>
+      }
+      aside={
+        <span onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
+          <IconButton icon={sc.playing ? Pause : Play} label={sc.playing ? '일시정지' : '재생'} onClick={() => useView.getState().setScenPlaying(!sc.playing)} />
+        </span>
       }
     />
   );

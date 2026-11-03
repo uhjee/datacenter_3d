@@ -6,6 +6,7 @@ import { nodeName } from '../data/graph';
 import { startTrace } from '../scene/focus';
 import { useView } from '../store/useView';
 import { Help, IconButton } from '../ui/kit';
+import { useDevice } from '../store/device';
 import { FlowDiagram } from './FlowDiagram';
 import { DIAGRAMS, diagramOf, type DiagramId } from './model';
 import { FloorPlan } from './FloorPlan';
@@ -40,6 +41,7 @@ export function DiagramPanel() {
   const traced = useView((s) => s.traced);
   const [fitKey, setFitKey] = useState(0);
   const thermal = useView((s) => s.airOn || s.heatOn);
+  const phone = useDevice().device === 'phone';
 
   // 3D에서 고른 장비가 다른 흐름도에만 있으면 탭 전환. 선택이 바뀔 때만 따지고,
   // 사용자가 직접 탭을 바꾼 것은 되돌리지 않는다.
@@ -61,7 +63,7 @@ export function DiagramPanel() {
   const tabs = thermal ? [{ id: 'plan' as const, name: '2D 상면도' }, ...TABS] : TABS;
   const cur = !thermal && tab === 'plan' ? 'power' : tab;
   return (
-    <section className={`diagram-panel ${mode}`}>
+    <section className={`diagram-panel ${phone ? 'full' : mode}`}>
       <header>
         <div className="dp-tabs" role="tablist">
           {tabs.map((t) => (
@@ -88,8 +90,9 @@ export function DiagramPanel() {
           }
         />
         <IconButton icon={Scan} label="화면에 맞춤" onClick={() => setFitKey((k) => k + 1)} />
-        <IconButton icon={mode === 'full' ? Minimize2 : Maximize2} label={mode === 'full' ? '3D 같이 보기' : '크게 보기'} onClick={() => set(mode === 'full' ? 'half' : 'full')} />
-        <IconButton icon={X} label="도면 닫기" onClick={() => set('off')} />
+        {/* 휴대폰은 늘 전체 화면 도면 (✕로 닫으면 3D) */}
+        {!phone && <IconButton icon={mode === 'full' ? Minimize2 : Maximize2} label={mode === 'full' ? '3D 같이 보기' : '크게 보기'} onClick={() => set(mode === 'full' ? 'half' : 'full')} />}
+        <IconButton icon={X} label={phone ? '도면 닫고 3D 보기' : '도면 닫기'} onClick={() => set('off')} />
       </header>
       {/* 선 색 범례: 헤더와 같은 줄에 두면 폭이 모자라 잘리므로 따로 한 줄 (넘치면 다음 줄로) */}
       {cur !== 'plan' && (

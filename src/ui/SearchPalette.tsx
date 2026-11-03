@@ -165,6 +165,10 @@ export function SearchPalette({ onClose }: { onClose: () => void }) {
             aria-label="검색어"
           />
           <kbd>Esc</kbd>
+          {/* 휴대폰은 Esc가 없으므로 닫기 버튼 (PC에서는 숨김) */}
+          <button className="sp-close" onClick={onClose}>
+            닫기
+          </button>
         </div>
         <div className="sp-list" ref={list}>
           {rows.length ? rows : <p className="hint sp-empty">찾는 항목이 없습니다.</p>}

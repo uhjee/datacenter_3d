@@ -13,7 +13,7 @@ import { applyHash } from './store/persist';
 import { deviceOf, useDevice } from './store/device';
 import { MoreMenu } from './ui/MoreMenu';
 import { Sheet, type SheetSnap } from './ui/Sheet';
-import { startTour } from './ui/Tour';
+import { startTour, TourCard } from './ui/Tour';
 import { ScenarioClock } from './scenario/ScenarioPanel';
 import { TraceBanner } from './ui/TraceBanner';
 import { Toast } from './ui/Toast';
@@ -55,12 +55,14 @@ export function App() {
   // 휴대폰은 오른쪽 패널 대신 바텀 시트. '오른쪽 패널을 연다'는 시트를 절반 높이로 올리는 것
   const [sheet, setSheet] = useState<SheetSnap>('peek');
   const openRight = useCallback(() => (phone ? setSheet((s) => (s === 'peek' ? 'half' : s)) : setRight(true)), [phone]);
-  // 투어 카드는 왼쪽 패널에 있고, 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 양쪽 패널을 연다
+  // 투어 카드는 왼쪽 패널에 있고, 단계가 오른쪽 정보 · 지표 탭을 함께 쓰므로 투어를 시작하면 양쪽 패널을 연다.
+  // 휴대폰은 투어 카드가 바텀 시트에 들어가므로 시트만 올린다
   useEffect(() => {
     if (!touring) return;
-    setLeft(true);
+    if (phone) setLeft(false);
+    else setLeft(true);
     openRight();
-  }, [touring, openRight]);
+  }, [touring, openRight, phone]);
   // 휴대폰: 왼쪽 서랍(탐색 · 표시)에서 장비 · 묶음을 고르면 서랍을 닫아 3D와 시트 요약이 보이게 (투어 중엔 투어 카드라 그대로)
   const selectedId = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
@@ -154,8 +156,8 @@ export function App() {
       )}
       {search && <SearchPalette onClose={() => setSearch(false)} />}
       {left && <LeftPanel />}
-      {/* 휴대폰 온도 보기: 2D 상면도는 바텀 시트 탭에 있으므로 아래 도면을 나눠 띄우지 않는다 */}
-      <main className={`viewport diagram-${phone && thermal ? 'off' : diagram}`}>
+      {/* 휴대폰: 도면은 3D와 나눠 보지 않고 전체 화면으로. 온도 보기의 2D 상면도는 바텀 시트 탭에 있으므로 아래 도면을 띄우지 않는다 */}
+      <main className={`viewport diagram-${phone ? (thermal || diagram === 'off' ? 'off' : 'full') : diagram}`}>
         <div
           className="view3d"
           ref={(el) => {
@@ -177,7 +179,7 @@ export function App() {
       </main>
       {phone ? (
         <Sheet snap={sheet} onSnap={setSheet}>
-          <InfoPanel inSheet />
+          {touring ? <TourCard /> : <InfoPanel inSheet />}
         </Sheet>
       ) : (
         right && <InfoPanel />

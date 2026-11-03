@@ -12,6 +12,7 @@ import { InfoTip, keyToggle, TipTable, ToggleTag } from "./kit";
 import { tempGradient } from "../data/thermal";
 import { RackTree } from "./RackTree";
 import { TourCard } from "./Tour";
+import { useDevice } from "../store/device";
 
 const TEMP_CSS = tempGradient(15, 40); // 온도 카드 · 히트맵과 같은 척도
 
@@ -41,6 +42,7 @@ export function LeftPanel() {
   const groupId = useView((s) => s.groupId);
   const rackColor = useView((s) => s.rackColor);
   const touring = useView((s) => s.tourStep != null);
+  const phone = useDevice().device === "phone";
   const [filter, setFilter] = useState<Domain | "all">("all");
   const [query, setQuery] = useState("");
   const [treeMode, setTreeMode] = useState<"equip" | "rack">("equip");
@@ -70,8 +72,8 @@ export function LeftPanel() {
     });
   }, [filter, query]);
 
-  // 가이드 투어 중에는 탐색 · 표시 대신 투어 카드 (3D를 가리지 않도록 왼쪽 사이드에)
-  if (touring)
+  // 가이드 투어 중에는 탐색 · 표시 대신 투어 카드 (3D를 가리지 않도록 왼쪽 사이드에). 휴대폰은 투어 카드가 바텀 시트에
+  if (touring && !phone)
     return (
       <aside className="panel left touring">
         <TourCard />

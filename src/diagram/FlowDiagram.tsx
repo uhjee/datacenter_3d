@@ -6,6 +6,7 @@ import { SYS_COLOR } from '../data/connections';
 import { TRACE_COLOR } from '../scene/common';
 import { focusItem } from '../scene/focus';
 import { traceMarkOf, useView, type TraceMark } from '../store/useView';
+import { usePinchZoom } from '../ui/touch';
 import { DIAGRAMS, type DiagramId, type DNode } from './model';
 import { pathD, routeEdges } from './route';
 import { Symbol } from './Symbol';
@@ -135,15 +136,19 @@ export function FlowDiagram({ id, fitKey, compact }: { id: DiagramId; fitKey: nu
   }, [highlight, d, size.w, size.h]);
 
   // 확대 · 이동
-  const drag = useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean } | null>(null);
-  const onWheel = (e: React.WheelEvent) => {
-    const r = box.current!.getBoundingClientRect();
-    const px = e.clientX - r.left;
-    const py = e.clientY - r.top;
+  const drag = useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean; re?: boolean } | null>(null);
+  const viewRef = useRef(view);
+  viewRef.current = view;
+  // (px, py)를 기준으로 f배 확대: 휠 · 두 손가락 공통
+  const zoomAt = (f: number, px: number, py: number) =>
     setView((v) => {
-      const k = Math.min(3, Math.max(0.25, v.k * Math.exp(-e.deltaY * 0.0015)));
+      const k = Math.min(3, Math.max(0.25, v.k * f));
       return { k, tx: px - ((px - v.tx) * k) / v.k, ty: py - ((py - v.ty) * k) / v.k };
     });
+  const pinching = usePinchZoom(box, zoomAt);
+  const onWheel = (e: React.WheelEvent) => {
+    const r = box.current!.getBoundingClientRect();
+    zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
   };
   const onDown = (e: RPointerEvent) => {
     drag.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false };
@@ -151,6 +156,16 @@ export function FlowDiagram({ id, fitKey, compact }: { id: DiagramId; fitKey: nu
   const onMove = (e: RPointerEvent) => {
     const g = drag.current;
     if (!g) return;
+    // 두 손가락 확대 중에는 이동하지 않고, 한 손가락만 남으면 그 자리에서 이동을 다시 잡는다
+    if (pinching()) {
+      g.moved = true;
+      g.re = true;
+      return;
+    }
+    if (g.re) {
+      Object.assign(g, { re: false, x: e.clientX, y: e.clientY, tx: viewRef.current.tx, ty: viewRef.current.ty });
+      return;
+    }
     const dx = e.clientX - g.x;
     const dy = e.clientY - g.y;
     if (!g.moved && Math.hypot(dx, dy) < 4) return;
