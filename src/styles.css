@@ -1142,7 +1142,8 @@ button.link {
   margin-left: 6px;
 }
 
-/* 가이드 투어: 투어 중 왼쪽 패널(탐색 · 표시 자리)을 채우는 카드. 머리 · 목차 · 제목 · 이전/다음은 고정, 본문만 스크롤 */
+/* 가이드 투어: 투어 중 왼쪽 패널(탐색 · 표시 자리)을 채우는 카드. 머리 · 장 탭 · 제목 · 단계 목록은 고정, 본문만 스크롤.
+   세로가 넉넉한 패널이라 블록 사이 · 블록 안 여백을 넓게 둔다 */
 .panel.left.touring {
   overflow: hidden;
 }
@@ -1155,11 +1156,12 @@ button.link {
 }
 .tour-card > * {
   flex: none;
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
 }
 .tour-head {
-  padding-top: 8px;
+  padding-top: 12px;
+  padding-bottom: 2px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1200,9 +1202,9 @@ button.link {
 }
 /* 장 탭 (카드 위) · 단계 목록 (카드 아래) */
 .toc-chs {
-  margin-top: 8px;
-  margin-left: 12px;
-  margin-right: 12px;
+  margin-top: 12px;
+  margin-left: 16px;
+  margin-right: 16px;
   display: flex;
   gap: 2px;
   padding: 2px;
@@ -1211,7 +1213,7 @@ button.link {
 }
 .toc-chs button {
   flex: 1 1 auto;
-  padding: 4px 6px;
+  padding: 6px 6px;
   border: 0;
   border-radius: var(--r-sm);
   background: none;
@@ -1229,8 +1231,11 @@ button.link {
 }
 .toc-steps {
   margin: 0;
-  padding-top: 6px !important;
-  padding-bottom: 8px !important;
+  padding-top: 10px !important;
+  padding-bottom: 14px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   list-style: none;
   border-top: 1px solid var(--line);
 }
@@ -1239,7 +1244,8 @@ button.link {
   align-items: baseline;
   gap: 8px;
   width: 100%;
-  padding: 3px 6px;
+  padding: 5px 8px;
+  line-height: 1.4;
   border: 0;
   border-radius: var(--r-sm);
   background: none;
@@ -1270,12 +1276,13 @@ button.link {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  padding-top: 10px;
-  padding-bottom: 8px;
+  gap: 6px 8px;
+  padding-top: 18px;
+  padding-bottom: 14px;
 }
 .tour-title h3 {
   margin: 0;
+  line-height: 1.4;
   font-size: var(--fs-md);
   color: var(--ink);
 }
@@ -1285,24 +1292,29 @@ button.link {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  padding-bottom: 12px;
+  gap: 20px;
+  padding-bottom: 20px;
 }
 .tour-lead {
   margin: 0;
   padding-left: 8px;
+  padding-top: 2px;
+  padding-bottom: 2px;
   border-left: 3px solid var(--info);
   font-size: var(--fs);
   font-weight: 600;
-  line-height: 1.5;
+  line-height: 1.65;
   color: var(--ink);
 }
 .tour-points {
   margin: 0;
   padding-left: 16px;
   font-size: var(--fs-sm);
-  line-height: 1.55;
+  line-height: 1.6;
   color: var(--ink-2);
+}
+.tour-points li + li {
+  margin-top: 6px;
 }
 
 /* 투어 블록 색: 길 · 흐름의 종류 */
@@ -1368,7 +1380,7 @@ button.link {
 .tb-flow {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .tb-label {
   font-size: var(--fs-xs);
@@ -1379,10 +1391,10 @@ button.link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
+  gap: 6px 5px;
 }
 .tb-node {
-  padding: 3px 8px;
+  padding: 5px 9px;
   border: 1px solid color-mix(in srgb, var(--hue, var(--ink-3)) 45%, var(--line-2));
   border-radius: var(--r-sm);
   background: var(--s1);
@@ -1406,8 +1418,8 @@ button.link {
 .tb-dual {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 8px;
+  gap: 10px;
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--s1);
@@ -1426,13 +1438,13 @@ button.link {
 .tb-facts {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 4px 10px;
+  gap: 7px 12px;
   margin: 0;
-  padding: 8px 10px;
+  padding: 12px 14px;
   border-radius: var(--r);
   background: var(--s1);
   font-size: var(--fs-sm);
-  line-height: 1.45;
+  line-height: 1.5;
 }
 .tb-facts dt {
   color: var(--ink-3);
@@ -1451,7 +1463,7 @@ button.link {
 }
 .tb-table th,
 .tb-table td {
-  padding: 4px 6px;
+  padding: 7px 8px;
   border-bottom: 1px solid var(--line);
   text-align: left;
   vertical-align: top;
@@ -1501,7 +1513,7 @@ button.link {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 12px;
+  gap: 6px 14px;
   font-size: var(--fs-xs);
   color: var(--ink-2);
 }
@@ -1544,7 +1556,7 @@ button.link {
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 8px;
+  padding: 14px 12px;
   border-radius: var(--r);
   background: var(--s1);
   font-size: var(--fs);
@@ -1580,7 +1592,7 @@ button.link {
 }
 /* 짝 표: 칸마다 장비 이름표 */
 .tb-pairs td {
-  padding: 3px 4px;
+  padding: 5px 4px;
 }
 
 /* 시나리오 */
@@ -4674,7 +4686,7 @@ kbd {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px;
+  padding: 12px 10px;
   border: 1px solid var(--line);
   border-radius: var(--r);
   background: var(--s1);
@@ -4683,13 +4695,14 @@ kbd {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
+  gap: 6px;
   min-width: 0;
 }
 .tb-hub .tb-col.mid {
   align-items: center;
 }
 .tb-hub .tb-node {
+  padding: 5px 6px; /* 세 칸이 한 줄에 들어가도록 좌우만 좁게 */
   background: var(--s2);
 }
 /* 보내는 곳이 많으면 남은 폭 안에서 줄을 바꿔 칸을 채운다 (예: UPS-A1 → PDU 9대 · STS) */
@@ -4712,7 +4725,7 @@ kbd {
 /* 사양: 장비 이름 줄이 두 칸을 차지하고 그 아래 항목 : 값 */
 .tb-facts dt.tb-eq {
   grid-column: 1 / -1;
-  margin-top: 4px;
+  margin-top: 8px;
   font-weight: 700;
   color: var(--ink);
 }
@@ -4729,12 +4742,12 @@ kbd {
 .tb-equips {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 12px;
 }
 .tb-equips > div {
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
 }
 .tb-dot {
   display: inline-block;
