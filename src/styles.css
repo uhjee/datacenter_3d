@@ -4611,3 +4611,85 @@ kbd {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* 투어 그림의 장비 칸: 3D와 같은 이름 + 층 표시. 공간 · 개념 칸(text)은 점선 테두리로 구분 */
+.tb-node em {
+  margin-left: 5px;
+  font-style: normal;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.tb-node.text {
+  border-style: dashed;
+  color: var(--ink-2);
+}
+/* 평상시 안 쓰는 길: 화살표 · 칸 테두리를 흐리게 */
+.tb-flow.standby .tb-arrow {
+  opacity: 0.5;
+}
+.tb-flow.standby .tb-node:not(.on) {
+  border-style: dashed;
+}
+/* 받는 곳 → 장비 → 보내는 곳 */
+.tb-hub {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--s1);
+}
+.tb-hub .tb-col {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  min-width: 0;
+}
+.tb-hub .tb-col.mid {
+  align-items: center;
+}
+.tb-hub .tb-node {
+  background: var(--s2);
+  white-space: normal;
+}
+.tb-cap {
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+/* 사양: 장비 이름 줄이 두 칸을 차지하고 그 아래 항목 : 값 */
+.tb-facts dt.tb-eq {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.tb-facts dt.tb-eq:first-child {
+  margin-top: 0;
+}
+.tb-facts dt.tb-eq em {
+  margin-left: 6px;
+  font-style: normal;
+  font-weight: 400;
+  font-size: var(--fs-xs);
+  color: var(--ink-3);
+}
+.tb-equips {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tb-equips > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.tb-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 2px;
+}
