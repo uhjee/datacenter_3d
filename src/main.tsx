@@ -7,6 +7,8 @@ import './styles.css';
 
 // 개발 중 브라우저 콘솔에서 상태를 다룰 수 있게
 if (import.meta.env.DEV) import('./store/useView').then(({ useView }) => Object.assign(window, { __view: useView }));
+// 현장 모드 길 안내 점검: __route.route('core:1F', 'rack:A-3-07') · __route.checkAll()
+if (import.meta.env.DEV) import('./data/route').then((m) => Object.assign(window, { __route: m }));
 
 // 기기(휴대폰 · 태블릿 · PC) · 모드를 먼저 정해 <html>에 단다 (첫 그림부터 맞는 배치로)
 watchDevice();
