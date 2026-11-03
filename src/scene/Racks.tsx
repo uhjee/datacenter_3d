@@ -7,6 +7,7 @@ import { Color, Group, InstancedMesh, Object3D } from 'three';
 import { RACK } from '../data/building';
 import { DEVICE_COLOR, RACKS, type Rack } from '../data/racks';
 import { traceMarkOf, useView } from '../store/useView';
+import { TAP_SLOP } from '../ui/touch';
 import { useRoomTherm } from '../ui/useStatus';
 import { SelectionFrame, useDim } from './common';
 import { rackColorOf } from './rackColor';
@@ -195,6 +196,7 @@ export function RackRows({ roomId }: { roomId: string }) {
         }}
         onClick={(e) => {
           e.stopPropagation();
+          if (e.delta > TAP_SLOP) return; // 회전하려고 끌다 뗀 것
           const id = idOf(e);
           if (id) useView.getState().select(id);
         }}

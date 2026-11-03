@@ -15,6 +15,7 @@ import { SR_BY_LABEL } from '../data/building';
 import { exitThermal, focusItem, heatView, thermalCamOf, viewRoom } from '../scene/focus';
 import { useView, type HeatHeight } from '../store/useView';
 import { InfoTip, TipSwatch, TipTable, ToggleTag } from './kit';
+import { onLongPress } from './touch';
 import { useHeatField, useRoomTherm } from './useStatus';
 
 const CONTAINMENT: { key: Containment; name: string; short: string; blocks: string; room: string; desc: string }[] = [
@@ -320,17 +321,23 @@ export function ThermalPanel() {
       </div>
       {heatOn && (
         <div className="vc-bar col heat-hbar" role="group" aria-label="단면 높이">
-          {[2, 1, 0].map((i) => (
-            <button
-              key={i}
-              className={`vc-floor${h === i ? ' on' : ''}`}
-              onClick={() => s.setHeatHeight(i as HeatHeight)}
-              aria-label={`${HEIGHT_NAME[i]} ${HEIGHT_M[i]}m 단면`}
-              data-tip={`${HEIGHT_NAME[i]} · ${HEIGHT_M[i]}m 온도계 기준\n랙 앞면 ${HEIGHT_POS[i]} 흡기 온도계(${raised ? '이중마루' : '바닥'} 위 ${HEIGHT_M[i]}m) 높이의 단면`}
-            >
-              {HEIGHT_NAME[i]}
-            </button>
-          ))}
+          {[2, 1, 0].map((i) => {
+            const head = `${HEIGHT_NAME[i]} · ${HEIGHT_M[i]}m 온도계 기준`;
+            const body = `랙 앞면 ${HEIGHT_POS[i]} 흡기 온도계(${raised ? '이중마루' : '바닥'} 위 ${HEIGHT_M[i]}m) 높이의 단면`;
+            return (
+              <button
+                key={i}
+                className={`vc-floor${h === i ? ' on' : ''}`}
+                onClick={() => s.setHeatHeight(i as HeatHeight)}
+                // 손가락은 hover 설명을 볼 수 없으므로 길게 누르면 같은 설명을 알림으로
+                onPointerDown={(e) => onLongPress(e, () => s.showToast(`${head}: ${body}`))}
+                aria-label={`${HEIGHT_NAME[i]} ${HEIGHT_M[i]}m 단면`}
+                data-tip={`${head}\n${body}`}
+              >
+                {HEIGHT_NAME[i]}
+              </button>
+            );
+          })}
         </div>
       )}
     </>

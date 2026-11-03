@@ -9,6 +9,7 @@ import { RACK, type FloorId } from "../data/building";
 import { CAGE_BASE, CAGE_H, CUSTOMERS, type Customer } from "../data/customers";
 import { RACKS } from "../data/racks";
 import { useView } from "../store/useView";
+import { TAP_SLOP } from "../ui/touch";
 import { htmlPortal } from "./htmlPortal";
 import { MergeStatic } from "./merge";
 
@@ -251,6 +252,7 @@ function CustomerPick({ c, children }: { c: Customer; children: ReactNode }) {
       onClick={(e) => {
         if (rackBehind(e)) return;
         e.stopPropagation();
+        if (e.delta > TAP_SLOP) return; // 회전하려고 끌다 뗀 것
         useView.getState().select(id);
       }}
     >

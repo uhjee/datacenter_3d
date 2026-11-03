@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } 
 import { BoxGeometry, EdgesGeometry, type Group, type Material, type Mesh } from 'three';
 import { frameColor } from '../scenario/core';
 import { traceMarkOf, useView, type TraceMark } from '../store/useView';
+import { TAP_SLOP } from '../ui/touch';
 
 export type V3 = [number, number, number];
 
@@ -157,6 +158,7 @@ export function Selectable({
   };
   const onClick = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    if (e.delta > TAP_SLOP) return; // 회전하려고 끌다 뗀 것
     useView.getState().select(id);
   };
 

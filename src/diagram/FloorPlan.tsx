@@ -14,6 +14,7 @@ import { rampColor } from '../scene/rackColor';
 import { focusItem } from '../scene/focus';
 import { useView, type HeatValue } from '../store/useView';
 import { InfoTip, TipSwatch, TipTable } from '../ui/kit';
+import { onLongPress } from '../ui/touch';
 import { useHeatField, useNodeStatus, useRoomTherm } from '../ui/useStatus';
 
 interface ViewT {
@@ -124,6 +125,9 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
   const [hoverPt, setHoverPt] = useState<{ x: number; y: number; wx: number; wz: number } | null>(null);
   const onDown = (e: RPointerEvent) => {
     drag.current = { x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty, moved: false };
+    // 손가락: 길게 누르면 그 자리 값을 마우스를 올린 것처럼 보여 준다 (손을 떼면 사라짐)
+    const r = box.current!.getBoundingClientRect();
+    onLongPress(e, (x, y) => setHoverPt({ x: x - r.left, y: y - r.top, wx: (x - r.left - view.tx) / view.k, wz: (y - r.top - view.ty) / view.k }));
   };
   const onMove = (e: RPointerEvent) => {
     const r = box.current!.getBoundingClientRect();

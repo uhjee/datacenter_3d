@@ -5,6 +5,7 @@ import { Path, Plane, Raycaster, Shape, Vector2, Vector3, type Intersection, typ
 import type { UseBoundStore, StoreApi } from 'zustand';
 import { FOOTPRINT } from '../data/building';
 import { useView } from '../store/useView';
+import { onLongPress, TAP_SLOP } from '../ui/touch';
 import { BuildingFloors } from './Building';
 import { Connections } from './Connections';
 import { CAMERA_FOV, overviewPose } from './focus';
@@ -127,17 +128,17 @@ function CameraRig() {
     ref.current.setLookAt(...goal.position, ...goal.target, true);
   }, [goal]);
 
-  // 더블클릭한 지점을 회전 중심으로 (카메라는 그 자리에 둔다)
+  // 더블클릭 · 더블탭한 지점을 회전 중심으로 (카메라는 그 자리에 둔다)
   const { gl, camera, scene } = useThree();
   useEffect(() => {
     const el = gl.domElement;
     const ray = new Raycaster();
     const ndc = new Vector2();
-    const onDbl = (e: MouseEvent) => {
+    const orbitAt = (x: number, y: number) => {
       const c = ref.current;
       if (!c) return;
       const r = el.getBoundingClientRect();
-      ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      ndc.set(((x - r.left) / r.width) * 2 - 1, -((y - r.top) / r.height) * 2 + 1);
       ray.setFromCamera(ndc, camera);
       const hit = ray.intersectObjects(scene.children, true).find((h) => (h.object as Mesh).isMesh && shown(h.object));
       const p = hit?.point ?? ray.ray.intersectPlane(new Plane(new Vector3(0, 1, 0), -c.getTarget(new Vector3()).y), new Vector3());
@@ -146,8 +147,60 @@ function CameraRig() {
       c.setOrbitPoint(p.x, p.y, p.z);
       useView.getState().pingOrbit([p.x, p.y, p.z]);
     };
+    const onDbl = (e: MouseEvent) => orbitAt(e.clientX, e.clientY);
+
+    // 손가락: 터치에서는 dblclick이 오지 않거나 확대 제스처와 겹치므로 더블탭을 직접 센다 (300ms · 24px 안에 짧은 탭 두 번)
+    // 길게 누르기는 그 자리에 마우스를 올린 것처럼 처리해 이름표 · 바닥 온도 · 랙 흡기를 보여 준다 (손을 떼면 사라짐)
+    let down: { x: number; y: number; t: number } | null = null;
+    let last = { x: 0, y: 0, t: 0 };
+    let touching = false;
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return;
+      touching = true;
+      // 두 번째 손가락(핀치 · 이동)이 닿으면 탭이 아니다
+      down = e.isPrimary ? { x: e.clientX, y: e.clientY, t: performance.now() } : null;
+      if (!e.isPrimary) last.t = 0;
+      onLongPress(e, (x, y) => {
+        const ev = new PointerEvent('pointermove', { clientX: x, clientY: y, pointerType: 'mouse', bubbles: true });
+        // R3F는 offsetX로 가리킨 곳을 찾는데, 만든 이벤트는 브라우저 · 화면 배율에 따라 값이 어긋날 수 있어 직접 넣는다
+        const r = el.getBoundingClientRect();
+        Object.defineProperties(ev, { offsetX: { value: x - r.left }, offsetY: { value: y - r.top } });
+        el.dispatchEvent(ev);
+      });
+    };
+    const onUp = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch' || !down) return;
+      const now = performance.now();
+      const tap = now - down.t < 300 && Math.hypot(e.clientX - down.x, e.clientY - down.y) <= TAP_SLOP;
+      down = null;
+      if (!tap) {
+        last.t = 0;
+        return;
+      }
+      if (now - last.t < 300 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 24) {
+        last.t = 0;
+        orbitAt(e.clientX, e.clientY);
+      } else last = { x: e.clientX, y: e.clientY, t: now };
+    };
+    // 길게 누를 때 뜨는 브라우저 메뉴(이미지 저장 등)를 막는다. 마우스 우클릭은 그대로
+    const onMenu = (e: Event) => touching && e.preventDefault();
+    const onEnd = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' && e.isPrimary) setTimeout(() => (touching = false), 0);
+    };
     el.addEventListener('dblclick', onDbl);
-    return () => el.removeEventListener('dblclick', onDbl);
+    el.addEventListener('pointerdown', onDown);
+    el.addEventListener('pointerup', onUp);
+    el.addEventListener('pointerup', onEnd);
+    el.addEventListener('pointercancel', onEnd);
+    el.addEventListener('contextmenu', onMenu);
+    return () => {
+      el.removeEventListener('dblclick', onDbl);
+      el.removeEventListener('pointerdown', onDown);
+      el.removeEventListener('pointerup', onUp);
+      el.removeEventListener('pointerup', onEnd);
+      el.removeEventListener('pointercancel', onEnd);
+      el.removeEventListener('contextmenu', onMenu);
+    };
   }, [gl, camera, scene]);
 
   // 확대 · 축소 버튼: 지금 거리의 25%씩 당기거나 민다

@@ -22,6 +22,7 @@ import {
 import { EQUIPMENT } from '../data/equipment';
 import { TYPE_BY_ID } from '../data/equipTypes';
 import { floorWorldY, isFloorVisible, useView } from '../store/useView';
+import { onLongPress, TAP_SLOP } from '../ui/touch';
 import { HUBS } from '../data/connections';
 import { floorAnimY } from './floorAnim';
 import { htmlPortal } from './htmlPortal';
@@ -278,7 +279,14 @@ function FloorTag({ floor, hidden }: { floor: Floor; hidden: boolean }) {
   return (
     <Html portal={htmlPortal} position={[FOOTPRINT.x[0] - 1.5, floor.height / 2, FOOTPRINT.z[1] + 0.5]} center zIndexRange={[6, 0]}>
       {/* 층 번호만 보이고, 구성 설명은 마우스를 올리면 툴팁으로 */}
-      <button className="floor-tag" style={{ display: hidden ? 'none' : undefined }} onClick={() => focusFloor(floor.id)} aria-label={`${floor.id} ${floor.summary}`}>
+      <button
+        className="floor-tag"
+        style={{ display: hidden ? 'none' : undefined }}
+        onClick={() => focusFloor(floor.id)}
+        // 손가락은 hover 툴팁을 볼 수 없으므로 길게 누르면 같은 설명을 알림으로
+        onPointerDown={(e) => onLongPress(e, () => useView.getState().showToast(`${floor.name}: ${floor.summary}`))}
+        aria-label={`${floor.id} ${floor.summary}`}
+      >
         <b>{floor.id}</b>
         <span className="floor-tip" role="tooltip">
           <em>{floor.name}</em>
@@ -318,6 +326,7 @@ function ShaftSegment({ shaft, floor, shown, labelHidden }: { shaft: Shaft; floo
       }}
       onClick={(e) => {
         e.stopPropagation();
+        if (e.delta > TAP_SLOP) return; // 회전하려고 끌다 뗀 것
         useView.getState().select(id);
       }}
     >

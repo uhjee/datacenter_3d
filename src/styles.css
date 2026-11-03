@@ -503,7 +503,12 @@ button.on {
   font-weight: 700;
   color: var(--accent);
 }
-.floor-tag:hover .floor-tip,
+/* 터치 화면은 누른 뒤 :hover가 남으므로 마우스일 때만 (터치는 길게 누르기 알림) */
+@media (hover: hover) {
+  .floor-tag:hover .floor-tip {
+    display: flex;
+  }
+}
 .floor-tag:focus-visible .floor-tip {
   display: flex;
 }
@@ -3748,25 +3753,28 @@ button.co-tr:hover {
   position: relative;
   width: 32px;
 }
-/* 마우스를 올리면 어느 높이 온도계 기준인지 바로 보여 준다 (title보다 빠르게) */
-.heat-hbar .vc-floor:hover::after {
-  content: attr(data-tip);
-  position: absolute;
-  left: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
-  padding: 6px 9px;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--panel);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  color: var(--ink-2);
-  font-size: 11px;
-  font-weight: 400;
-  line-height: 1.5;
-  text-align: left;
-  white-space: pre;
-  pointer-events: none;
+/* 마우스를 올리면 어느 높이 온도계 기준인지 바로 보여 준다 (title보다 빠르게).
+   터치 화면은 누른 뒤 :hover가 남아 설명이 붙어 있으므로 빼고, 길게 누르기 알림으로 대신한다 */
+@media (hover: hover) {
+  .heat-hbar .vc-floor:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 6px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--r);
+    background: var(--panel);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    color: var(--ink-2);
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.5;
+    text-align: left;
+    white-space: pre;
+    pointer-events: none;
+  }
 }
 .heat-bar {
   margin-top: 10px;
@@ -4792,4 +4800,27 @@ kbd {
 .pue-float .rp-hero {
   background: rgba(21, 27, 35, 0.94);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+}
+
+/* ── 터치 입력 (docs/research/03-mobile-responsive.md §5). 같은 선택자의 앞선 규칙을 덮도록 파일 끝에 둔다 ── */
+/* 터치 화면: 누르는 영역을 44px 이상으로 (Apple HIG 44pt · WCAG 2.5.5). 아이콘 · 글자 크기는 그대로 */
+@media (pointer: coarse) {
+  .k-icon-btn,
+  .vc-floor,
+  .heat-hbar .vc-floor {
+    width: 44px;
+    height: 44px;
+  }
+  .k-tag,
+  .seg button,
+  .dp-tabs button {
+    min-height: 44px;
+  }
+}
+/* 3D · 2D 상면도: 길게 누를 때 글자 선택 · 브라우저 메뉴(이미지 저장 등)가 뜨지 않게 */
+.view3d canvas,
+.plan-box {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }

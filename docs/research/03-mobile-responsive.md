@@ -427,15 +427,15 @@
 
 **확인:** 375 · 390 · 360 · 820 × 1180 · 1024 × 768에서 가로 스크롤이 없고, `data-device` 값이 맞음. `?mode=field`로 PC에서 모드가 바뀜(화면은 S9 전까지 그대로).
 
-#### S2 터치 입력 — 중간
+#### S2 터치 입력 — 중간 ✅ (2026-11-03)
 
 | 작업 | 파일 |
 |---|---|
 | 탭 거리 검사: 랙 · 장비 · 케이지 `onClick`과 `onPointerMissed`에서 `e.delta > 6`이면 무시 | `src/scene/Racks.tsx`, `Building.tsx`, `Cages.tsx`, `Scene.tsx` |
 | 더블탭 → 회전 중심: `pointerup` 두 번(300ms · 24px 안). 기존 `dblclick` 처리를 함수로 빼서 같이 쓴다 | `src/scene/Scene.tsx` |
-| 길게 누르기(500ms, 끌면 취소) → hover 대신: 3D 이름표 · 랙 하 · 중 · 상 온도 · 히트맵 탐침 · 2D 상면도 값 | `src/scene/useLongPress.ts` (새 파일), `HoverLabel.tsx`, `Heatmap.tsx`, `src/diagram/FloorPlan.tsx` |
+| 길게 누르기(500ms, 끌면 취소) → hover 대신: 3D는 그 자리에 마우스를 올린 것처럼 이벤트를 보내 기존 이름표 · 히트맵 탐침이 그대로 뜨게, 2D 상면도는 그 자리 값 표시 | `src/ui/touch.ts` (새 파일), `src/scene/Scene.tsx`, `src/diagram/FloorPlan.tsx` |
 | `pointer: coarse`에서 버튼 · 탭 · 토글을 44px 이상으로 | `src/styles.css`(`k-icon-btn` · `vc-floor` · `k-tag` · `seg` 등) |
-| hover로만 보이던 설명(`data-tip`, `floor-tip`)을 길게 누르면 토스트로 | `src/ui/ThermalPanel.tsx`, `ViewControls.tsx` |
+| hover로만 보이던 설명(높이 막대 `data-tip`, 층 이름표 `floor-tip`)을 길게 누르면 알림으로. 터치에서 :hover가 남지 않게 두 설명은 `(hover: hover)`에서만 | `src/ui/ThermalPanel.tsx`, `src/scene/Building.tsx`, `src/styles.css` |
 
 **확인:** 브라우저 `mobile` 크기에서 `pointerType: 'touch'` 이벤트를 스크립트로 보내 탭 · 더블탭 · 길게 누르기를 확인. 마우스 동작(PC)은 그대로인지 확인.
 
