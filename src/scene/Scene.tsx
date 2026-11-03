@@ -51,7 +51,7 @@ export function Scene() {
       )}
       <Canvas
         camera={{ position: overviewPose('explode').position, fov: CAMERA_FOV, near: 0.1, far: 600 }}
-        dpr={dprCap ?? [1, touch ? TOUCH_DPR_MAX : 2]}
+        dpr={touch ? (dprCap ?? [1, TOUCH_DPR_MAX]) : [1, 2]}
         gl={gl}
         // 변화가 있을 때만 그린다 (가만히 있으면 GPU · CPU를 쓰지 않음). 다시 그리는 때는 InvalidateOnChange · 각 애니메이션이 알린다
         frameloop="demand"
@@ -282,7 +282,9 @@ function CameraRig() {
   }, [zoom]);
 
   // 현장 모드 눈높이: 거의 붙은 목표를 둘레로 돌게 해 그 자리에서 둘러보기만 (확대 · 이동 끔, 끄는 방향은 보는 방향과 같게)
-  const eye = useView((s) => s.fieldView === 'eye' && (!!s.fieldGuide || !!s.fieldHere));
+  // (현장 모드에서만: 눈높이 상태로 학습 모드로 넘어가도 학습 화면의 카메라 조작이 막히지 않게)
+  const field = useDevice().mode === 'field';
+  const eye = useView((s) => field && s.fieldView === 'eye' && (!!s.fieldGuide || !!s.fieldHere));
   // 눈높이는 사람 시야처럼 넓게 (좁은 화각으로는 통로에서 랙 문 한두 개만 보인다)
   useEffect(() => {
     const cam = camera as PerspectiveCamera;

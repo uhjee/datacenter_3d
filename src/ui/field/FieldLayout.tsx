@@ -12,13 +12,14 @@ import { htmlPortal } from '../../scene/htmlPortal';
 import { LabelOverlay } from '../../scene/HoverLabel';
 import { Scene } from '../../scene/Scene';
 import { setMode } from '../../store/device';
-import { applyHash } from '../../store/persist';
+import { applyHash, sceneHash } from '../../store/persist';
 import { useView } from '../../store/useView';
 import { SearchPalette, useSearchHotkey } from '../SearchPalette';
 import { Toast } from '../Toast';
 import { FieldPanel } from './FieldPanel';
 import { useWakeLock } from './useWakeLock';
-import { reaim, setView } from './guide';
+import { isAimGoal, reaim, setHere, setView } from './guide';
+import { nodeInfo } from '../../data/graph';
 
 // 현장 모드 첫 층: 정해진 층이 없으면 1층(출입 · 코어에서 출발)
 const START_FLOOR: FloorId = '1F';
@@ -44,11 +45,41 @@ export function FieldLayout() {
       history.replaceState(null, '', `${location.pathname}${location.search}#${hash}`);
       const id = setTimeout(() => {
         applyHash();
-        if (!useView.getState().floorFocus) focusFloor(START_FLOOR);
+        // 주소의 장비가 층을 정하지 않는 곳(옥상 등)이면 그 장비 층만 고른다 (카메라는 그 장비에 둔 채)
+        const v = useView.getState();
+        if (!v.floorFocus) {
+          const f = v.selectedId ? nodeInfo(v.selectedId)?.floor : null;
+          if (f) v.setFloorFocus(f);
+          else focusFloor(START_FLOOR);
+        }
       }, 0);
       return () => clearTimeout(id);
     }
     focusFloor(s.floorFocus ?? START_FLOOR);
+  }, []);
+  // 눈높이는 길 안내가 보낸 시점에서만: 층 버튼 · 검색이 카메라를 옮기면 위에서 보기로 돌아간다.
+  // 학습 모드로 나갈 때도 위에서 보기로 (학습 화면 카메라에 눈높이 설정이 남지 않게)
+  useEffect(() => {
+    const off = useView.subscribe((s, p) => {
+      if (s.cameraGoal !== p.cameraGoal && s.fieldView === 'eye' && !isAimGoal(s.cameraGoal?.key)) s.setFieldView('plan');
+    });
+    return () => {
+      off();
+      useView.getState().setFieldView('plan');
+      // 학습 모드로 나가면 주소에서 현장 모드 내 위치를 뺀다 (학습 모드 링크에 섞이지 않게)
+      history.replaceState(null, '', `${location.pathname}${location.search}${sceneHash()}`);
+    };
+  }, []);
+  // 같은 탭에서 다른 QR 주소(# 뒤만 다름)로 옮기면 페이지를 다시 열지 않으므로 내 위치만 다시 읽는다
+  useEffect(() => {
+    const onHash = () => {
+      const p = new URLSearchParams(location.hash.slice(1));
+      const here = p.get('here');
+      const face = p.get('face');
+      if (here && here !== useView.getState().fieldHere?.place) setHere(here, face === 'N' || face === 'S' || face === 'E' || face === 'W' ? face : undefined, 'link');
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
   }, []);
   return (
     <div className="field-app">

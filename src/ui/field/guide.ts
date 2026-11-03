@@ -17,11 +17,18 @@ export function routeOf(from: string, to: string) {
   return cache.get(k)!;
 }
 
+// (같은 객체를 돌려준다: 받는 쪽 useMemo가 렌더마다 다시 돌지 않게)
 export function useGuide() {
   const g = useView((s) => s.fieldGuide);
-  const r = useMemo(() => (g ? routeOf(g.from, g.to) : null), [g]);
-  return g && r ? { ...g, route: r } : null;
+  return useMemo(() => {
+    const r = g ? routeOf(g.from, g.to) : null;
+    return g && r ? { ...g, route: r } : null;
+  }, [g]);
 }
+
+// 길 안내가 마지막으로 보낸 카메라 목표. 다른 곳(층 버튼 · 검색)이 카메라를 옮기면 눈높이를 푼다 (FieldLayout)
+let aimKey = -1;
+export const isAimGoal = (key: number | undefined) => key === aimKey;
 
 type Pose = { floor: string; x: number; z: number; dx: number; dz: number };
 
@@ -138,6 +145,8 @@ function aim(p: Pose, view: 'plan' | 'eye') {
   const floor = p.floor as Route['to']['floor'];
   if (s.floorFocus !== floor) s.setFloorFocus(floor);
   const y = floorWorldY(floor, s.viewMode) + floorTopAt(floor, p.x, p.z);
+  // 곧 보낼 카메라 목표 번호를 먼저 적어 둔다 (flyTo가 저장소를 바꾸는 순간 FieldLayout 구독이 이것과 견준다)
+  aimKey = (useView.getState().cameraGoal?.key ?? 0) + 1;
   if (view === 'eye') {
     const pos: [number, number, number] = [p.x, y + EYE, p.z];
     // 거의 붙은 목표를 둘러 돌게 해 '그 자리에서 둘러보기'가 되게 한다 (Scene CameraRig의 눈높이 설정)
@@ -146,4 +155,21 @@ function aim(p: Pose, view: 'plan' | 'eye') {
     // 위에서: 내 위치를 가운데, 보는 방향이 화면 위쪽이 되게 조금 뒤에서 내려다본다
     s.flyTo([p.x - p.dx * 9, y + 24, p.z - p.dz * 9], [p.x, y, p.z]);
   }
+}
+
+// 도착한 곳에서 다음 목적지(전원 · 냉기 따라가기)로: 도착점이 내 위치가 되고 거기서 새로 안내
+export function continueTo(next: string) {
+  const s = useView.getState();
+  const g = s.fieldGuide;
+  if (!g) return;
+  if (!routeOf(g.to, next)) {
+    s.showToast('그곳까지 길을 찾지 못했습니다.');
+    return;
+  }
+  const r = routeOf(g.from, g.to);
+  const p = r && poseOf(r, r.steps.length - 1);
+  s.setFieldHere({ place: g.to, face: p ? faceOfVec(p.dx, p.dz) : undefined });
+  s.select(next);
+  s.setFieldGuide({ from: g.to, to: next, step: 0 });
+  showStep(0);
 }

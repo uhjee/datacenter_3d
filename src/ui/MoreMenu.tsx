@@ -19,10 +19,11 @@ export function MoreMenu({ items, label = '더 보기' }: { items: MoreItem[]; l
     if (!open) return;
     const away = (e: PointerEvent) => !box.current?.contains(e.target as Node) && setOpen(false);
     const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
-    window.addEventListener('pointerdown', away);
+    // 붙잡기 단계: React stopPropagation이 걸린 버튼(시트의 재생 등)을 눌러도 닫히게
+    window.addEventListener('pointerdown', away, true);
     window.addEventListener('keydown', esc);
     return () => {
-      window.removeEventListener('pointerdown', away);
+      window.removeEventListener('pointerdown', away, true);
       window.removeEventListener('keydown', esc);
     };
   }, [open]);

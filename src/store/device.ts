@@ -1,6 +1,7 @@
 // 기기 · 모드 판별 (docs/research/03-mobile-responsive.md §1 · §9)
 //   기기: 휴대폰(phone) · 태블릿(tablet) · PC(desktop). 화면 크기와 입력 장치로 정하고, 크기가 바뀌면(회전 · 창 크기) 다시 정한다
-//   모드: 현장(field) · 학습(learn). 태블릿은 현장 모드로 시작한다. 주소 ?mode=field|learn 이 가장 앞서고(시험용, 저장 안 함),
+//   모드: 현장(field) · 학습(learn). 태블릿은 현장 모드로 시작한다. 시작할 때 정하고, 기기 판별이 바뀌어도 그대로 둔다.
+//         주소 ?mode=field|learn 이 가장 앞서고(시험용, 저장 안 함),
 //         그다음 사용자가 고른 모드(브라우저 저장), 마지막이 기기 기본값
 //   CSS는 <html data-device data-mode> 속성으로 고른다 (미디어쿼리를 여기저기 반복하지 않으려고)
 
@@ -50,15 +51,20 @@ function apply() {
 export function watchDevice() {
   apply();
   const recheck = () => {
+    // 입력 중에는 판별하지 않는다: 화면 키보드가 화면 높이를 줄여 태블릿이 휴대폰으로 바뀌었다 돌아오는 것을 막는다
+    const a = document.activeElement;
+    if (a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement) return;
     const d = readDevice();
     if (d === device) return;
+    // 모드(현장 · 학습)는 그대로 둔다: 화면 분할 · 회전으로 기기 판별이 바뀌어도 쓰던 화면이 통째로 바뀌지 않게
     device = d;
-    // 사용자가 고른 모드가 없으면 기기에 맞는 기본 모드로 (예: 창을 넓혀 휴대폰 → PC)
-    mode = modeOf(d);
     apply();
   };
   window.addEventListener('resize', recheck);
-  matchMedia('(pointer: coarse)').addEventListener('change', recheck);
+  const mq = matchMedia('(pointer: coarse)');
+  // Safari 14 이전은 addEventListener가 없다
+  if (mq.addEventListener) mq.addEventListener('change', recheck);
+  else mq.addListener(recheck);
 }
 
 export const deviceOf = () => device;
@@ -67,11 +73,13 @@ export const modeOfNow = () => mode;
 export function setMode(m: Mode) {
   if (m === mode) return;
   mode = m;
-  try {
-    localStorage.setItem(MODE_KEY, m);
-  } catch {
-    // 저장이 막혀도 이번 화면에서는 바뀐다
-  }
+  // 주소 ?mode= 로 시험 중이면 저장하지 않는다 (다음에 그냥 열 때 시험 모드로 시작하지 않게)
+  if (!isMode(urlMode))
+    try {
+      localStorage.setItem(MODE_KEY, m);
+    } catch {
+      // 저장이 막혀도 이번 화면에서는 바뀐다
+    }
   apply();
 }
 

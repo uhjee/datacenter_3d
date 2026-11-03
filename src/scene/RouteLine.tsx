@@ -19,7 +19,7 @@ export function RouteLine() {
     if (!g || !floor) return [];
     const base = floorWorldY(floor, mode);
     return g.route.points.filter((p) => p.floor === floor).map((p) => [p.x, base + floorTopAt(floor, p.x, p.z) + LIFT, p.z] as [number, number, number]);
-  }, [g, floor, mode]);
+  }, [g?.route, floor, mode]); // 단계를 넘겨도 경로가 같으면 선을 다시 만들지 않는다 (점선 셰이더를 다시 컴파일하지 않게)
   if (!floor) return null;
   // 길 안내가 없으면 내 위치(QR · 고르기로 정한 곳)만
   if (!g) {

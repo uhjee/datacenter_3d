@@ -3,7 +3,7 @@
 
 import { useEffect } from 'react';
 
-type Sentinel = { release: () => Promise<void> };
+type Sentinel = { release: () => Promise<void>; addEventListener: (t: 'release', f: () => void) => void };
 
 export function useWakeLock(on: boolean) {
   useEffect(() => {
@@ -15,8 +15,14 @@ export function useWakeLock(on: boolean) {
       if (document.visibilityState !== 'visible') return;
       wl.request('screen').then(
         (l) => {
-          if (alive) lock = l;
-          else l.release();
+          // 이미 잡혀 있거나 정리된 뒤 도착한 것은 바로 놓는다
+          if (alive && !lock) {
+            lock = l;
+            // 화면을 떠나면 브라우저가 스스로 놓는다: 돌아왔을 때 다시 잡을 수 있게 비운다
+            l.addEventListener('release', () => {
+              if (lock === l) lock = null;
+            });
+          } else l.release().catch(() => {});
         },
         () => {}, // 배터리 절약 모드 등으로 거절되면 그냥 둔다
       );

@@ -30,7 +30,7 @@ function snapPx(s: SheetSnap) {
 
 export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s: SheetSnap) => void; children: ReactNode }) {
   const [drag, setDrag] = useState<number | null>(null); // 끄는 중 높이(px)
-  const start = useRef<{ y: number; h: number } | null>(null);
+  const start = useRef<{ y: number; h: number; full: number } | null>(null);
   const [, setVh] = useState(0);
   // 화면 회전 · 주소창 변화로 높이가 바뀌면 단계 높이를 다시 잰다
   useEffect(() => {
@@ -52,8 +52,9 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
     [],
   );
 
+  // 전체 높이는 누를 때 한 번만 잰다 (끄는 동안 매번 재면 높이를 바꾼 직후라 레이아웃을 다시 계산하게 된다)
   const onDown = (e: React.PointerEvent) => {
-    start.current = { y: e.clientY, h };
+    start.current = { y: e.clientY, h, full: snapPx('full') };
     (e.currentTarget as Element).setPointerCapture(e.pointerId);
   };
   const onMove = (e: React.PointerEvent) => {
@@ -61,7 +62,12 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
     if (!s) return;
     const dy = e.clientY - s.y;
     if (drag == null && Math.abs(dy) < TAP) return;
-    setDrag(Math.max(PEEK, Math.min(snapPx('full'), s.h - dy)));
+    setDrag(Math.max(PEEK, Math.min(s.full, s.h - dy)));
+  };
+  // 시스템이 터치를 가져가면(가장자리 스와이프 · 전화) 탭으로 보지 않고 그대로 둔다
+  const onCancel = () => {
+    start.current = null;
+    setDrag(null);
   };
   const onUp = () => {
     const s = start.current;
@@ -79,7 +85,7 @@ export function Sheet({ snap, onSnap, children }: { snap: SheetSnap; onSnap: (s:
 
   return (
     <div className={`sheet${drag != null ? ' dragging' : ''}`} style={{ height: `calc(${h}px + env(safe-area-inset-bottom))` }} data-snap={snap}>
-      <div className="sheet-grip" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp}>
+      <div className="sheet-grip" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onCancel}>
         <i aria-hidden />
         <SheetPeek />
       </div>

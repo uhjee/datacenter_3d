@@ -36,12 +36,17 @@ function QrMark({ p, y }: { p: LabelPlace; y: number }) {
   useCursor(over);
   useEffect(() => {
     let t: CanvasTexture | null = null;
+    let alive = true;
     qrCanvas(p, 128).then((c) => {
+      if (!alive) return; // 그리기 전에 층을 바꿨으면 만들지 않는다
       t = new CanvasTexture(c);
       t.colorSpace = SRGBColorSpace;
       setTex(t);
     });
-    return () => t?.dispose();
+    return () => {
+      alive = false;
+      t?.dispose();
+    };
   }, [p]);
   const [fx, fz] = FACE_VEC[p.face];
   // 라벨 앞면이 선 사람 쪽(보는 방향의 반대)을 향하게
@@ -61,7 +66,8 @@ function QrMark({ p, y }: { p: LabelPlace; y: number }) {
         }}
       >
         <planeGeometry args={[SIZE, SIZE]} />
-        <meshBasicMaterial map={tex ?? undefined} color={tex ? '#ffffff' : '#dee2e6'} toneMapped={false} />
+        {/* 그림이 생기면 재질을 새로 만든다 (map이 없던 재질에 나중에 넣으면 셰이더가 그대로라 흰 사각형으로 남을 수 있다) */}
+        <meshBasicMaterial key={tex ? 'qr' : 'blank'} map={tex ?? undefined} color={tex ? '#ffffff' : '#dee2e6'} toneMapped={false} />
       </mesh>
       {/* 테두리: 내 위치로 정한 라벨은 파랑, 가리키면 노랑 */}
       <mesh position={[0, 0, -0.005]}>

@@ -20,7 +20,8 @@ watchHash();
 
 // 오프라인: 빌드한 앱에서만 서비스 워커를 건다 (개발 서버의 즉시 반영과 섞이지 않게). 보안 연결(HTTPS · localhost)에서만 동작
 if (import.meta.env.PROD && 'serviceWorker' in navigator && window.isSecureContext) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  // 주소에 빌드값을 붙인다: 새 버전을 올리면 서비스 워커가 새로 설치되어 새 JS · CSS를 저장하고 옛것을 지운다
+  window.addEventListener('load', () => navigator.serviceWorker.register(`./sw.js?v=${__BUILD__}`).catch(() => {}));
 }
 
 const root = createRoot(document.getElementById('root')!);

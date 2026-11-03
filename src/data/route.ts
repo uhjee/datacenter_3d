@@ -345,7 +345,7 @@ function ro(word: string) {
     const jong = code % 28;
     return word + (jong === 0 || jong === 8 ? '로' : '으로');
   }
-  return word + ('013678MNmn'.includes(c) ? '으로' : '로');
+  return word + ('036MNmn'.includes(c) ? '으로' : '로'); // 0 영 · 3 삼 · 6 육 · 엠 · 엔 (1 일 · 7 칠 · 8 팔은 ㄹ이라 '로')
 }
 
 function stepsOf(path: GNode[], from: Place, to: Place): RouteStep[] {

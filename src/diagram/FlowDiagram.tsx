@@ -174,6 +174,11 @@ export function FlowDiagram({ id, fitKey, compact }: { id: DiagramId; fitKey: nu
     setView((v) => ({ ...v, tx: g.tx + dx, ty: g.ty + dy }));
   };
   const onUp = () => {
+    // 두 손가락 중 하나만 뗐으면 끌기를 남겨 두고 남은 손가락 자리에서 다시 잡는다
+    if (pinching() && drag.current) {
+      drag.current.re = true;
+      return;
+    }
     // 클릭 판정이 끝난 뒤 지운다
     setTimeout(() => (drag.current = null), 0);
   };

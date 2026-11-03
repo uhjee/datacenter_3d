@@ -9,6 +9,7 @@ import { nodeInfo } from '../data/graph';
 import { enterHeat, focusItem, goFloor } from '../scene/focus';
 import { useView, type PanelTab } from './useView';
 import { placeOf } from '../data/route';
+import { modeOfNow } from './device';
 import { setHere } from '../ui/field/guide';
 
 const KEY = 'dc3d.view.v3'; // v3: 세 서버실 급기 20°C 통일 (이전 공조 조건은 버린다)
@@ -72,8 +73,8 @@ export function sceneHash() {
   else if (s.floorFocus) p.set('floor', s.floorFocus);
   if (s.selectedId) p.set('sel', s.selectedId);
   if (s.diagramMode !== 'off' && s.diagramTab !== 'plan') p.set('doc', s.diagramTab);
-  // 현장 모드 내 위치 (QR 라벨 주소와 같은 꼴: #here=row:A-3:W&face=E)
-  if (s.fieldHere) {
+  // 현장 모드 내 위치 (QR 라벨 주소와 같은 꼴: #here=row:A-3:W&face=E). 학습 모드 링크에는 넣지 않는다
+  if (s.fieldHere && modeOfNow() === 'field') {
     p.set('here', s.fieldHere.place);
     if (s.fieldHere.face) p.set('face', s.fieldHere.face);
   }
@@ -103,8 +104,10 @@ export function watchHash() {
 export function applyHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   const s = useView.getState();
+  const field = modeOfNow() === 'field';
   const doc = p.get('doc') as PanelTab | null;
-  if (doc && TABS.includes(doc) && doc !== 'plan') {
+  // 현장 모드에는 도면 · 온도 보기가 없으므로 그 장면은 열지 않는다
+  if (!field && doc && TABS.includes(doc) && doc !== 'plan') {
     s.setDiagramMode('half');
     s.setDiagramTab(doc);
   }
@@ -113,13 +116,13 @@ export function applyHash() {
   const floor = p.get('floor') as FloorId | null;
   // 현장 모드 내 위치: QR 라벨을 기기 카메라로 찍어 연 주소
   const here = p.get('here');
-  if (here && placeOf(here)) {
+  if (field && here && placeOf(here)) {
     if (sel && nodeInfo(sel)) s.select(sel);
     const face = p.get('face');
     setHere(here, face === 'N' || face === 'S' || face === 'E' || face === 'W' ? face : undefined, 'link');
     return;
   }
-  if (temp === 'A' || temp === 'B' || temp === 'C') {
+  if (!field && (temp === 'A' || temp === 'B' || temp === 'C')) {
     enterHeat(temp as RoomLabel);
     if (sel && (nodeInfo(sel) || sel.startsWith('customer:'))) s.select(sel);
     return;

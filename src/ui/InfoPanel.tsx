@@ -93,7 +93,7 @@ export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
         <SupplyBody open />
       ) : therm && tab === 'plan' ? (
         <div className="sheet-plan">
-          <FloorPlan fitKey={0} compact />
+          <FloorPlan fitKey={0} compact keepView />
         </div>
       ) : (
         <InfoBody id={id} groupId={groupId} />

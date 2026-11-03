@@ -40,7 +40,8 @@ export function App() {
   const [left, setLeft] = useState(() => deviceOf() === 'desktop');
   const [right, setRight] = useState(() => deviceOf() === 'desktop');
   const [search, setSearch] = useState(false);
-  const openSearch = useCallback(() => setSearch(true), []);
+  // (현장 모드는 현장 화면이 따로 검색을 연다: 여기서 열어 두면 학습 모드로 돌아올 때 검색창이 저절로 뜬다)
+  const openSearch = useCallback(() => modeOfNow() !== 'field' && setSearch(true), []);
   useSearchHotkey(openSearch);
   // 주소(#)에 담긴 장면 열기: 3D 영역 크기가 잡힌 뒤에. 백그라운드 탭에서 열려도 실행되도록 프레임 대신 타이머
   // (현장 모드로 시작하면 현장 화면이 주소를 연다)

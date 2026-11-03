@@ -12,7 +12,7 @@ import { focusFloor } from '../../scene/focus';
 import { useView } from '../../store/useView';
 import { AlertPanel } from '../AlertPanel';
 import { InfoBody } from '../InfoPanel';
-import { reaim, showStep, startGuide, stopGuide, useGuide } from './guide';
+import { continueTo, reaim, showStep, startGuide, stopGuide, useGuide } from './guide';
 import { PickHere } from './PickHere';
 
 export function FieldPanel({ onSearch }: { onSearch: () => void }) {
@@ -65,9 +65,10 @@ function GuidePanel() {
   const g = useGuide()!;
   const { route: r, step } = g;
   const last = step === r.steps.length - 1;
+  // 도착해서 끝내면 그곳이 내 위치가 되고 카메라를 그 자리로. 가는 도중에 끝내면 카메라는 그대로 둔다
   const end = () => {
     stopGuide();
-    if (!reaim()) focusFloor(useView.getState().floorFocus ?? r.to.floor);
+    if (last && !reaim()) focusFloor(useView.getState().floorFocus ?? r.to.floor);
   };
   return (
     <aside className="panel field-panel guiding">
@@ -138,12 +139,4 @@ function Arrival({ id }: { id: string }) {
   );
 }
 
-// 지금 목적지에서 다음 목적지로 새 길 안내
-function continueTo(next: string) {
-  const s = useView.getState();
-  const g = s.fieldGuide;
-  if (!g) return;
-  s.select(next);
-  s.setFieldGuide({ from: g.to, to: next, step: 0 });
-  showStep(0);
-}
+

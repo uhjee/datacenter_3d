@@ -58,7 +58,8 @@ function fieldImage(f: HeatField, hotOnly: boolean) {
   return c.toDataURL();
 }
 
-export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolean }) {
+// keepView: 크기가 바뀌어도 확대 · 이동을 유지 (휴대폰 시트처럼 높이가 자주 바뀌는 곳). 기본은 크기가 바뀌면 다시 맞춤
+export function FloorPlan({ fitKey, compact, keepView = false }: { fitKey: number; compact: boolean; keepView?: boolean }) {
   const label = useView((s) => s.airRoom);
   const L = AIR_LAYOUT[label];
   const room = ROOM_BY_ID[L.roomId];
@@ -104,13 +105,19 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
     setSize({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, []);
+  const fitted = useRef('');
   useLayoutEffect(() => {
+    const top = 34; // 위쪽 도구 막대 자리
+    // 접힌 시트처럼 높이가 없으면 맞추지 않는다 (배율이 음수가 된다)
+    if (size.h - PAD - top <= 0 || size.w - PAD * 2 <= 0) return;
+    const key = `${label}|${fitKey}`;
+    if (keepView && fitted.current === key) return;
+    fitted.current = key;
     const w = room.x[1] - room.x[0];
     const d = room.z[1] - room.z[0];
-    const top = 34; // 위쪽 도구 막대 자리
     const k = Math.min((size.w - PAD * 2) / w, (size.h - PAD - top) / d);
     setView({ k, tx: (size.w - w * k) / 2 - room.x[0] * k, ty: top + (size.h - top - PAD - d * k) / 2 - room.z[0] * k });
-  }, [label, size.w, size.h, fitKey, room]);
+  }, [label, size.w, size.h, fitKey, room, keepView]);
 
   const drag = useRef<{ x: number; y: number; tx: number; ty: number; moved: boolean; re?: boolean } | null>(null);
   const viewRef = useRef(view);
@@ -157,7 +164,14 @@ export function FloorPlan({ fitKey, compact }: { fitKey: number; compact: boolea
     g.moved = true;
     setView((v) => ({ ...v, tx: g.tx + dx, ty: g.ty + dy }));
   };
-  const onUp = () => setTimeout(() => (drag.current = null), 0);
+  // 두 손가락 중 하나만 뗐으면 끌기를 남겨 두고 남은 손가락 자리에서 다시 잡는다. 모두 떼면 클릭 판정이 끝난 뒤 지운다
+  const onUp = () => {
+    if (pinching() && drag.current) {
+      drag.current.re = true;
+      return;
+    }
+    setTimeout(() => (drag.current = null), 0);
+  };
   const dragged = () => !!drag.current?.moved;
 
   // 고른 랙이 화면 밖이면 가운데로
