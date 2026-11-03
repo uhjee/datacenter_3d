@@ -123,6 +123,12 @@ interface ViewState {
   setFieldGuide: (g: { from: string; to: string; step: number } | null) => void;
   fieldView: 'plan' | 'eye';
   setFieldView: (v: 'plan' | 'eye') => void;
+  // 내 위치: QR 라벨 · 손으로 고르기 · 주소 #here= 로 정한 장소와 보는 방향(N · S · E · W)
+  fieldHere: { place: string; face?: 'N' | 'S' | 'E' | 'W' } | null;
+  setFieldHere: (h: { place: string; face?: 'N' | 'S' | 'E' | 'W' } | null) => void;
+  // 내 위치 고르기 창 (현장 모드 패널)
+  fieldPick: boolean;
+  setFieldPick: (v: boolean) => void;
 
   // 시나리오 (한전 완전 정전 · UPS 고장). scenSnap은 장비 · 연결 상태가 바뀔 때만 새로 만든다
   scenario: (ScenarioRun & { t: number; playing: boolean; speed: number }) | null;
@@ -258,6 +264,10 @@ export const useView = create<ViewState>((set, get) => ({
   setFieldGuide: (g) => set({ fieldGuide: g }),
   fieldView: 'plan',
   setFieldView: (v) => set({ fieldView: v }),
+  fieldHere: null,
+  setFieldHere: (h) => set({ fieldHere: h }),
+  fieldPick: false,
+  setFieldPick: (v) => set({ fieldPick: v }),
 
   scenario: null,
   scenSnap: null,

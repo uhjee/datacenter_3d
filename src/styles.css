@@ -5440,3 +5440,130 @@ kbd {
   height: 10px;
   border-radius: 2px;
 }
+/* 내 위치 고르기 */
+.fp-floors {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+}
+.fp-floors button {
+  flex: none;
+  min-width: 48px;
+  min-height: 44px;
+  font-weight: 700;
+}
+.fp-hint {
+  margin: 12px 16px 4px;
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+.fp-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+}
+.fp-group h5 {
+  margin: 6px 6px 2px;
+  color: var(--ink-2);
+  font-size: var(--fs-sm);
+}
+.fp-group button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 12px;
+  text-align: left;
+}
+.fp-group button small {
+  color: var(--ink-3);
+}
+
+/* ── QR 라벨 인쇄 페이지 (?labels): A4 한 줄에 3장 ── */
+html:has(.label-page),
+body:has(.label-page),
+#root:has(.label-page) {
+  height: auto;
+  overflow: visible;
+}
+.label-page {
+  padding: 20px 24px 40px;
+  color: var(--ink);
+}
+.label-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.label-tools span {
+  color: var(--ink-3);
+  font-size: var(--fs-sm);
+}
+.label-tools button {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.label-floor h2 {
+  margin: 18px 0 8px;
+  font-size: 16px;
+}
+.label-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px;
+  border: 1px dashed #868e96;
+  border-radius: 6px;
+  background: #fff;
+  color: #111;
+  text-align: center;
+  break-inside: avoid;
+}
+.label img,
+.label-qr-blank {
+  width: 140px;
+  height: 140px;
+}
+.label b {
+  font-size: 14px;
+}
+.label span {
+  font-size: 11.5px;
+  color: #444;
+}
+.label small {
+  font-size: 8px;
+  color: #888;
+  word-break: break-all;
+}
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  html:has(.label-page),
+  body:has(.label-page) {
+    background: #fff;
+  }
+  .label-tools {
+    display: none;
+  }
+  .label-page {
+    padding: 0;
+    color: #111;
+  }
+}

@@ -12,12 +12,15 @@ import { focusFloor } from '../../scene/focus';
 import { useView } from '../../store/useView';
 import { AlertPanel } from '../AlertPanel';
 import { InfoBody } from '../InfoPanel';
-import { showStep, startGuide, stopGuide, useGuide } from './guide';
+import { reaim, showStep, startGuide, stopGuide, useGuide } from './guide';
+import { PickHere } from './PickHere';
 
 export function FieldPanel({ onSearch }: { onSearch: () => void }) {
   const id = useView((s) => s.selectedId);
   const groupId = useView((s) => s.groupId);
   const g = useGuide();
+  const pick = useView((s) => s.fieldPick);
+  if (pick) return <PickHere />;
   if (g) return <GuidePanel />;
   const picked = id ?? groupId;
   return (
@@ -64,7 +67,7 @@ function GuidePanel() {
   const last = step === r.steps.length - 1;
   const end = () => {
     stopGuide();
-    focusFloor(useView.getState().floorFocus ?? r.to.floor);
+    if (!reaim()) focusFloor(useView.getState().floorFocus ?? r.to.floor);
   };
   return (
     <aside className="panel field-panel guiding">

@@ -388,6 +388,41 @@ function stepsOf(path: GNode[], from: Place, to: Place): RouteStep[] {
   return steps;
 }
 
+// QR 라벨을 붙일 장소: 층 코어 앞(승강기 앞) · 실 출입문 · 냉복도 끝(열 끝).
+// face = 라벨을 보고 섰을 때 보는 방향 (찍는 순간 눈높이 시점의 방향을 맞춘다)
+export interface LabelPlace extends Place {
+  face: Face;
+  where: string; // 붙일 곳 설명
+}
+const faceOf = (dx: number, dz: number): Face => (Math.abs(dx) > Math.abs(dz) ? (dx > 0 ? 'E' : 'W') : dz > 0 ? 'S' : 'N');
+export const FACE_VEC: Record<Face, [number, number]> = { N: [0, -1], S: [0, 1], E: [1, 0], W: [-1, 0] };
+export const FACE_NAME: Record<Face, string> = { N: '북쪽', S: '남쪽', E: '동쪽', W: '서쪽' };
+
+let labelCache: LabelPlace[] | null = null;
+export function labelPlaces(): LabelPlace[] {
+  if (labelCache) return labelCache;
+  const out: LabelPlace[] = [];
+  for (const f of FLOORS) {
+    const p = placeOf(`core:${f.id}`);
+    if (p) out.push({ ...p, face: 'S', where: `${f.id} 승강기 · 계단 문 옆 벽` });
+  }
+  for (const d of DOORS) {
+    const p = placeOf(`door:${d.id}`);
+    const b = ROOMS.find((r) => r.id === d.b);
+    if (!p || !b) continue;
+    // 들어가는 실(b) 쪽을 본다
+    out.push({ ...p, face: faceOf((b.x[0] + b.x[1]) / 2 - d.x, (b.z[0] + b.z[1]) / 2 - d.z), where: `${roomShort(b)} 출입문 옆` });
+  }
+  for (const sr of SERVER_ROOMS)
+    for (let row = 1; row <= ROW_OFFSETS.length; row++)
+      for (const end of ['W', 'E'] as const) {
+        const p = placeOf(`row:${sr.label}-${row}:${end}`);
+        if (p) out.push({ ...p, face: end === 'W' ? 'E' : 'W', where: `서버실 ${sr.label} ${row}열 ${end === 'W' ? '서쪽' : '동쪽'} 끝 랙 옆면` });
+      }
+  labelCache = out;
+  return out;
+}
+
 // 따라가기: 이 장비 · 랙에 전원 · 냉기를 보내는 곳 (연결 지점(hub)은 건너 그 앞 장비로). 현장 모드 '전원 따라가기'
 export function upstreamOf(id: string): { id: string; kind: string; sys?: 'A' | 'B' }[] {
   const out = new Map<string, { id: string; kind: string; sys?: 'A' | 'B' }>();

@@ -10,7 +10,7 @@ import { InfoPanel } from './ui/InfoPanel';
 import { SupplyCard, ThermalPanel } from './ui/ThermalPanel';
 import { SearchPalette, useSearchHotkey } from './ui/SearchPalette';
 import { applyHash } from './store/persist';
-import { deviceOf, setMode, useDevice } from './store/device';
+import { deviceOf, modeOfNow, setMode, useDevice } from './store/device';
 import { FieldLayout } from './ui/field/FieldLayout';
 import { MoreMenu } from './ui/MoreMenu';
 import { Sheet, type SheetSnap } from './ui/Sheet';
@@ -43,7 +43,9 @@ export function App() {
   const openSearch = useCallback(() => setSearch(true), []);
   useSearchHotkey(openSearch);
   // 주소(#)에 담긴 장면 열기: 3D 영역 크기가 잡힌 뒤에. 백그라운드 탭에서 열려도 실행되도록 프레임 대신 타이머
+  // (현장 모드로 시작하면 현장 화면이 주소를 연다)
   useEffect(() => {
+    if (modeOfNow() === 'field') return;
     const id = setTimeout(applyHash, 0);
     return () => clearTimeout(id);
   }, []);

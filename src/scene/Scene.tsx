@@ -12,6 +12,7 @@ import { Connections } from './Connections';
 import { CAMERA_FOV, overviewPose } from './focus';
 import { LabelProjector } from './HoverLabel';
 import { RouteLine } from './RouteLine';
+import { QrMarks } from './QrMarks';
 
 // 숨긴 층·레이어의 물체는 클릭되지 않도록 걸러낸다
 function shown(o: Object3D | null): boolean {
@@ -74,7 +75,12 @@ export function Scene() {
         <BuildingFloors />
         <Connections />
         <OrbitPing />
-        {mode === 'field' && <RouteLine />}
+        {mode === 'field' && (
+          <>
+            <RouteLine />
+            <QrMarks />
+          </>
+        )}
         {touch && <AdaptiveDpr onDecline={setDprCap} />}
         {!ready && <FirstFrames onReady={() => setReady(true)} />}
         {import.meta.env.DEV && <DevHandle />}
@@ -276,7 +282,7 @@ function CameraRig() {
   }, [zoom]);
 
   // 현장 모드 눈높이: 거의 붙은 목표를 둘레로 돌게 해 그 자리에서 둘러보기만 (확대 · 이동 끔, 끄는 방향은 보는 방향과 같게)
-  const eye = useView((s) => s.fieldView === 'eye' && !!s.fieldGuide);
+  const eye = useView((s) => s.fieldView === 'eye' && (!!s.fieldGuide || !!s.fieldHere));
   // 눈높이는 사람 시야처럼 넓게 (좁은 화각으로는 통로에서 랙 문 한두 개만 보인다)
   useEffect(() => {
     const cam = camera as PerspectiveCamera;

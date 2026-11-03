@@ -20,9 +20,11 @@ watchHash();
 
 const root = createRoot(document.getElementById('root')!);
 
-// 개발 중 ?kit 이면 공통 부품 미리보기
+// 개발 중 ?kit 이면 공통 부품 미리보기, ?labels 이면 현장 모드 QR 라벨 인쇄 페이지
 if (import.meta.env.DEV && new URLSearchParams(location.search).has('kit')) {
   import('./ui/KitPreview').then(({ KitPreview }) => root.render(<KitPreview />));
+} else if (new URLSearchParams(location.search).has('labels')) {
+  import('./ui/field/LabelSheet').then(({ LabelSheet }) => root.render(<LabelSheet />));
 } else {
   root.render(
     <StrictMode>

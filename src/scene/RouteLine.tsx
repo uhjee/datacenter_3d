@@ -1,16 +1,18 @@
-// 현장 모드 길 안내 3D 표시: 바닥 경로 점선(보고 있는 층만), 내 위치(걷는 방향 화살표), 목적지 고리.
+// 현장 모드 길 안내 3D 표시: 바닥 경로 점선(보고 있는 층만), 내 위치(걷는 · 보는 방향 화살표), 목적지 고리.
+// 길 안내가 없어도 내 위치를 정했으면 내 위치만 보인다
 // 층 바닥 높이는 층 묶음과 같은 floorWorldY, 이중마루 서버실은 마루 위
 
 import { Line } from '@react-three/drei';
 import { useMemo } from 'react';
 import { floorTopAt } from '../data/route';
 import { floorWorldY, useView } from '../store/useView';
-import { poseOf, useGuide } from '../ui/field/guide';
+import { herePose, poseOf, useGuide } from '../ui/field/guide';
 
 const LIFT = 0.06; // 바닥에 묻히지 않게
 
 export function RouteLine() {
   const g = useGuide();
+  const here = useView((s) => s.fieldHere);
   const floor = useView((s) => s.floorFocus);
   const mode = useView((s) => s.viewMode);
   const pts = useMemo(() => {
@@ -18,7 +20,13 @@ export function RouteLine() {
     const base = floorWorldY(floor, mode);
     return g.route.points.filter((p) => p.floor === floor).map((p) => [p.x, base + floorTopAt(floor, p.x, p.z) + LIFT, p.z] as [number, number, number]);
   }, [g, floor, mode]);
-  if (!g || !floor) return null;
+  if (!floor) return null;
+  // 길 안내가 없으면 내 위치(QR · 고르기로 정한 곳)만
+  if (!g) {
+    const p = here && herePose();
+    if (!p || p.floor !== floor) return null;
+    return <Me x={p.x} y={floorWorldY(floor, mode) + floorTopAt(floor, p.x, p.z) + LIFT} z={p.z} dx={p.dx} dz={p.dz} />;
+  }
   const me = poseOf(g.route, g.step);
   const to = g.route.to;
   const base = floorWorldY(floor, mode);

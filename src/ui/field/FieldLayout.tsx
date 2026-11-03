@@ -5,37 +5,46 @@
 //   3D는 층 하나만 보이게 한다 (현장에서는 지금 있는 층 · 가려는 층만 보면 된다)
 
 import { useCallback, useEffect, useState } from 'react';
-import { Eye, GraduationCap, Map as MapIcon, MapPin, Scan, Search } from 'lucide-react';
+import { Eye, GraduationCap, LocateFixed, Map as MapIcon, MapPin, Printer, Scan, Search } from 'lucide-react';
 import { FLOORS, type FloorId } from '../../data/building';
 import { exitThermal, focusFloor, goFloor } from '../../scene/focus';
 import { htmlPortal } from '../../scene/htmlPortal';
 import { LabelOverlay } from '../../scene/HoverLabel';
 import { Scene } from '../../scene/Scene';
 import { setMode } from '../../store/device';
+import { applyHash } from '../../store/persist';
 import { useView } from '../../store/useView';
 import { SearchPalette, useSearchHotkey } from '../SearchPalette';
 import { Toast } from '../Toast';
 import { FieldPanel } from './FieldPanel';
-import { setView, showStep } from './guide';
+import { reaim, setView } from './guide';
 
 // 현장 모드 첫 층: 정해진 층이 없으면 1층(출입 · 코어에서 출발)
 const START_FLOOR: FloorId = '1F';
 
 // 화면 맞춤: 길 안내 중이면 지금 단계 시점으로, 아니면 지금 층
 function fit() {
-  const s = useView.getState();
-  if (s.fieldGuide) showStep(s.fieldGuide.step);
-  else focusFloor(s.floorFocus ?? START_FLOOR);
+  if (!reaim()) focusFloor(useView.getState().floorFocus ?? START_FLOOR);
 }
 
 export function FieldLayout() {
   const [search, setSearch] = useState(false);
   useSearchHotkey(useCallback(() => setSearch(true), []));
-  // 현장 모드에는 온도 카드 · 도면이 없으므로 끄고, 층 하나를 보여 준다
+  // 현장 모드에는 온도 카드 · 도면이 없으므로 끄고, 주소(#here= · sel= · floor=)의 장면을 열거나 층 하나를 보여 준다.
+  // 주소를 먼저 읽어 둔다: 아래에서 층을 바꾸면 주소가 그 층으로 다시 쓰이기 때문 (QR 라벨 주소를 잃지 않게)
   useEffect(() => {
     const s = useView.getState();
+    const hash = location.hash.slice(1);
     exitThermal(false);
     if (s.diagramMode !== 'off') s.setDiagramMode('off');
+    if (hash) {
+      history.replaceState(null, '', `${location.pathname}${location.search}#${hash}`);
+      const id = setTimeout(() => {
+        applyHash();
+        if (!useView.getState().floorFocus) focusFloor(START_FLOOR);
+      }, 0);
+      return () => clearTimeout(id);
+    }
     focusFloor(s.floorFocus ?? START_FLOOR);
   }, []);
   return (
@@ -49,6 +58,9 @@ export function FieldLayout() {
           <span>장비 · 랙 찾기</span>
         </button>
         <div className="spacer" />
+        <button className="field-mode" onClick={() => window.open(`${location.pathname}?labels`, '_blank')} title="QR 라벨 인쇄 페이지 (장소마다 QR · 붙일 곳)">
+          <Printer size={18} /> 라벨 인쇄
+        </button>
         <button className="field-mode" onClick={() => setMode('learn')} title="학습 모드: 온도 보기 · 도면 · 시나리오 · 가이드 투어가 있는 전체 화면">
           <GraduationCap size={18} /> 학습 모드
         </button>
@@ -72,10 +84,10 @@ export function FieldLayout() {
   );
 }
 
-// 왼쪽 엄지 줄: 층 버튼(아래층이 왼쪽) · 화면 맞춤, 길 안내 중이면 시점(위에서 · 눈높이)
+// 왼쪽 엄지 줄: 층 버튼(아래층이 왼쪽) · 내 위치 정하기 · 화면 맞춤, 길 안내 중(또는 내 위치가 있으면) 시점(위에서 · 눈높이)
 function ThumbBar() {
   const focus = useView((s) => s.floorFocus);
-  const guiding = useView((s) => !!s.fieldGuide);
+  const guiding = useView((s) => !!s.fieldGuide || !!s.fieldHere);
   const view = useView((s) => s.fieldView);
   return (
     <div className="thumb-bar" role="group" aria-label="층 이동 · 시점">
@@ -96,6 +108,9 @@ function ThumbBar() {
         </button>
       ))}
       <span className="thumb-sep" />
+      <button onClick={() => useView.getState().setFieldPick(true)} aria-label="내 위치 정하기" title="내 위치 정하기 (층 · 실 · 열 고르기)">
+        <LocateFixed size={22} />
+      </button>
       <button onClick={fit} aria-label="화면 맞춤" title="화면 맞춤 (길 안내 중이면 지금 단계)">
         <Scan size={20} />
       </button>
