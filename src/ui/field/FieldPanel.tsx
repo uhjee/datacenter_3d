@@ -138,5 +138,3 @@ function Arrival({ id }: { id: string }) {
     </div>
   );
 }
-
-

@@ -144,7 +144,11 @@ function ScenarioPeek() {
       }
       aside={
         <span onPointerDown={(e) => e.stopPropagation()} onPointerUp={(e) => e.stopPropagation()}>
-          <IconButton icon={sc.playing ? Pause : Play} label={sc.playing ? '일시정지' : '재생'} onClick={() => useView.getState().setScenPlaying(!sc.playing)} />
+          <IconButton
+            icon={sc.playing ? Pause : Play}
+            label={sc.playing ? '일시정지' : '재생'}
+            onClick={() => useView.getState().setScenPlaying(!sc.playing)}
+          />
         </span>
       }
     />
@@ -170,7 +174,17 @@ function ThermalPeek() {
 
 function PuePeek() {
   const m = useMetrics();
-  return <Peek title="건물 개요" sub="지하 1층 ~ 옥상" aside={<span className="sheet-pue num">PUE <b>{m.pue.toFixed(2)}</b></span>} />;
+  return (
+    <Peek
+      title="건물 개요"
+      sub="지하 1층 ~ 옥상"
+      aside={
+        <span className="sheet-pue num">
+          PUE <b>{m.pue.toFixed(2)}</b>
+        </span>
+      }
+    />
+  );
 }
 
 function Peek({ title, sub, aside }: { title: ReactNode; sub?: ReactNode; aside?: ReactNode }) {
