@@ -60,7 +60,7 @@ export function InfoPanel({ inSheet = false }: { inSheet?: boolean }) {
       ]
     : [
         { id: 'info', name: '정보' },
-        { id: 'metrics', name: '지표 · 용량' },
+        { id: 'metrics', name: 'PUE · 용량' },
         {
           id: 'alerts',
           name: (
