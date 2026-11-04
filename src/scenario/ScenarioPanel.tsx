@@ -321,7 +321,7 @@ function ScenarioRun() {
     clockSub = since < 0 ? '고장 직전' : `고장 후 ${Math.floor(since)}초`;
     board = <CracBoard v={v} p={p} t={sc.t} />;
     condSummary = `서버실 ${p.room} · ${p.unit}번 고장${p.second ? ' · 한 대 더' : ''}`;
-    condNote = <>대기기는 {standbyOf(p)}번입니다. 봉쇄가 없는 서버실 B · C는 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 이중마루가 없는 C는 고장 난 기기 앞 냉복도가 특히 빨리 데워집니다. 지표 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.</>;
+    condNote = <>대기기는 {standbyOf(p)}번입니다. 봉쇄가 없는 서버실 B · C는 평소 흡기가 높아 같은 고장에도 권장 상한(27°C)을 먼저 넘습니다. 이중마루가 없는 C는 고장 난 기기 앞 냉복도가 특히 빨리 데워집니다. [PUE · 용량] 탭의 IT 부하율을 올린 뒤 다시 시작하면 용량 부족이 더 크게 드러납니다.</>;
     cond = (
       <div className="rp-cond">
         <div className="rp-cond-row">

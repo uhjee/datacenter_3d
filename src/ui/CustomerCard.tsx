@@ -29,7 +29,7 @@ export function CustomerCard({ id }: { id: CustomerId }) {
           glyph={<Glyph icon={Handshake} color={c.color} />}
           crumb={[c.floor, ROOM_BY_ID[c.room]?.name ?? c.room, '고객사 케이지']}
           title={c.name}
-          info="추이 · 계약 조건은 학습용 예시 값입니다. 유효 전력은 지표 탭의 IT 부하율을 따라 바뀝니다."
+          info="추이 · 계약 조건은 학습용 예시 값입니다. 유효 전력은 [PUE · 용량] 탭의 IT 부하율을 따라 바뀝니다."
           pills={
             <>
               <Pill tone={s.tone}>계약 전력 {TONE_TEXT[s.tone]}</Pill>

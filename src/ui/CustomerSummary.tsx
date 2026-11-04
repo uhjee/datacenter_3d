@@ -82,7 +82,7 @@ export function CustomerAlert() {
   if (bad.length === 0) return null;
   const worst = [...bad].sort((a, b) => b.s.ratio - a.s.ratio)[0];
   return (
-    <button className="cs-alert" onClick={() => useView.getState().setRightTab('metrics')} title="지표 탭의 고객사 계약 전력 보기">
+    <button className="cs-alert" onClick={() => useView.getState().setRightTab('metrics')} title="[PUE · 용량] 탭의 고객사 계약 전력 보기">
       <Status tone={worst.s.tone === 'ok' ? 'warn' : worst.s.tone}>고객사 계약</Status>
       <span>
         {bad.map(({ c, s }) => `${c.name} ${pct(s.ratio)}${s.tone === 'ok' ? ' (이번 달 최대 초과)' : ` ${TONE_TEXT[s.tone]}`}`).join(' · ')}

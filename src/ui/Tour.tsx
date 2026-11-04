@@ -417,7 +417,7 @@ export const STEPS: Step[] = [
         ],
       },
     ],
-    points: ['공냉식만 쓰는 5F는 프리쿨링이 없습니다. 오른쪽 지표 탭의 슬라이더로 바꿔 볼 수 있습니다.'],
+    points: ['공냉식만 쓰는 5F는 프리쿨링이 없습니다. 오른쪽 [PUE · 용량] 탭의 슬라이더로 바꿔 볼 수 있습니다.'],
     run: () => {
       clean();
       focusOverview();
