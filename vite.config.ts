@@ -14,7 +14,7 @@ const precacheList = (): Plugin => ({
 });
 
 // npm run dev:https (--mode https): 같은 와이파이의 태블릿 · 휴대폰에서 보안 연결이 필요한 기능을 시험할 때
-// (화면 꺼짐 방지 · 서비스 워커 · 카메라). 자체 서명 인증서라 기기 브라우저에서 한 번 '계속'을 눌러야 한다
+// (서비스 워커 · 홈 화면 추가). 자체 서명 인증서라 기기 브라우저에서 한 번 '계속'을 눌러야 한다
 export default defineConfig(({ mode }) => ({
   plugins: [react(), precacheList(), ...(mode === 'https' ? [basicSsl()] : [])],
   // 빌드마다 바뀌는 값: 서비스 워커 주소에 붙여 새 버전을 받으면 새로 설치되게 한다

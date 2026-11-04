@@ -73,10 +73,6 @@ const RESET_KEYS = [
   'diagramTab',
   'rightTab',
   'traceCross',
-  'fieldGuide',
-  'fieldHere',
-  'fieldView',
-  'fieldPick',
 ] as const;
 function resetAll() {
   const s = useView.getState();

@@ -1,6 +1,6 @@
 // 보기 설정 기억 · 장면 링크.
 //   설정(브라우저 저장): 레이어 · 연결선 · 랙 색칠 · 보기 방식 · 공조 조건 · 운전 조건 · 히트맵 설정. 새로고침해도 그대로
-//   장면(주소 #): 층 · 선택 · 온도 보기 서버실 · 도면 탭 · 현장 모드 내 위치. 주소를 그대로 보내면 같은 장면이 열린다 (교육 자료 링크 · QR 라벨용)
+//   장면(주소 #): 층 · 선택 · 온도 보기 서버실 · 도면 탭. 주소를 그대로 보내면 같은 장면이 열린다 (교육 자료 링크용)
 // 저장이 막힌 환경(사생활 보호 창 등)에서는 조용히 넘어간다
 
 import { FLOOR_BY_ID, byRoom, type FloorId } from '../data/building';
@@ -8,9 +8,6 @@ import { computeRoom, type RoomLabel } from '../data/thermal';
 import { nodeInfo } from '../data/graph';
 import { enterHeat, focusItem, goFloor } from '../scene/focus';
 import { useView, type PanelTab } from './useView';
-import { placeOf } from '../data/route';
-import { modeOfNow } from './device';
-import { setHere } from '../ui/field/guide';
 
 const KEY = 'dc3d.view.v3'; // v3: 세 서버실 급기 20°C 통일 (이전 공조 조건은 버린다)
 const SAVED = ['layers', 'linkFilter', 'rackColor', 'viewMode', 'airCfg', 'itLoad', 'outdoorT', 'heatHeight', 'heatValue', 'heatOpacity', 'heatHotOnly'] as const;
@@ -73,11 +70,6 @@ export function sceneHash() {
   else if (s.floorFocus) p.set('floor', s.floorFocus);
   if (s.selectedId) p.set('sel', s.selectedId);
   if (s.diagramMode !== 'off' && s.diagramTab !== 'plan') p.set('doc', s.diagramTab);
-  // 현장 모드 내 위치 (QR 라벨 주소와 같은 꼴: #here=row:A-3:W&face=E). 학습 모드 링크에는 넣지 않는다
-  if (s.fieldHere && modeOfNow() === 'field') {
-    p.set('here', s.fieldHere.place);
-    if (s.fieldHere.face) p.set('face', s.fieldHere.face);
-  }
   const q = p.toString();
   return q ? `#${q}` : '';
 }
@@ -91,8 +83,7 @@ export function watchHash() {
       s.heatOn === prev.heatOn &&
       s.airRoom === prev.airRoom &&
       s.diagramMode === prev.diagramMode &&
-      s.diagramTab === prev.diagramTab &&
-      s.fieldHere === prev.fieldHere
+      s.diagramTab === prev.diagramTab
     )
       return;
     const h = sceneHash();
@@ -104,25 +95,15 @@ export function watchHash() {
 export function applyHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   const s = useView.getState();
-  const field = modeOfNow() === 'field';
   const doc = p.get('doc') as PanelTab | null;
-  // 현장 모드에는 도면 · 온도 보기가 없으므로 그 장면은 열지 않는다
-  if (!field && doc && TABS.includes(doc) && doc !== 'plan') {
+  if (doc && TABS.includes(doc) && doc !== 'plan') {
     s.setDiagramMode('half');
     s.setDiagramTab(doc);
   }
   const temp = p.get('temp');
   const sel = p.get('sel');
   const floor = p.get('floor') as FloorId | null;
-  // 현장 모드 내 위치: QR 라벨을 기기 카메라로 찍어 연 주소
-  const here = p.get('here');
-  if (field && here && placeOf(here)) {
-    if (sel && nodeInfo(sel)) s.select(sel);
-    const face = p.get('face');
-    setHere(here, face === 'N' || face === 'S' || face === 'E' || face === 'W' ? face : undefined, 'link');
-    return;
-  }
-  if (!field && (temp === 'A' || temp === 'B' || temp === 'C')) {
+  if ((temp === 'A' || temp === 'B' || temp === 'C')) {
     enterHeat(temp as RoomLabel);
     if (sel && (nodeInfo(sel) || sel.startsWith('customer:'))) s.select(sel);
     return;

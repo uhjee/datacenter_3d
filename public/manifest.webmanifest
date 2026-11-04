@@ -1,7 +1,7 @@
 {
   "name": "데이터센터 3D 시뮬레이터",
   "short_name": "데이터센터 3D",
-  "description": "데이터센터 전력 · 공조 3D 학습, 태블릿 현장 모드 길 안내",
+  "description": "데이터센터 전력 · 공조 3D 학습",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
